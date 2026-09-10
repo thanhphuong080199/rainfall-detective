@@ -1,0 +1,15 @@
+[
+  {
+    "id": "test_effects_remove_evidence",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "(test-only) removes test_note via the remove_evidence effect.",
+        "actions": [{ "type": "remove_evidence", "evidence_id": "test_note" }],
+        "next": null
+      }
+    }
+  }
+]

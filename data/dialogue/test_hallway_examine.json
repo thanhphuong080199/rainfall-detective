@@ -1,0 +1,57 @@
+[
+  {
+    "id": "examine_shelf_before",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "A dusty shelf. Something is tucked behind a stack of boxes.",
+        "next": "n2"
+      },
+      "n2": {
+        "speaker": "",
+        "expression": "",
+        "text": "You picked up a Brass Badge.",
+        "actions": [{ "type": "add_evidence", "evidence_id": "test_badge" }],
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "examine_shelf_after",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "Just an empty shelf now.",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "examine_mirror_before",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "A plain mirror hangs on the wall. Your reflection looks tired. This is a flavor-only examine point — it grants no evidence, and demonstrates the \"examined\" condition instead of an evidence-gated variant.",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "examine_mirror_after",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "Just your reflection again. Nothing new to see.",
+        "next": null
+      }
+    }
+  }
+]

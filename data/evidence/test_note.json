@@ -1,0 +1,7 @@
+{
+  "id": "test_note",
+  "name": "Torn Note",
+  "icon_color": "#D8D2C2",
+  "short_description": "A torn scrap of paper.",
+  "detailed_description": "Half of a handwritten note. The rest is missing. Only a few words are still legible."
+}

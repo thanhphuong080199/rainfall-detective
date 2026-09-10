@@ -1,0 +1,114 @@
+[
+  {
+    "id": "character_a_greeting",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "character_a",
+        "expression": "normal",
+        "text": "Oh, hello there. Can I help you with something?",
+        "choices": [
+          { "text": "Ask about the desk.", "condition": { "flag": "desk_examined", "equals": false }, "next": "n2" },
+          { "text": "Nothing, thanks.", "next": null }
+        ]
+      },
+      "n2": {
+        "speaker": "character_a",
+        "expression": "normal",
+        "text": "The desk? Go ahead and take a look at it yourself.",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "character_a_about_key",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "character_a",
+        "expression": "happy",
+        "text": "Still thinking about that key? I already told you what I know.",
+        "next": "n2"
+      },
+      "n2": {
+        "speaker": "character_a",
+        "expression": "normal",
+        "text": "Go on, the hallway's open now. See for yourself.",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "character_a_present_key",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "character_a",
+        "expression": "surprised",
+        "text": "Wait — where did you find that key?!",
+        "next": "n2"
+      },
+      "n2": {
+        "speaker": "character_a",
+        "expression": "normal",
+        "text": "...Fine. It opens something down the hallway. You should go take a look.",
+        "actions": [{ "type": "set_flag", "flag": "hallway_unlocked", "value": true }],
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "character_a_present_generic",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "character_a",
+        "expression": "normal",
+        "text": "Hm. I don't think that has anything to do with me.",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "character_a_about_evidence",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "character_a",
+        "expression": "normal",
+        "text": "You're holding onto something interesting there. Let me know if you find anything else.",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "character_a_about_hallway_trip",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "character_a",
+        "expression": "happy",
+        "text": "Oh, you went and looked around the hallway? What did you think?",
+        "next": "n2"
+      },
+      "n2": {
+        "speaker": "character_a",
+        "expression": "normal",
+        "text": "Nothing much to say about it, honestly.",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "character_a_about_character_b",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "character_a",
+        "expression": "normal",
+        "text": "Yes, I know Character B. We don't talk much.",
+        "next": null
+      }
+    }
+  }
+]

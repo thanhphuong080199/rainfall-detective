@@ -1,0 +1,12 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+
+# Godot-generated import artifacts for binary assets
+*.import
+
+# Editor/OS cruft
+.DS_Store
+
+# Claude Code session state (not project content)
+.claude/

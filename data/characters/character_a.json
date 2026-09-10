@@ -1,0 +1,10 @@
+{
+  "id": "character_a",
+  "name": "Character A",
+  "expressions": {
+    "normal": "#4A6FA5",
+    "happy": "#F2C14E",
+    "angry": "#C1443C",
+    "surprised": "#E88D33"
+  }
+}

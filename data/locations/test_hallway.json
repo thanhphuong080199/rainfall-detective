@@ -1,0 +1,44 @@
+{
+  "id": "test_hallway",
+  "name": "Test Hallway",
+  "background_color": "#3E3A4E",
+  "npcs": [
+    {
+      "id": "character_b",
+      "topics": [
+        { "id": "greeting", "label": "Say hello", "dialogue_id": "character_b_greeting" },
+        {
+          "id": "clue",
+          "label": "Ask about the badge",
+          "dialogue_id": "character_b_clue",
+          "condition": { "all": [{ "has_evidence": "test_key" }, { "has_evidence": "test_badge" }] }
+        }
+      ],
+      "present_responses": [
+        { "evidence_id": "test_badge", "dialogue_id": "character_b_present_badge" },
+        { "dialogue_id": "character_b_present_generic" }
+      ]
+    }
+  ],
+  "examine_points": [
+    {
+      "id": "shelf",
+      "label": "Examine the Shelf",
+      "variants": [
+        { "condition": { "has_evidence": "test_badge" }, "dialogue_id": "examine_shelf_after" },
+        { "dialogue_id": "examine_shelf_before" }
+      ]
+    },
+    {
+      "id": "mirror",
+      "label": "Examine the Mirror",
+      "variants": [
+        { "condition": { "examined": "mirror" }, "dialogue_id": "examine_mirror_after" },
+        { "dialogue_id": "examine_mirror_before" }
+      ]
+    }
+  ],
+  "destinations": [
+    { "location_id": "test_room", "label": "Back to the Room" }
+  ]
+}

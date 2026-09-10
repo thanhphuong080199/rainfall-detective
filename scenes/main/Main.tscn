@@ -1,0 +1,37 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/main.gd" id="1"]
+[ext_resource type="PackedScene" path="res://scenes/investigation/InvestigationView.tscn" id="2"]
+[ext_resource type="PackedScene" path="res://scenes/dialogue/DialogueBox.tscn" id="3"]
+[ext_resource type="PackedScene" path="res://scenes/evidence/EvidenceInventory.tscn" id="4"]
+[ext_resource type="PackedScene" path="res://scenes/ui/GameMenu.tscn" id="5"]
+[ext_resource type="PackedScene" path="res://scenes/debug/DebugPanel.tscn" id="6"]
+
+[node name="Main" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="InvestigationView" parent="." instance=ExtResource("2")]
+unique_name_in_owner = true
+layout_mode = 1
+
+[node name="DialogueBox" parent="." instance=ExtResource("3")]
+unique_name_in_owner = true
+layout_mode = 1
+
+[node name="EvidenceInventory" parent="." instance=ExtResource("4")]
+unique_name_in_owner = true
+layout_mode = 1
+
+[node name="GameMenu" parent="." instance=ExtResource("5")]
+unique_name_in_owner = true
+layout_mode = 1
+
+[node name="DebugPanel" parent="." instance=ExtResource("6")]
+unique_name_in_owner = true
+layout_mode = 1

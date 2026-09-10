@@ -1,0 +1,66 @@
+{
+  "id": "test_room",
+  "name": "Test Room",
+  "background_color": "#2E3A46",
+  "npcs": [
+    {
+      "id": "character_a",
+      "topics": [
+        { "id": "greeting", "label": "Say hello", "dialogue_id": "character_a_greeting" },
+        {
+          "id": "about_key",
+          "label": "Ask about the key",
+          "dialogue_id": "character_a_about_key",
+          "condition": { "flag": "hallway_unlocked" }
+        },
+        {
+          "id": "about_evidence",
+          "label": "Ask about what you're carrying",
+          "dialogue_id": "character_a_about_evidence",
+          "condition": { "any": [{ "has_evidence": "test_key" }, { "has_evidence": "test_note" }] }
+        },
+        {
+          "id": "about_hallway_trip",
+          "label": "Ask about your trip to the hallway",
+          "dialogue_id": "character_a_about_hallway_trip",
+          "condition": { "visited_location": "test_hallway" }
+        },
+        {
+          "id": "about_character_b",
+          "label": "Mention Character B",
+          "dialogue_id": "character_a_about_character_b",
+          "condition": { "interaction_complete": "met_character_b" }
+        }
+      ],
+      "present_responses": [
+        { "evidence_id": "test_key", "dialogue_id": "character_a_present_key" },
+        { "dialogue_id": "character_a_present_generic" }
+      ]
+    }
+  ],
+  "examine_points": [
+    {
+      "id": "desk",
+      "label": "Examine the Desk",
+      "variants": [
+        { "condition": { "has_evidence": "test_key" }, "dialogue_id": "examine_desk_after" },
+        { "dialogue_id": "examine_desk_before" }
+      ]
+    },
+    {
+      "id": "window",
+      "label": "Examine the Window",
+      "variants": [
+        { "condition": { "has_evidence": "test_note" }, "dialogue_id": "examine_window_after" },
+        { "dialogue_id": "examine_window_before" }
+      ]
+    }
+  ],
+  "destinations": [
+    {
+      "location_id": "test_hallway",
+      "label": "Go to the Hallway",
+      "condition": { "flag": "hallway_unlocked" }
+    }
+  ]
+}

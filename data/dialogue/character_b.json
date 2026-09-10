@@ -1,0 +1,63 @@
+[
+  {
+    "id": "character_b_greeting",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "character_b",
+        "expression": "normal",
+        "text": "...Oh. Didn't see you there.",
+        "next": "n2"
+      },
+      "n2": {
+        "speaker": "character_b",
+        "expression": "normal",
+        "text": "Can I help you?",
+        "actions": [{ "type": "mark_interaction_complete", "id": "met_character_b" }],
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "character_b_clue",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "character_b",
+        "expression": "surprised",
+        "text": "You found the badge too? And the key...",
+        "next": "n2"
+      },
+      "n2": {
+        "speaker": "character_b",
+        "expression": "angry",
+        "text": "...That's not something I wanted anyone to see. Fine — ask your questions.",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "character_b_present_badge",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "character_b",
+        "expression": "angry",
+        "text": "Where did you get that?! That's mine.",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "character_b_present_generic",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "character_b",
+        "expression": "normal",
+        "text": "That doesn't belong to me.",
+        "next": null
+      }
+    }
+  }
+]

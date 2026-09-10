@@ -1,0 +1,142 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/debug/debug_panel.gd" id="1"]
+
+[node name="DebugPanel" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+script = ExtResource("1")
+
+[node name="DimBackground" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+color = Color(0, 0, 0, 0.75)
+
+[node name="CenterPanel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -460.0
+offset_top = -330.0
+offset_right = 460.0
+offset_bottom = 330.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Margin" type="MarginContainer" parent="CenterPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="VBox" type="VBoxContainer" parent="CenterPanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Header" type="HBoxContainer" parent="CenterPanel/Margin/VBox"]
+layout_mode = 2
+
+[node name="TitleLabel" type="Label" parent="CenterPanel/Margin/VBox/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 20
+text = "Debug Panel — F1 to toggle"
+
+[node name="CloseButton" type="Button" parent="CenterPanel/Margin/VBox/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Close"
+
+[node name="ReportScroll" type="ScrollContainer" parent="CenterPanel/Margin/VBox"]
+custom_minimum_size = Vector2(0, 340)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ReportList" type="VBoxContainer" parent="CenterPanel/Margin/VBox/ReportScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="HSeparator" type="HSeparator" parent="CenterPanel/Margin/VBox"]
+layout_mode = 2
+
+[node name="ActionsLabel" type="Label" parent="CenterPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "Actions (dev-only, bypasses normal gameplay rules)"
+
+[node name="FlagRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="FlagNameEdit" type="LineEdit" parent="CenterPanel/Margin/VBox/FlagRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "flag_name"
+
+[node name="ToggleFlagButton" type="Button" parent="CenterPanel/Margin/VBox/FlagRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Toggle Flag"
+
+[node name="EvidenceRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="EvidenceIdEdit" type="LineEdit" parent="CenterPanel/Margin/VBox/EvidenceRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "evidence_id"
+
+[node name="AddEvidenceButton" type="Button" parent="CenterPanel/Margin/VBox/EvidenceRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Add"
+
+[node name="RemoveEvidenceButton" type="Button" parent="CenterPanel/Margin/VBox/EvidenceRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Remove"
+
+[node name="LocationRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="LocationIdEdit" type="LineEdit" parent="CenterPanel/Margin/VBox/LocationRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "location_id"
+
+[node name="JumpButton" type="Button" parent="CenterPanel/Margin/VBox/LocationRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Jump"
+
+[node name="ResetButton" type="Button" parent="CenterPanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Reset Sandbox State"
+
+[node name="StatusLabel" type="Label" parent="CenterPanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 2
+text = ""

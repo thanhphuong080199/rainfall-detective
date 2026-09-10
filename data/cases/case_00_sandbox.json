@@ -1,0 +1,9 @@
+{
+  "id": "case_00_sandbox",
+  "title": "Milestone 0 Sandbox",
+  "start_location": "test_room",
+  "initial_flags": {
+    "hallway_unlocked": false,
+    "desk_examined": false
+  }
+}

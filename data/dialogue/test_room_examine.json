@@ -1,0 +1,67 @@
+[
+  {
+    "id": "examine_desk_before",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "The desk is cluttered with old papers. Something small and metallic glints from underneath a folder.",
+        "next": "n2"
+      },
+      "n2": {
+        "speaker": "",
+        "expression": "",
+        "text": "You picked up the Old Key.",
+        "actions": [
+          { "type": "add_evidence", "evidence_id": "test_key" },
+          { "type": "set_flag", "flag": "desk_examined", "value": true }
+        ],
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "examine_desk_after",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "Just papers now. You already found what was hidden here.",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "examine_window_before",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "The window overlooks a quiet street. A torn note is wedged in the frame.",
+        "next": "n2"
+      },
+      "n2": {
+        "speaker": "",
+        "expression": "",
+        "text": "You picked up a Torn Note.",
+        "actions": [{ "type": "add_evidence", "evidence_id": "test_note" }],
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "examine_window_after",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "Just the street outside. Nothing else catches your eye.",
+        "next": null
+      }
+    }
+  }
+]

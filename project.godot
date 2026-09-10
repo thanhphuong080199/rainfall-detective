@@ -1,0 +1,34 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="Rainfall Detective — Sandbox"
+run/main_scene="res://scenes/main/TitleScreen.tscn"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+
+[autoload]
+
+GameState="*res://scripts/core/game_state.gd"
+ContentDB="*res://scripts/core/content_db.gd"
+DialogueManager="*res://scripts/dialogue/dialogue_manager.gd"
+Investigation="*res://scripts/investigation/investigation_manager.gd"
+SaveManager="*res://scripts/save/save_manager.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
