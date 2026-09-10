@@ -15,6 +15,7 @@ const EvidenceSlotScene := preload("res://scenes/evidence/EvidenceSlot.tscn")
 @onready var slot_grid: GridContainer = %SlotGrid
 @onready var detail_visual: Control = %DetailVisual
 @onready var detail_name: Label = %DetailName
+@onready var detail_short: Label = %DetailShort
 @onready var detail_description: Label = %DetailDescription
 @onready var present_button: Button = %PresentButton
 @onready var close_button: Button = %CloseButton
@@ -46,9 +47,17 @@ func close() -> void:
 
 
 func _refresh_grid() -> void:
-	for child in slot_grid.get_children():
-		child.queue_free()
+	UiUtil.clear_children(slot_grid)
 	_slots.clear()
+
+	if GameState.evidence_inventory.is_empty():
+		# Otherwise the panel is just blank, which reads as broken rather than
+		# as "you haven't found anything yet" — especially in "select" mode,
+		# where the player opened it expecting something to hand over.
+		var empty_label := Label.new()
+		empty_label.text = "(no evidence collected yet)"
+		slot_grid.add_child(empty_label)
+		return
 
 	for evidence_id in GameState.evidence_inventory:
 		var data: Dictionary = ContentDB.get_evidence(evidence_id)
@@ -74,6 +83,7 @@ func _show_details(evidence_id: String) -> void:
 		detail_visual.set_color(Color(0.3, 0.3, 0.3))
 		detail_visual.set_caption("")
 		detail_name.text = "No evidence selected"
+		detail_short.text = ""
 		detail_description.text = ""
 		present_button.disabled = true
 		return
@@ -81,6 +91,7 @@ func _show_details(evidence_id: String) -> void:
 	detail_visual.set_color_hex(data.get("icon_color", "#888888"))
 	detail_visual.set_caption(data.get("name", evidence_id))
 	detail_name.text = data.get("name", evidence_id)
+	detail_short.text = data.get("short_description", "")
 	detail_description.text = data.get("detailed_description", "")
 	present_button.disabled = false
 

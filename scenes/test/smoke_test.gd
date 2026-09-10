@@ -41,11 +41,22 @@ func _initialize() -> void:
 	dialogue_manager.choices_shown.connect(func(texts): _last_choice_texts = texts)
 	dialogue_manager.dialogue_started.connect(_on_dialogue_started_for_test)
 
+	# Never touch the real save slot: this process writes and reloads a save
+	# several times, and a developer running the test should not lose the
+	# game they had in progress.
+	save_manager.save_path = "user://smoke_test_save.json"
+	save_manager.delete_save()
+
 	print("=== Milestone 0 Sandbox — Headless Smoke Test ===")
 	_test_content_loaded()
+	_test_conditions()
 	_test_progression_flow()
+	# After the save/load round-trip, because it resets the sandbox: _test_save_load
+	# asserts against the state the full progression flow above built up.
 	_test_save_load()
+	_test_interaction_guards()
 	_test_scene_instantiation()
+	save_manager.delete_save()
 	_finish()
 
 
@@ -87,6 +98,74 @@ func _test_content_loaded() -> void:
 	var validation_errors: Array = validation.get("errors", [])
 	_check(validation_errors.is_empty(), "content validation should find zero errors in the sandbox content: %s" % [validation_errors])
 	_check(validation.get("warnings", []).is_empty(), "content validation should find zero warnings in the sandbox content: %s" % [validation.get("warnings", [])])
+
+
+## The condition mini-language's edge cases, which content authors hit far
+## more often than they hit the happy path: a mistyped key must NOT silently
+## unlock content, and explain() must not claim both halves of an `any` are
+## missing when only one is needed.
+func _test_conditions() -> void:
+	game_state.start_new_game("case_00_sandbox")
+	var evaluator = load("res://scripts/core/condition_evaluator.gd")
+
+	_check(evaluator.evaluate(null), "a null condition should always pass")
+	_check(not evaluator.evaluate({"has_evidnce": "test_key"}), "a mistyped condition key should fail CLOSED, not unlock content")
+	_check(not evaluator.evaluate({}), "an empty condition object should fail closed")
+	_check(not evaluator.evaluate("has_evidence:test_key"), "a non-object condition should fail closed")
+	_check(not evaluator.evaluate({"all": "not-an-array"}), "a non-array \"all\" should fail closed")
+	_check(evaluator.evaluate({"flag": "hallway_unlocked", "equals": false}), "\"equals\" should still be a recognized modifier, not an unknown key")
+
+	# explain(): a top-level `all` is flattened (each part really is
+	# required), an `any` stays one line that spells out the alternatives.
+	var all_lines: Array = evaluator.explain({"all": [{"has_evidence": "test_key"}, {"has_evidence": "test_badge"}]})
+	_check(all_lines.size() == 2, "explain() should list each part of an \"all\" separately")
+	var any_lines: Array = evaluator.explain({"any": [{"has_evidence": "test_key"}, {"has_evidence": "test_note"}]})
+	_check(any_lines.size() == 1, "explain() should keep an \"any\" as a single entry rather than listing both halves as missing")
+	_check(
+		String(any_lines[0].get("description", "")).contains(" OR "),
+		"an \"any\" explanation should spell out the alternatives"
+	)
+
+	# Non-boolean flags must never reach get_flag()'s bool return type.
+	game_state.flags["not_a_bool"] = "yes"
+	_check(not game_state.get_flag("not_a_bool"), "a non-boolean flag should be reported and treated as the default")
+	game_state.flags.erase("not_a_bool")
+
+	# A flag explicitly set to false must still be recorded, so the debug
+	# panel can list it and a save can round-trip it.
+	game_state.set_flag("explicitly_false", false)
+	_check(game_state.flags.has("explicitly_false"), "setting a flag to false should still record it")
+
+	# Two checks in one object: evaluate() honours whichever comes first in
+	# its own fixed precedence order (KEYS) and silently drops the rest, so
+	# the validator has to reject the shape rather than let it read as "and".
+	game_state.add_evidence("test_key")
+	_check(
+		not evaluator.evaluate({"has_evidence": "test_key", "flag": "definitely_not_set"}),
+		"evaluate() resolves \"flag\" before \"has_evidence\" and drops the rest — exactly why the validator rejects the shape"
+	)
+	var validator = load("res://scripts/core/content_validator.gd")
+	var stacked_errors: Array[String] = []
+	validator._validate_condition({"has_evidence": "test_key", "flag": "x"}, "probe", stacked_errors)
+	_check(stacked_errors.size() == 1, "stacking two checks in one condition should be a validation error")
+	_check(
+		String(stacked_errors[0] if not stacked_errors.is_empty() else "").contains('only check "flag"'),
+		"the error should name the check that would actually win, not the first key in the object"
+	)
+	var composite_errors: Array[String] = []
+	validator._validate_condition({"all": [{"flag": "a"}], "has_evidence": "test_key"}, "probe", composite_errors)
+	_check(not composite_errors.is_empty(), "mixing a composite and a leaf check in one object should also be rejected")
+	var unreachable_warnings: Array[String] = []
+	validator._validate_dialogue_reachability("probe", {
+		"start": "n1",
+		"nodes": {"n1": {"next": "n2"}, "n2": {}, "orphan": {}},
+	}, unreachable_warnings)
+	_check(unreachable_warnings.size() == 1, "an unreachable dialogue node should be reported once")
+	_check(
+		String(unreachable_warnings[0] if not unreachable_warnings.is_empty() else "").contains("orphan"),
+		"the unreachable-node warning should name the orphaned node"
+	)
+	game_state.remove_evidence("test_key")
 
 
 func _test_progression_flow() -> void:
@@ -221,6 +300,56 @@ func _test_progression_flow() -> void:
 	_check(not game_state.has_evidence("test_note"), "remove_evidence action should remove test_note")
 
 
+## Nothing may mutate progression state while a dialogue is on screen. The
+## examine case is the one that actually bit: a rejected examine still marked
+## the point as examined, so its evidence-granting "before" variant was
+## skipped forever afterwards.
+func _test_interaction_guards() -> void:
+	game_state.start_new_game("case_00_sandbox")
+
+	investigation.examine("desk")
+	_check(dialogue_manager.is_active, "the desk examine dialogue should be playing")
+
+	investigation.examine("window")
+	_check(
+		not investigation.is_examine_point_seen("window"),
+		"an examine rejected because a dialogue is already playing must not mark the point as examined"
+	)
+	_check(not game_state.has_evidence("test_note"), "a rejected examine must not grant its evidence either")
+
+	investigation.talk("character_a", "greeting")
+	_check(
+		not investigation.is_topic_seen("character_a", "greeting"),
+		"a talk rejected because a dialogue is already playing must not mark the topic as read"
+	)
+
+	var location_before: String = game_state.current_location
+	investigation.move_to("test_hallway")
+	_check(game_state.current_location == location_before, "move_to must not change location mid-dialogue")
+
+	_drain_dialogue()
+
+	# ...and once the dialogue is over, the same calls work normally again.
+	investigation.examine("window")
+	_drain_dialogue()
+	_check(investigation.is_examine_point_seen("window"), "the same examine should work once the dialogue has ended")
+	_check(game_state.has_evidence("test_note"), "and should grant its evidence")
+
+	# An unknown dialogue id must not mark anything as seen either.
+	_check(not dialogue_manager.start("no_such_dialogue"), "start() should report failure for an unknown dialogue id")
+
+	# DialogueManager.stop() is the escape hatch the debug tools use before
+	# yanking game state out from under a running dialogue.
+	dialogue_manager.start("character_a_greeting")
+	_check(dialogue_manager.is_active, "a dialogue should be running before stop()")
+	dialogue_manager.stop()
+	_check(not dialogue_manager.is_active, "stop() should end the active dialogue")
+	_check(not dialogue_manager.start("no_such_dialogue"), "stop() should leave the manager ready for a new start")
+	investigation.examine("desk")
+	_check(dialogue_manager.is_active, "the verbs should work again after stop()")
+	_drain_dialogue()
+
+
 func _topic_ids(npc_id: String) -> Array:
 	var ids: Array = []
 	for topic in investigation.get_topics(npc_id):
@@ -300,11 +429,38 @@ func _test_scene_instantiation() -> void:
 		"DialogueBox's Box panel should PASS input through to the root (click-anywhere-to-advance)"
 	)
 
+	var investigation_view: Control = main_instance.get_node("%InvestigationView")
+	investigation_view.set_interactive(false)
+	# Re-rendering the action list (which happens on every flag/evidence
+	# change, including ones fired by dialogue actions mid-dialogue) must not
+	# hand the player a fresh set of ENABLED buttons.
+	game_state.set_flag("smoke_test_render_probe", true)
+	var enabled_after_rerender := 0
+	for child in investigation_view.get_node("%ActionList").get_children():
+		if child is BaseButton and not child.disabled:
+			enabled_after_rerender += 1
+	_check(
+		enabled_after_rerender == 0,
+		"re-rendering while not interactive must not re-enable the action buttons (%d were enabled)" % enabled_after_rerender
+	)
+	investigation_view.set_interactive(true)
+
 	var evidence_inventory: Control = main_instance.get_node("%EvidenceInventory")
 	_check(evidence_inventory.mouse_filter == Control.MOUSE_FILTER_STOP, "EvidenceInventory root should STOP mouse input while open")
 
 	var game_menu: Control = main_instance.get_node("%GameMenu")
 	_check(game_menu.mouse_filter == Control.MOUSE_FILTER_STOP, "GameMenu root should STOP mouse input while open")
+
+	# Rebuilding a list must not leave the previous (queue_free'd but still
+	# in-tree, still clickable, still bound to their old indices) buttons
+	# alongside the new ones for the rest of the frame.
+	var choices_box: Node = dialogue_box.get_node("%ChoicesBox")
+	dialogue_box._show_choices(["A", "B", "C"])
+	dialogue_box._show_choices(["X"])
+	_check(
+		choices_box.get_child_count() == 1,
+		"rebuilding the choice list should leave exactly the new buttons (got %d)" % choices_box.get_child_count()
+	)
 
 	var debug_panel: Control = main_instance.get_node("%DebugPanel")
 	_check(is_instance_valid(debug_panel), "DebugPanel should instantiate without error")

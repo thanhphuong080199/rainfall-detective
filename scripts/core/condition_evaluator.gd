@@ -22,23 +22,50 @@ extends RefCounted
 ## Deliberately NOT a general-purpose expression language: every shape above
 ## is a fixed, named check against GameState, not an arbitrary boolean
 ## expression string. Add a new leaf shape here (not a new operator) if a
-## future case needs a new kind of check.
+## future case needs a new kind of check — and add it to KEYS below plus
+## ContentValidator's whitelist at the same time, or authors will get a
+## validation error for using it.
+##
+## Anything not on that list evaluates to FALSE ("fail closed"). A typo like
+## {"has_evidnce": "..."} is the single most likely authoring mistake in this
+## format, and content that stays locked is a bug you notice immediately,
+## whereas content that silently unlocks itself from the start of the case is
+## a bug you notice weeks later. ContentValidator rejects unknown keys
+## outright so this runtime behaviour should never actually be reached.
+
+## Every key evaluate() understands, split by kind. ContentValidator reads
+## these so the two can't drift apart: KEYS is the whitelist for "is this key
+## even a thing", LEAF_KEYS is what it uses to reject a condition that stacks
+## two leaf checks in one object (evaluate() honours only the first, so those
+## have to be written as an explicit {"all": [...]}).
+const COMPOSITE_KEYS := ["all", "any", "not"]
+const LEAF_KEYS := ["flag", "has_evidence", "visited_location", "examined", "interaction_complete"]
+const KEYS := COMPOSITE_KEYS + LEAF_KEYS
+
 
 static func evaluate(condition) -> bool:
 	if condition == null:
 		return true
 	if typeof(condition) != TYPE_DICTIONARY:
 		push_warning("ConditionEvaluator: condition must be a Dictionary or null, got: %s" % [condition])
-		return true
+		return false
 
 	if condition.has("all"):
-		for sub_condition in condition.get("all", []):
+		var all_list = condition.get("all")
+		if typeof(all_list) != TYPE_ARRAY:
+			push_warning("ConditionEvaluator: \"all\" must be an array, got: %s" % [all_list])
+			return false
+		for sub_condition in all_list:
 			if not evaluate(sub_condition):
 				return false
 		return true
 
 	if condition.has("any"):
-		for sub_condition in condition.get("any", []):
+		var any_list = condition.get("any")
+		if typeof(any_list) != TYPE_ARRAY:
+			push_warning("ConditionEvaluator: \"any\" must be an array, got: %s" % [any_list])
+			return false
+		for sub_condition in any_list:
 			if evaluate(sub_condition):
 				return true
 		return false
@@ -63,17 +90,21 @@ static func evaluate(condition) -> bool:
 	if condition.has("interaction_complete"):
 		return GameState.has_seen("custom:%s" % condition.get("interaction_complete", ""))
 
-	push_warning("ConditionEvaluator: unrecognized condition shape: %s" % [condition])
-	return true
+	push_warning("ConditionEvaluator: unrecognized condition shape, treating it as false: %s" % [condition])
+	return false
 
 
 ## Human-readable breakdown of a condition for debug tooling (Part E: "explain
 ## locked content") — never used for actual gameplay evaluation, only for
-## showing developers *why* something is locked. Returns a flat array of
-## {"description": String, "passed": bool} for every leaf condition found,
-## recursing into all/any/not. Grouping (which leaves belong to which "any")
-## is intentionally not preserved — a flat list of what's missing is enough
-## to debug Milestone-0-era content without building a second render path.
+## showing developers *why* something is locked. Returns an array of
+## {"description": String, "passed": bool}.
+##
+## A top-level "all" is flattened into one entry per sub-condition, because
+## every one of them genuinely has to pass and listing them separately is the
+## most useful thing to show. Everything else — including "any" — stays a
+## single entry whose description spells the whole group out ("ANY of: X OR
+## Y"), so the panel can never claim both halves of an either/or are
+## "missing" when only one of them is needed.
 static func explain(condition) -> Array[Dictionary]:
 	var lines: Array[Dictionary] = []
 	_explain_into(condition, lines)
@@ -84,30 +115,33 @@ static func _explain_into(condition, lines: Array[Dictionary]) -> void:
 	if condition == null:
 		return
 	if typeof(condition) != TYPE_DICTIONARY:
+		lines.append({"description": describe(condition), "passed": false})
 		return
 
-	if condition.has("all") or condition.has("any"):
-		var key: String = "all" if condition.has("all") else "any"
-		for sub_condition in condition.get(key, []):
+	if condition.has("all") and typeof(condition.get("all")) == TYPE_ARRAY:
+		for sub_condition in condition.get("all"):
 			_explain_into(sub_condition, lines)
 		return
 
-	if condition.has("not"):
-		var sub = condition.get("not")
-		lines.append({"description": "NOT (%s)" % _describe(sub), "passed": not evaluate(sub)})
-		return
-
-	lines.append({"description": _describe(condition), "passed": evaluate(condition)})
+	lines.append({"description": describe(condition), "passed": evaluate(condition)})
 
 
-## Single-line description of one leaf condition shape, e.g. `flag
-## "hallway_unlocked" == true`. Used only by explain(); keep in sync with
-## evaluate()'s supported shapes above.
-static func _describe(condition) -> String:
+## Single-line description of any condition, composites included, e.g.
+## `ANY of: (has evidence "test_key" OR has evidence "test_note")`. Backs
+## explain(), and is public so debug tooling can label a condition without
+## going through explain(). Keep in sync with evaluate()'s shapes above.
+static func describe(condition) -> String:
 	if condition == null:
 		return "(always true)"
 	if typeof(condition) != TYPE_DICTIONARY:
-		return str(condition)
+		return "(malformed condition: %s)" % [condition]
+
+	if condition.has("all"):
+		return "ALL of: (%s)" % _describe_list(condition.get("all"), " AND ")
+	if condition.has("any"):
+		return "ANY of: (%s)" % _describe_list(condition.get("any"), " OR ")
+	if condition.has("not"):
+		return "NOT (%s)" % describe(condition.get("not"))
 	if condition.has("flag"):
 		return "flag \"%s\" == %s" % [condition.get("flag", ""), condition.get("equals", true)]
 	if condition.has("has_evidence"):
@@ -118,7 +152,16 @@ static func _describe(condition) -> String:
 		return "examined \"%s\"" % condition.get("examined", "")
 	if condition.has("interaction_complete"):
 		return "interaction complete \"%s\"" % condition.get("interaction_complete", "")
-	return str(condition)
+	return "(unknown condition: %s)" % [condition]
+
+
+static func _describe_list(sub_conditions, separator: String) -> String:
+	if typeof(sub_conditions) != TYPE_ARRAY:
+		return "(malformed list: %s)" % [sub_conditions]
+	var parts: Array[String] = []
+	for sub_condition in sub_conditions:
+		parts.append(describe(sub_condition))
+	return separator.join(parts)
 
 
 ## Returns the first entry in `variants` whose "condition" field evaluates

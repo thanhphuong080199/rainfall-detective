@@ -9,7 +9,10 @@ extends Node
 ## one place instead of being repeated across every consumer.
 ##
 ## Dropping a new *.json file into one of the data/ subfolders is enough to
-## add content — nothing needs to be registered or imported by hand.
+## add content — nothing needs to be registered or imported by hand. Nested
+## folders are scanned too (e.g. data/dialogue/case_01/*.json), so a case can
+## keep its content together; the id namespace stays flat per category
+## regardless of folder, and duplicates are reported by ContentValidator.
 
 const DATA_ROOT := "res://data"
 
@@ -20,8 +23,15 @@ var _dialogues: Dictionary = {}
 var _cases: Dictionary = {}
 var _last_validation_result: Dictionary = {}
 
+## Duplicate-id collisions noticed while loading, as ready-to-print messages.
+## They can only be detected here (by the time a category dictionary is built
+## the collision has already collapsed), so ContentValidator reads them back
+## out via get_duplicate_id_issues() and reports them as errors.
+var _duplicate_id_issues: Array[String] = []
+
 
 func _ready() -> void:
+	_duplicate_id_issues.clear()
 	_characters = _load_json_dir(DATA_ROOT + "/characters")
 	_evidence = _load_json_dir(DATA_ROOT + "/evidence")
 	_locations = _load_json_dir(DATA_ROOT + "/locations")
@@ -41,6 +51,10 @@ func _ready() -> void:
 ## documented in docs/architecture.md's Known Limitations).
 func get_last_validation_result() -> Dictionary:
 	return _last_validation_result
+
+
+func get_duplicate_id_issues() -> Array[String]:
+	return _duplicate_id_issues
 
 
 func get_character(character_id: String) -> Dictionary:
@@ -107,29 +121,43 @@ func get_all_cases() -> Dictionary:
 	return _cases
 
 
-## Loads every *.json file directly inside `dir_path` (no recursion into
-## subfolders). Each file holds either one JSON object with an "id" field,
-## or — when `allow_multiple` is true — an array of such objects, which lets
-## a single dialogue file group several related trees together. Returns a
+## Loads every *.json file inside `dir_path`, recursing into subfolders so a
+## case can group its files (data/dialogue/case_01/...) without changing how
+## anything is looked up. Each file holds either one JSON object with an "id"
+## field, or — when `allow_multiple` is true — an array of such objects, which
+## lets a single dialogue file group several related trees together. Returns a
 ## dictionary of all entries keyed by their "id".
 func _load_json_dir(dir_path: String, allow_multiple: bool = false) -> Dictionary:
 	var result: Dictionary = {}
-	var dir := DirAccess.open(dir_path)
-	if dir == null:
+	# id -> the file it came from, so a duplicate can name both sides.
+	var sources: Dictionary = {}
+	if DirAccess.open(dir_path) == null:
 		push_warning("[ContentDB] content folder not found: %s" % dir_path)
 		return result
+	_load_json_dir_into(dir_path, allow_multiple, result, sources)
+	return result
+
+
+func _load_json_dir_into(dir_path: String, allow_multiple: bool, result: Dictionary, sources: Dictionary) -> void:
+	var dir := DirAccess.open(dir_path)
+	if dir == null:
+		push_warning("[ContentDB] could not open content folder: %s" % dir_path)
+		return
 
 	dir.list_dir_begin()
 	var file_name := dir.get_next()
 	while file_name != "":
-		if not dir.current_is_dir() and file_name.ends_with(".json"):
-			_load_json_file(dir_path + "/" + file_name, allow_multiple, result)
+		var full_path := dir_path + "/" + file_name
+		if dir.current_is_dir():
+			if not file_name.begins_with("."):
+				_load_json_dir_into(full_path, allow_multiple, result, sources)
+		elif file_name.ends_with(".json"):
+			_load_json_file(full_path, allow_multiple, result, sources)
 		file_name = dir.get_next()
 	dir.list_dir_end()
-	return result
 
 
-func _load_json_file(file_path: String, allow_multiple: bool, result: Dictionary) -> void:
+func _load_json_file(file_path: String, allow_multiple: bool, result: Dictionary, sources: Dictionary) -> void:
 	var file := FileAccess.open(file_path, FileAccess.READ)
 	if file == null:
 		push_error("[ContentDB] could not open %s (error %s)" % [file_path, FileAccess.get_open_error()])
@@ -146,12 +174,12 @@ func _load_json_file(file_path: String, allow_multiple: bool, result: Dictionary
 	var data = parser.data
 	if allow_multiple and typeof(data) == TYPE_ARRAY:
 		for entry in data:
-			_store_entry(file_path, entry, result)
+			_store_entry(file_path, entry, result, sources)
 	else:
-		_store_entry(file_path, data, result)
+		_store_entry(file_path, data, result, sources)
 
 
-func _store_entry(file_path: String, entry, result: Dictionary) -> void:
+func _store_entry(file_path: String, entry, result: Dictionary, sources: Dictionary) -> void:
 	if typeof(entry) != TYPE_DICTIONARY:
 		push_error("[ContentDB] expected a JSON object in %s" % file_path)
 		return
@@ -160,5 +188,10 @@ func _store_entry(file_path: String, entry, result: Dictionary) -> void:
 		push_error("[ContentDB] entry in %s is missing an \"id\" field" % file_path)
 		return
 	if result.has(entry_id):
-		push_warning("[ContentDB] duplicate content id \"%s\" — %s overwrites a previous entry" % [entry_id, file_path])
+		var message := 'duplicate content id "%s" — defined in both %s and %s (the later one wins)' % [
+			entry_id, sources.get(entry_id, "(unknown file)"), file_path,
+		]
+		_duplicate_id_issues.append(message)
+		push_warning("[ContentDB] " + message)
 	result[entry_id] = entry
+	sources[entry_id] = file_path

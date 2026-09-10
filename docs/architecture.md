@@ -145,10 +145,35 @@ not a general-purpose expression language — see "Key Architecture Decisions"
 below for why `unlock_topic`/`unlock_location` aren't a separate mechanism on
 top of this.
 
-`ConditionEvaluator.explain(condition)` walks the same shapes and returns a
-flat `[{"description": String, "passed": bool}, ...]` for every leaf found
-(recursing into `all`/`any`/`not`) — used only by debug tooling ("explain
-locked content"), never by gameplay evaluation. See "Developer tools" below.
+**Anything not on that list evaluates to `false`.** A mistyped key
+(`{"has_evidnce": ...}`) is the single most likely authoring mistake in this
+format, and the two ways to handle it are not symmetric: content that stays
+locked is a bug you notice the moment you playtest, whereas content that
+silently unlocks itself at the start of the case is a bug you notice weeks
+later, if at all. `ConditionEvaluator.KEYS` is the whitelist, and
+`ContentValidator` reads that same constant to reject unknown keys outright,
+so in practice the runtime fallback should never be reached. If you add a new
+leaf shape, add it to `LEAF_KEYS` in the same commit.
+
+**One condition object holds exactly one check.** `evaluate()` tests the
+shapes in a fixed order (that order *is* `KEYS`: composites first, then
+leaves) and returns on the first match, so `{"flag": "a", "has_evidence":
+"b"}` quietly drops the `has_evidence` half rather than meaning "and". The
+validator rejects any object carrying more than one key from `KEYS`, and
+names the one that would actually have won — walking `KEYS` rather than the
+object's own key order, since JSON key order has nothing to do with
+precedence. To require two things, write `{"all": [...]}`.
+
+`ConditionEvaluator.explain(condition)` returns
+`[{"description": String, "passed": bool}, ...]` for debug tooling ("explain
+locked content"), never for gameplay evaluation. A top-level `all` is
+flattened into one entry per part (each one genuinely is required);
+everything else — `any` included — stays a **single** entry whose description
+spells the whole group out (`ANY of: (has evidence "test_key" OR has evidence
+"test_note")`). That grouping matters: flattening an `any` too would make the
+debug panel list both alternatives as "missing" when the player only needs
+one of them, which is actively misleading in the one feature whose entire job
+is explaining why something is locked. See "Developer tools" below.
 
 ## Automatic "seen" tracking
 
@@ -187,8 +212,15 @@ Main.tscn  (pure orchestrator — scripts/ui/main.gd)
  ├─ InvestigationView.tscn   (base layer: location, Examine/Talk/Move)
  ├─ DialogueBox.tscn         (overlay, shown while DialogueManager.is_active)
  ├─ EvidenceInventory.tscn   (overlay: browse, or "select" mode for Present)
- └─ GameMenu.tscn            (overlay: Save / Load / New Game / Resume / Quit)
+ ├─ GameMenu.tscn            (overlay: Save / Load / New Game / Resume / Quit)
+ └─ DebugPanel.tscn          (overlay, debug builds only — see "Developer tools")
 ```
+
+Child order is also draw/input order: later children draw on top, and `_input`
+is delivered in reverse tree order, so `DebugPanel` (last) gets first refusal
+on **Esc** and `InvestigationView` (first) gets it last. All three overlays
+use `_input` for Esc, deliberately, so that "topmost overlay closes first"
+holds.
 
 `Main.gd` is the **only** place that wires these four scenes to each other —
 none of them hold a reference to any of the others. They talk exclusively
@@ -210,6 +242,26 @@ through:
 for the duration of every dialogue, so a click landing mid-typewriter can't
 kick off a second, overlapping action.
 
+Two non-obvious rules make that guarantee actually hold, and both are easy to
+break by accident:
+
+- **`InvestigationView` re-applies its interactive state after every
+  re-render.** Its action buttons are created at runtime, and dialogue
+  actions routinely change game state mid-dialogue (`add_evidence`,
+  `set_flag`), which re-renders the list. Freshly created `Button`s default
+  to `disabled = false`, so a render that forgot to re-apply the flag handed
+  the player a live action list while a dialogue was still on screen. The
+  state lives in `_is_interactive` and every `_render_*` ends with
+  `_apply_interactive()`.
+- **`Investigation` refuses all four verbs while `DialogueManager.is_active`**
+  (`_is_busy()`), and `DialogueManager.start()` returns a `bool` that
+  `examine()`/`talk()` must check before marking anything seen. The UI guard
+  above is a convenience; this one is the correctness guarantee. Without it,
+  a rejected examine still marked its point as examined — so its
+  evidence-granting "first look" variant was skipped forever, with no error
+  anywhere. Never call `GameState.mark_seen()` next to a `start()` you
+  haven't checked.
+
 ### Reusable UI building blocks
 
 - **`PlaceholderVisual.tscn`** (`scripts/ui/placeholder_visual.gd`) — a
@@ -221,6 +273,16 @@ kick off a second, overlapping action.
 - **`EvidenceSlot.tscn`** (`scripts/evidence/evidence_slot.gd`) — one
   clickable grid entry in `EvidenceInventory`, itself built from a `Button` +
   one `PlaceholderVisual`.
+- **`UiUtil.clear_children(parent)`** (`scripts/ui/ui_util.gd`) — the one
+  correct way to rebuild a runtime-built list here. Every UI in this project
+  clears and repopulates a container (action list, dialogue choices, evidence
+  grid, debug report), and the obvious `for child in get_children():
+  child.queue_free()` is a trap: `queue_free()` only schedules deletion for
+  the end of the frame, so nodes added straight afterwards coexist with the
+  "deleted" ones — still visible, still laid out, still connected. In
+  `DialogueBox` that meant a stale choice button bound to its old index could
+  still be clicked, resolving against a different set of choices.
+  `clear_children()` does `remove_child()` (synchronous) then `queue_free()`.
 
 ### The `EvidenceInventory` mouse_filter chain, for anyone editing DialogueBox
 
@@ -253,10 +315,18 @@ need to change to add content. Full schemas and how-tos are in
 | `data/cases/*.json` | one case per file: `start_location`, `initial_flags` — what "New Game" resets to |
 
 Dropping a new `*.json` file into any of these folders is enough to register
-it — nothing needs to be imported or listed elsewhere. IDs must be unique
-within their category (characters vs. evidence vs. locations vs. dialogue
-trees vs. cases are separate namespaces); `ContentDB` logs a warning if a
-duplicate id silently overwrites an earlier one.
+it — nothing needs to be imported or listed elsewhere. **Subfolders are
+scanned too**, so a case can keep its files together
+(`data/dialogue/case_01/*.json`) without any change to how content is looked
+up; folder layout is purely for humans.
+
+IDs must be unique within their category (characters vs. evidence vs.
+locations vs. dialogue trees vs. cases are separate namespaces), regardless
+of which folder or file they live in. A duplicate means the **later**-loaded
+entry replaces the earlier one — and since `res://` directory iteration order
+isn't guaranteed, which one "wins" isn't either. `ContentDB` records every
+collision it sees (`get_duplicate_id_issues()`) and `ContentValidator`
+reports them as errors, naming both files.
 
 ## Content validation
 
@@ -278,11 +348,27 @@ It checks two severities:
   `examined` condition referencing an id that doesn't exist, a destination
   or case `start_location` pointing at an unknown location, an `add_evidence`
   /`remove_evidence` action referencing unknown evidence, or an action with
-  no (or an unrecognized) `type`.
+  no (or an unrecognized) `type`. Also: a condition using an **unknown key**
+  (checked against `ConditionEvaluator.KEYS`, so a typo is caught at
+  validation time instead of silently locking content), an `all`/`any` that
+  isn't a non-empty array, a **duplicate id** — either across content files
+  within one category, or repeated inside a single location's `npcs` /
+  `topics` / `examine_points` / `destinations` list, where every lookup is
+  first-match-wins so the second entry is unreachable — an entry missing its
+  id entirely, a condition object stacking more than one check (see "The
+  condition mini-language" above), and a `set_flag` action value or case
+  `initial_flags` value that isn't a boolean (`GameState.get_flag()` is typed
+  `-> bool`).
 - **warnings** — a content smell that isn't broken yet: a `present_responses`
-  list with no generic (no-`evidence_id`) fallback entry, an `examine_points`
-  variant list with no unconditional fallback entry, a character with no
-  `normal` expression, or a placeholder color string that isn't valid hex.
+  list with no generic (no-`evidence_id`) fallback entry, an NPC with no
+  `present_responses` at all (presenting evidence to them produces no
+  dialogue and no feedback whatsoever — a silent dead end), an
+  `examine_points` variant list with no unconditional fallback entry, a
+  character with no `normal` expression, a placeholder color string that
+  isn't valid hex, or a **dialogue node nothing can reach** (the validator
+  walks each tree from its `start` through every `next` and choice `next`;
+  an orphan is nearly always a typo in some other node's `next`, and the
+  dialogue still "works" — it just silently skips content you wrote).
 
 It runs automatically every boot (`ContentDB._ready()` calls
 `ContentValidator.validate()` then `.report()`, prefixing every line with
@@ -324,10 +410,19 @@ back-door access) and shows: current location, visited locations, evidence
 held, all flags, and — per location NPC and per destination — whether it's
 `AVAILABLE` or `LOCKED`, with `Investigation.explain_topic_lock()`/
 `explain_destination_lock()` listing exactly which sub-condition(s) are
-still failing (Part E, "explain locked content"). Actions: toggle any flag,
+still failing (Part E, "explain locked content") — an `any` is reported as a
+single grouped line rather than as several separately-"missing" alternatives,
+see "The condition mini-language" above. Actions: toggle any flag,
 add/remove any evidence id, jump to any location id (bypassing that
 destination's `condition` — it's a teleport for testing, not a move), and
 reset the sandbox to the current case's starting state.
+
+Jump and reset both call `DialogueManager.stop()` first. They are the only
+path in the game that can change location or reset the case while a dialogue
+is on screen — `Investigation` refuses to, and the Menu button is disabled
+mid-dialogue — and letting that dialogue keep running would fire the rest of
+its actions into state it was never written against. `stop()` exists for
+exactly this and has no gameplay caller.
 
 **Isolated from normal gameplay, and inert in a release build almost for
 free**: `_ready()` checks `OS.is_debug_build()` first and returns
@@ -499,10 +594,24 @@ mid-tree branch that isn't player-facing.
   visually confirm its layout renders correctly; a human should eyeball it
   (F1 in a running build) before relying on it heavily.
 - **Single save slot.** `user://save_game.json` — matches the Milestone 0
-  spec; a slot-selection UI is out of scope here.
-- **`res://` DirAccess iteration order is not guaranteed alphabetical.**
-  Harmless today since every `data/*.json` file is self-contained, but worth
-  knowing if you ever depend on load order.
+  spec; a slot-selection UI is out of scope here. `SaveManager.save_path` is
+  a variable rather than a constant so automated tests can point at a
+  throwaway file (`smoke_test.gd` does, so running the tests never destroys a
+  game in progress); gameplay never changes it.
+- **Save `variables` round-trip through JSON, so numbers come back as
+  floats.** `flags` are sanitized on load (non-booleans are rejected and
+  reported), but `variables` are free-form by design and are restored as-is.
+  If a future case stores an integer counter there, compare it as a number,
+  not with `is` / strict typing.
+- **`ContentValidator` does not detect unreferenced content.** A dialogue
+  tree that nothing points at (like `test_effects_remove_evidence`, which
+  exists purely for the smoke test) is legitimate, so orphans are not
+  reported. If a case's dialogue never plays, the validator will not tell
+  you.
+- **`res://` DirAccess iteration order is not guaranteed alphabetical**, and
+  subfolders are walked in whatever order they come back in. Harmless as long
+  as every content id is unique (which `ContentValidator` now enforces), but
+  it does mean you can never rely on one content file "overriding" another.
 - **`ContentValidator` checks references, not solvability.** It can't tell
   you a case is unwinnable because two mutually-exclusive flags are both
   required somewhere, or that a topic is unreachable because nothing ever
@@ -543,6 +652,17 @@ godot --headless --path . -s res://scenes/test/validate_content.gd
 #    and exits 0 on success.
 godot --headless --path . -s res://scenes/test/smoke_test.gd
 ```
+
+Beyond the demo flow, `smoke_test.gd` also pins down the behaviours that are
+easy to regress silently: that a mistyped condition key fails **closed**,
+that `explain()` keeps an `any` as one grouped line, that a verb rejected
+mid-dialogue (examine/talk/present/move) mutates **no** state, that
+re-rendering the action list while a dialogue is playing does not re-enable
+its buttons, and that rebuilding a button list leaves no stale children
+behind.
+
+See `README.md` for how to run the game itself and for the full control
+reference.
 
 `ContentValidator` was additionally verified to actually *catch* problems
 (not just pass clean content vacuously) by temporarily editing

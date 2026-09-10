@@ -2,8 +2,11 @@
 .godot/
 /android/
 
-# Godot-generated import artifacts for binary assets
-*.import
+# NOTE: <asset>.import files are deliberately NOT ignored. Godot 4 stores each
+# asset's import settings and its stable resource UID in them, so leaving them
+# out of version control makes every clone re-import with fresh UIDs and
+# default settings. Godot's own recommended ignore list is just .godot/ and
+# /android/.
 
 # Editor/OS cruft
 .DS_Store

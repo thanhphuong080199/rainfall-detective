@@ -35,7 +35,7 @@ extends Control
 func _ready() -> void:
 	visible = false
 	if not OS.is_debug_build():
-		set_process_unhandled_input(false)
+		set_process_input(false)
 		return
 
 	close_button.pressed.connect(close)
@@ -53,7 +53,11 @@ func _ready() -> void:
 	DialogueManager.dialogue_ended.connect(_refresh_if_visible)
 
 
-func _unhandled_input(event: InputEvent) -> void:
+## _input rather than _unhandled_input, to match GameMenu/EvidenceInventory.
+## _input runs in reverse tree order and DebugPanel is the last child of
+## Main, so as the topmost overlay it is also the first to get a chance at
+## Esc — which is the behaviour you want from a stack of overlays.
+func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F1:
 		toggle()
 		get_viewport().set_input_as_handled()
@@ -89,8 +93,7 @@ func _refresh_if_visible() -> void:
 # Report
 
 func refresh() -> void:
-	for child in report_list.get_children():
-		child.queue_free()
+	UiUtil.clear_children(report_list)
 
 	_add_line("LOCATION", true)
 	var location: Dictionary = Investigation.get_current_location()
@@ -202,11 +205,18 @@ func _on_jump_pressed() -> void:
 	if ContentDB.get_location(location_id).is_empty():
 		status_label.text = "Unknown location id \"%s\"." % location_id
 		return
+	# These two actions are the only way in the game to change location or
+	# reset the case while a dialogue is on screen (Investigation refuses to,
+	# and the Menu button is disabled mid-dialogue). Abort it first, or the
+	# rest of that dialogue's actions would go on firing into state it was
+	# never written against.
+	DialogueManager.stop()
 	GameState.go_to_location(location_id)
 	status_label.text = "Jumped to \"%s\" (destination conditions bypassed)." % location_id
 
 
 func _on_reset_pressed() -> void:
 	var case_id: String = GameState.get_var("case_id", "case_00_sandbox")
+	DialogueManager.stop()
 	GameState.start_new_game(case_id)
 	status_label.text = "Sandbox state reset (case \"%s\")." % case_id

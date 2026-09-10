@@ -41,12 +41,12 @@ func _process(delta: float) -> void:
 
 func _on_dialogue_started(_dialogue_id: String) -> void:
 	visible = true
-	choices_box.visible = false
+	_hide_choices()
 	advance_hint.visible = false
 
 
 func _on_line_shown(character_id: String, expression: String, text: String) -> void:
-	choices_box.visible = false
+	_hide_choices()
 	advance_hint.visible = false
 	_pending_choice_texts = []
 
@@ -73,7 +73,16 @@ func _on_choices_shown(choice_texts: Array) -> void:
 
 
 func _on_dialogue_ended() -> void:
+	_hide_choices()
 	visible = false
+
+
+## Hides the choice list AND discards its buttons. Leaving them around while
+## hidden would keep a focusable, still-bound button in the tree after the
+## player has already moved past that node.
+func _hide_choices() -> void:
+	choices_box.visible = false
+	UiUtil.clear_children(choices_box)
 
 
 func _complete_typewriter() -> void:
@@ -85,15 +94,23 @@ func _complete_typewriter() -> void:
 		_show_choices(_pending_choice_texts)
 
 
+## Rebuilds the choice buttons. UiUtil.clear_children (rather than a bare
+## queue_free loop) matters here more than anywhere else: a stale button is
+## still bound to its old index, so a fast second click could resolve
+## _on_choice_pressed(2) against a completely different set of choices.
 func _show_choices(choice_texts: Array) -> void:
-	for child in choices_box.get_children():
-		child.queue_free()
+	UiUtil.clear_children(choices_box)
 	for i in choice_texts.size():
 		var choice_button := Button.new()
 		choice_button.text = choice_texts[i]
 		choice_button.pressed.connect(_on_choice_pressed.bind(i))
 		choices_box.add_child(choice_button)
 	choices_box.visible = true
+	# Keyboard players need a focused button to act on: _try_advance()
+	# deliberately does nothing while choices are up, so without this the
+	# keyboard path dead-ends at every choice node.
+	if choices_box.get_child_count() > 0:
+		choices_box.get_child(0).grab_focus()
 
 
 func _on_choice_pressed(index: int) -> void:
@@ -101,8 +118,9 @@ func _on_choice_pressed(index: int) -> void:
 
 
 ## Skips the typewriter if still typing; otherwise advances to the next
-## line. Does nothing while choices are on screen — the player must click
-## one of the choice buttons, which resolve through _on_choice_pressed.
+## line. Does nothing while choices are on screen — the player must pick one
+## of the choice buttons (click, or Enter/Space on the focused one), which
+## resolve through _on_choice_pressed.
 func _try_advance() -> void:
 	if _is_typing:
 		_complete_typewriter()

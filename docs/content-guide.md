@@ -12,8 +12,13 @@ General rules that apply everywhere below:
 
 - Every id (`character_a`, `test_key`, `examine_desk_before`, ...) must be
   unique **within its own category** (characters / evidence / locations /
-  dialogue trees / cases are separate namespaces). `ContentDB` logs a
-  warning and silently keeps the first one if you duplicate an id.
+  dialogue trees / cases are separate namespaces). If you duplicate one, the
+  **later**-loaded entry wins — and load order isn't guaranteed, so which one
+  that is isn't either. The content validator reports duplicates as errors
+  and names both files, so just run it.
+- You can put content in **subfolders** (`data/dialogue/case_01/*.json`) and
+  it will be picked up. Folder layout is for your benefit only; ids stay in
+  one flat namespace per category regardless of where the file lives.
 - Anywhere you see `"condition"`, it's optional — omit it and that thing is
   always available. See "Conditions reference" below.
 - Dialogue ids, evidence ids, character ids, and location ids are all
@@ -179,10 +184,11 @@ Create `data/evidence/<id>.json`:
 }
 ```
 
-`short_description` isn't currently rendered anywhere in the UI (the
-inventory only shows `detailed_description`) — it's there for future use
-(tooltips, a compact list view) so content can describe both now rather than
-needing a second content pass later.
+Both descriptions are shown in the inventory's detail panel:
+`short_description` as a one-line subtitle under the name,
+`detailed_description` as the body below it. Write the short one as a glance
+("A page torn from a ledger.") and the long one as what the player learns by
+actually studying it.
 
 An evidence item only shows up in the inventory once the player has actually
 received it — see the next section for how.
@@ -332,6 +338,28 @@ there's no way to write arbitrary boolean logic beyond nesting `all`/`any`/
 Decisions" if you're wondering why there's no `unlock_topic`/`unlock_location`
 action to go with these instead of just `set_flag` + a `flag` condition.
 
+**Any key not in that table means the condition is `false`.** So a typo like
+`{ "has_evidnce": "test_key" }` locks the thing you attached it to, rather
+than quietly leaving it unlocked from the start of the case. The validator
+catches this for you (`uses unknown key "..."`), which is the real reason to
+run it after editing conditions — this is by far the easiest mistake to make
+in this format and the hardest to spot by playing.
+
+The only extra key allowed is `"equals"`, and only alongside `"flag"`.
+
+**One condition object = one check.** This does *not* mean "and":
+
+```json
+{ "flag": "door_open", "has_evidence": "old_key" }
+```
+
+Only the `flag` half is ever evaluated — the other is silently dropped. The
+validator rejects this and tells you which one would have won. Write it as:
+
+```json
+{ "all": [ { "flag": "door_open" }, { "has_evidence": "old_key" } ] }
+```
+
 Working examples in the sandbox content:
 - `character_b.json`'s `clue` topic — `all` (requires two different
   evidence items to both be held).
@@ -350,14 +378,32 @@ godot --headless --path . -s res://scenes/test/validate_content.gd
 ```
 
 It exits `1` (and prints one `[ContentValidator] ERROR: ...` line per
-problem) if anything references an id that doesn't exist — a typo'd
-dialogue/evidence/character/location id, a dialogue `next` pointing at a
-node that isn't there, a `has_evidence`/`visited_location`/`examined`
-condition naming something that doesn't exist, and so on. It also warns
-(without failing) about a couple of easy-to-forget structural gaps: a
-`present_responses` list with no generic fallback entry, an `examine_points`
-variant list with no unconditional fallback entry, or a character missing
-its `normal` expression. This same check also runs automatically every time
+problem). Errors it catches:
+
+- Anything referencing an id that doesn't exist — a typo'd dialogue /
+  evidence / character / location id, a dialogue `next` pointing at a node
+  that isn't there, a `has_evidence` / `visited_location` / `examined`
+  condition naming something that doesn't exist, an unknown `expression` for
+  a speaker, and so on.
+- A condition using an **unknown key** (see "Conditions reference" above), or
+  an `all` / `any` that isn't a non-empty array.
+- A **duplicate id** — either two content files declaring the same id, or the
+  same id repeated inside one location's `npcs`, `topics`, `examine_points`
+  or `destinations` list. (Lookups take the first match, so the second copy
+  would simply never be reachable.) An entry with no id at all is reported
+  the same way.
+- A `set_flag` action `value`, or a case `initial_flags` value, that isn't
+  `true` or `false`.
+- A condition object holding more than one check (see "Conditions reference"
+  above) — only one of them would ever be evaluated.
+
+And warnings (which do **not** fail the run) for easy-to-forget structural
+gaps: a `present_responses` list with no generic fallback entry, an NPC with
+no `present_responses` at all (presenting anything to them does nothing
+whatsoever — no dialogue, no feedback), an `examine_points` variant list with
+no unconditional fallback entry, a character missing its `normal`
+expression, or a dialogue node nothing can reach (usually a typo in another
+node's `next` — the dialogue still plays, it just skips the node you wrote). This same check also runs automatically every time
 the game boots (look for `[ContentValidator]` in the console output) — the
 standalone script above just gives it a scriptable exit code without
 booting the full game. See `docs/architecture.md`, "Content validation",
@@ -376,6 +422,9 @@ the specific missing condition(s) listed if it's locked. From there you can
 toggle any flag, add/remove any evidence id, jump straight to any location
 id (skipping that destination's `condition` — useful for reaching content
 deep in a case without replaying everything to unlock it), or reset the
-sandbox back to the case's starting state. It's gone entirely in an
+sandbox back to the case's starting state. **Esc** closes it. When a topic is
+locked behind an `any`, the panel shows the alternatives as one grouped line
+(`ANY of: (... OR ...)`) rather than listing each as separately missing — you
+only need one of them. It's gone entirely in an
 exported release build (`OS.is_debug_build()` is false there) — nothing to
 remember to strip out later. See `docs/architecture.md`, "Developer tools".
