@@ -81,23 +81,44 @@ func is_examine_point_seen(point_id: String) -> bool:
 	return GameState.has_seen(_examine_seen_key(GameState.current_location, point_id))
 
 
+## True when the player is allowed to start a new interaction. Every verb
+## below refuses while a dialogue is playing: the UI already blocks the
+## clicks, but a verb that ran anyway would mutate game state (mark a topic
+## read, change location) behind a dialogue the player is still reading.
+func _is_busy(verb: String) -> bool:
+	if DialogueManager.is_active:
+		push_warning("Investigation.%s: ignored while a dialogue is playing" % verb)
+		return true
+	return false
+
+
 func examine(point_id: String) -> void:
+	if _is_busy("examine"):
+		return
 	for point in get_examine_points():
 		if point.get("id", "") == point_id:
 			var variant: Dictionary = ConditionEvaluator.resolve_variants(point.get("variants", []))
 			if variant.is_empty():
 				push_warning("Investigation.examine: no matching variant for '%s'" % point_id)
 				return
-			DialogueManager.start(variant.get("dialogue_id", ""))
+			# Only record the examine as having happened if its dialogue
+			# really started — otherwise the point would count as examined
+			# (and its evidence-granting "before" variant would be skipped
+			# forever) without the player ever having seen it.
+			if not DialogueManager.start(variant.get("dialogue_id", "")):
+				return
 			GameState.mark_seen(_examine_seen_key(GameState.current_location, point_id))
 			return
 	push_error("Investigation.examine: unknown examine point '%s' in '%s'" % [point_id, GameState.current_location])
 
 
 func talk(npc_id: String, topic_id: String) -> void:
+	if _is_busy("talk"):
+		return
 	for topic in get_topics(npc_id):
 		if topic.get("id", "") == topic_id:
-			DialogueManager.start(topic.get("dialogue_id", ""))
+			if not DialogueManager.start(topic.get("dialogue_id", "")):
+				return
 			GameState.mark_seen(_topic_seen_key(npc_id, topic_id))
 			return
 	push_error("Investigation.talk: topic '%s' is not currently available for '%s'" % [topic_id, npc_id])
@@ -115,6 +136,8 @@ func _examine_seen_key(location_id: String, point_id: String) -> String:
 
 
 func present(evidence_id: String, npc_id: String) -> void:
+	if _is_busy("present"):
+		return
 	var npc: Dictionary = get_npc(npc_id)
 	if npc.is_empty():
 		push_error("Investigation.present: unknown NPC '%s' in '%s'" % [npc_id, GameState.current_location])
@@ -127,6 +150,8 @@ func present(evidence_id: String, npc_id: String) -> void:
 
 
 func move_to(location_id: String) -> void:
+	if _is_busy("move_to"):
+		return
 	for destination in get_available_destinations():
 		if destination.get("location_id", "") == location_id:
 			GameState.go_to_location(location_id)

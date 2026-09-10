@@ -25,6 +25,7 @@ static func validate() -> Dictionary:
 	var errors: Array[String] = []
 	var warnings: Array[String] = []
 
+	_validate_duplicate_ids(errors)
 	_validate_characters(errors, warnings)
 	_validate_evidence(errors, warnings)
 	_validate_locations(errors, warnings)
@@ -50,6 +51,37 @@ static func report(result: Dictionary) -> void:
 		ContentDB.get_all_location_ids().size(), ContentDB.get_all_dialogue_ids().size(),
 		ContentDB.get_all_case_ids().size(),
 	])
+
+
+# ---------------------------------------------------------------------------
+# Duplicate ids
+
+## Two content files that declare the same id inside one category: the later
+## one silently replaces the earlier, so every reference to that id now
+## resolves to content the author never intended. ContentDB is the only place
+## that can see this happen (see its get_duplicate_id_issues()).
+static func _validate_duplicate_ids(errors: Array[String]) -> void:
+	for message in ContentDB.get_duplicate_id_issues():
+		errors.append(message)
+
+
+## Reports ids that repeat inside a single list (npcs in a location, topics on
+## an NPC, examine points, destinations). Every lookup for these is
+## first-match-wins, so a duplicate makes the second entry permanently
+## unreachable. Also catches entries with a missing/blank id, which collide
+## with each other the same way.
+static func _validate_unique_ids(entries: Array, id_key: String, context: String, errors: Array[String]) -> void:
+	var seen: Dictionary = {}
+	for entry in entries:
+		if typeof(entry) != TYPE_DICTIONARY:
+			continue
+		var entry_id: String = str(entry.get(id_key, ""))
+		if entry_id == "":
+			errors.append('%s has an entry with no "%s"' % [context, id_key])
+			continue
+		if seen.has(entry_id):
+			errors.append('%s defines "%s" more than once — only the first one is ever reachable' % [context, entry_id])
+		seen[entry_id] = true
 
 
 # ---------------------------------------------------------------------------
@@ -90,9 +122,15 @@ static func _validate_locations(errors: Array[String], warnings: Array[String]) 
 	var locations: Dictionary = ContentDB.get_all_locations()
 	for location_id in locations:
 		var data: Dictionary = locations[location_id]
-		_validate_npcs(location_id, data.get("npcs", []), errors, warnings)
-		_validate_examine_points(location_id, data.get("examine_points", []), errors, warnings)
-		_validate_destinations(location_id, data.get("destinations", []), errors, warnings)
+		var npcs: Array = data.get("npcs", [])
+		var examine_points: Array = data.get("examine_points", [])
+		var destinations: Array = data.get("destinations", [])
+		_validate_unique_ids(npcs, "id", 'Location "%s" npcs' % location_id, errors)
+		_validate_unique_ids(examine_points, "id", 'Location "%s" examine_points' % location_id, errors)
+		_validate_unique_ids(destinations, "location_id", 'Location "%s" destinations' % location_id, errors)
+		_validate_npcs(location_id, npcs, errors, warnings)
+		_validate_examine_points(location_id, examine_points, errors, warnings)
+		_validate_destinations(location_id, destinations, errors, warnings)
 
 
 static func _validate_npcs(location_id: String, npcs: Array, errors: Array[String], warnings: Array[String]) -> void:
@@ -102,11 +140,13 @@ static func _validate_npcs(location_id: String, npcs: Array, errors: Array[Strin
 			continue
 		var npc_id: String = npc.get("id", "")
 		if npc_id == "":
-			errors.append('Location "%s" has an npc entry with no "id"' % location_id)
+			# Already reported by _validate_unique_ids above; just skip it
+			# here rather than printing the same problem twice.
 			continue
 		if ContentDB.get_character(npc_id).is_empty():
 			errors.append('Location "%s" npc "%s" is not a known character' % [location_id, npc_id])
 
+		_validate_unique_ids(npc.get("topics", []), "id", 'Location "%s" npc "%s" topics' % [location_id, npc_id], errors)
 		for topic in npc.get("topics", []):
 			if typeof(topic) != TYPE_DICTIONARY:
 				errors.append('Location "%s" npc "%s" has a malformed topic entry' % [location_id, npc_id])
@@ -133,7 +173,9 @@ static func _validate_npcs(location_id: String, npcs: Array, errors: Array[Strin
 				errors.append('Location "%s" npc "%s" present_response ("%s") references unknown dialogue "%s"' % [
 					location_id, npc_id, response_evidence_id if response_evidence_id != "" else "generic", response_dialogue_id,
 				])
-		if not present_responses.is_empty() and not has_generic_fallback:
+		if present_responses.is_empty():
+			warnings.append('Location "%s" npc "%s" has no present_responses at all — presenting any evidence to them does nothing at all, with no dialogue and no feedback (add at least a generic entry with no "evidence_id")' % [location_id, npc_id])
+		elif not has_generic_fallback:
 			warnings.append('Location "%s" npc "%s" has present_responses but no generic fallback (add one entry with no "evidence_id") — presenting unrelated evidence will silently do nothing' % [location_id, npc_id])
 
 
@@ -187,12 +229,42 @@ static func _validate_destinations(location_id: String, destinations: Array, err
 static func _validate_condition(condition, context: String, errors: Array[String], examined_scope_location_id: String = "") -> void:
 	if condition == null or typeof(condition) != TYPE_DICTIONARY:
 		return
-	if condition.has("all"):
-		for sub_condition in condition.get("all", []):
-			_validate_condition(sub_condition, context, errors, examined_scope_location_id)
-		return
-	if condition.has("any"):
-		for sub_condition in condition.get("any", []):
+
+	# The important one, checked before anything else so it covers every
+	# shape: ConditionEvaluator only understands a fixed set of keys and
+	# treats anything else as false (fail closed), so a typo like
+	# {"has_evidnce": "..."} would leave content permanently locked with no
+	# other symptom. An empty {} is the same trap with nothing to name.
+	if condition.is_empty():
+		errors.append("%s is an empty object, which is never true — omit it instead" % context)
+	for key in condition:
+		if not ConditionEvaluator.KEYS.has(key) and key != "equals":
+			errors.append('%s uses unknown key "%s" — supported keys are %s' % [context, key, ", ".join(ConditionEvaluator.KEYS)])
+
+	# evaluate() checks its shapes in a fixed order and returns on the first
+	# match, so {"flag": "a", "has_evidence": "b"} silently ignores the
+	# has_evidence half — one condition object holds exactly one check.
+	# ConditionEvaluator.KEYS is in that same precedence order, so walking it
+	# (rather than the object's own key order) names the check that would
+	# actually win.
+	var present: Array[String] = []
+	for key in ConditionEvaluator.KEYS:
+		if condition.has(key):
+			present.append(key)
+	if present.size() > 1:
+		errors.append('%s combines %s in one object, but evaluate() would only check "%s" — wrap them in {"all": [...]} instead' % [
+			context, ", ".join(present), present[0],
+		])
+
+	if condition.has("all") or condition.has("any"):
+		var key: String = "all" if condition.has("all") else "any"
+		var sub_conditions = condition.get(key)
+		if typeof(sub_conditions) != TYPE_ARRAY:
+			errors.append('%s "%s" must be an array of conditions' % [context, key])
+			return
+		if sub_conditions.is_empty():
+			errors.append('%s "%s" is empty' % [context, key])
+		for sub_condition in sub_conditions:
 			_validate_condition(sub_condition, context, errors, examined_scope_location_id)
 		return
 	if condition.has("not"):
@@ -237,6 +309,54 @@ static func _validate_dialogues(errors: Array[String], warnings: Array[String]) 
 				errors.append('Dialogue "%s" node "%s" is not an object' % [dialogue_id, node_id])
 				continue
 			_validate_dialogue_node(dialogue_id, node_id, node, nodes, errors, warnings)
+
+		_validate_dialogue_reachability(dialogue_id, tree, warnings)
+
+
+## Walks the tree from its start node and reports anything it can't get to.
+## An orphaned node is almost always a typo in some other node's "next" — the
+## dialogue still runs, it just quietly skips content the author wrote. Only a
+## warning: an author mid-edit may legitimately have a node not wired up yet.
+static func _validate_dialogue_reachability(dialogue_id: String, tree: Dictionary, warnings: Array[String]) -> void:
+	var nodes: Dictionary = tree.get("nodes", {})
+	var start_id = tree.get("start", "")
+	if not nodes.has(start_id):
+		return  # Already reported as an error; nothing to walk from.
+
+	var reachable: Dictionary = {}
+	var pending: Array = [start_id]
+	while not pending.is_empty():
+		var node_id = pending.pop_back()
+		if reachable.has(node_id):
+			continue
+		reachable[node_id] = true
+		var node = nodes.get(node_id)
+		if typeof(node) != TYPE_DICTIONARY:
+			continue
+		for next_id in _node_exits(node):
+			if nodes.has(next_id) and not reachable.has(next_id):
+				pending.append(next_id)
+
+	for node_id in nodes:
+		if not reachable.has(node_id):
+			warnings.append('Dialogue "%s" node "%s" is unreachable — nothing points at it (typo in a "next"?)' % [dialogue_id, node_id])
+
+
+## Every node id this node can lead to: its own "next" plus each choice's.
+## A choice node's own "next" counts too — DialogueManager falls back to it
+## when every choice is filtered out by its condition.
+static func _node_exits(node: Dictionary) -> Array:
+	var exits: Array = []
+	var next_id = node.get("next")
+	if next_id != null and String(next_id) != "":
+		exits.append(next_id)
+	for choice in node.get("choices", []):
+		if typeof(choice) != TYPE_DICTIONARY:
+			continue
+		var choice_next = choice.get("next")
+		if choice_next != null and String(choice_next) != "":
+			exits.append(choice_next)
+	return exits
 
 
 static func _validate_dialogue_node(dialogue_id: String, node_id, node: Dictionary, nodes: Dictionary, errors: Array[String], warnings: Array[String]) -> void:
@@ -284,6 +404,8 @@ static func _validate_actions(actions, dialogue_id: String, node_id, prefix: Str
 			"set_flag":
 				if String(action.get("flag", "")).is_empty():
 					errors.append('Dialogue "%s" node "%s" %saction "set_flag" is missing "flag"' % [dialogue_id, node_id, prefix])
+				if action.has("value") and typeof(action.get("value")) != TYPE_BOOL:
+					errors.append('Dialogue "%s" node "%s" %saction "set_flag" value must be true or false, got %s' % [dialogue_id, node_id, prefix, action.get("value")])
 			"add_evidence", "remove_evidence":
 				var evidence_id: String = action.get("evidence_id", "")
 				if evidence_id == "" or ContentDB.get_evidence(evidence_id).is_empty():
@@ -307,8 +429,13 @@ static func _validate_cases(errors: Array[String], warnings: Array[String]) -> v
 		var start_location: String = data.get("start_location", "")
 		if start_location == "" or ContentDB.get_location(start_location).is_empty():
 			errors.append('Case "%s" start_location "%s" is not a known location' % [case_id, start_location])
-		if typeof(data.get("initial_flags", {})) != TYPE_DICTIONARY:
+		var initial_flags = data.get("initial_flags", {})
+		if typeof(initial_flags) != TYPE_DICTIONARY:
 			errors.append('Case "%s" initial_flags must be an object' % case_id)
+			continue
+		for flag_name in initial_flags:
+			if typeof(initial_flags[flag_name]) != TYPE_BOOL:
+				errors.append('Case "%s" initial flag "%s" must be true or false, got %s' % [case_id, flag_name, initial_flags[flag_name]])
 
 
 # ---------------------------------------------------------------------------

@@ -64,15 +64,31 @@ func has_seen(key: String) -> bool:
 	return seen_interactions.has(key)
 
 
+## Flags are always booleans. A non-boolean can only get in through content
+## data (a case's initial_flags) or a hand-edited save, so it is reported
+## loudly and treated as `default_value` rather than crashing the getter's
+## declared return type — ContentValidator rejects the content-side case up
+## front, this is the runtime backstop.
 func get_flag(flag_name: String, default_value: bool = false) -> bool:
-	return flags.get(flag_name, default_value)
+	if not flags.has(flag_name):
+		return default_value
+	var value = flags[flag_name]
+	if typeof(value) != TYPE_BOOL:
+		push_error("GameState.get_flag: flag '%s' holds a non-boolean value (%s) — treating it as %s" % [flag_name, value, default_value])
+		return default_value
+	return value
 
 
+## Always records the flag, even when the value is unchanged, so that a flag
+## explicitly set to false still shows up in GameState.flags (the debug
+## panel lists it, and a save round-trips it). The signal, on the other
+## hand, still only fires when the effective value actually changed — UI
+## refreshes hang off it.
 func set_flag(flag_name: String, value: bool) -> void:
-	if flags.get(flag_name, false) == value:
-		return
+	var previous: bool = get_flag(flag_name)
 	flags[flag_name] = value
-	flag_changed.emit(flag_name, value)
+	if previous != value:
+		flag_changed.emit(flag_name, value)
 
 
 func get_var(var_name: String, default_value = null):
@@ -109,9 +125,7 @@ func start_new_game(case_id: String) -> void:
 	seen_interactions.clear()
 	set_var("case_id", case_id)
 
-	var initial_flags: Dictionary = case_data.get("initial_flags", {})
-	for flag_name in initial_flags:
-		flags[flag_name] = initial_flags[flag_name]
+	_assign_flags(case_data.get("initial_flags", {}), "case '%s' initial_flags" % case_id)
 
 	go_to_location(case_data.get("start_location", ""))
 
@@ -135,8 +149,24 @@ func load_from_dict(data: Dictionary) -> void:
 	visited_locations.assign(data.get("visited_locations", []))
 	evidence_inventory = []
 	evidence_inventory.assign(data.get("evidence", []))
-	flags = (data.get("flags", {}) as Dictionary).duplicate()
+	flags = {}
+	_assign_flags(data.get("flags", {}), "save file")
 	variables = (data.get("variables", {}) as Dictionary).duplicate()
 	seen_interactions = []
 	seen_interactions.assign(data.get("seen_interactions", []))
 	location_changed.emit(current_location)
+
+
+## Copies boolean flags out of a plain dictionary (a case's initial_flags, or
+## a save file's flag block) into `flags`, skipping and reporting anything
+## that isn't a bool. `source_description` only appears in the error message.
+func _assign_flags(source, source_description: String) -> void:
+	if typeof(source) != TYPE_DICTIONARY:
+		push_error("GameState: %s is not an object — no flags applied" % source_description)
+		return
+	for flag_name in source:
+		var value = source[flag_name]
+		if typeof(value) != TYPE_BOOL:
+			push_error("GameState: %s flag '%s' is not a boolean (%s) — ignoring it" % [source_description, flag_name, value])
+			continue
+		flags[flag_name] = value

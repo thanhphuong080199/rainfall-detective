@@ -28,20 +28,39 @@ var _current_node: Dictionary = {}
 var _current_choices: Array = []
 
 
-func start(dialogue_id: String) -> void:
+## Returns true if the dialogue actually started. Callers that record state
+## alongside starting a dialogue (Investigation marking an examine point or
+## topic as seen) MUST check this — a rejected start used to leave the
+## interaction marked as done even though the player never saw a word of it,
+## which permanently skewed every {"examined": ...} condition afterwards.
+func start(dialogue_id: String) -> bool:
 	if is_active:
 		push_warning("DialogueManager.start: '%s' already active, ignoring start('%s')" % [_dialogue_id, dialogue_id])
-		return
+		return false
 	var tree: Dictionary = ContentDB.get_dialogue(dialogue_id)
 	if tree.is_empty():
 		push_error("DialogueManager.start: unknown dialogue '%s'" % dialogue_id)
-		return
+		return false
 
 	_dialogue_id = dialogue_id
 	_nodes = tree.get("nodes", {})
 	is_active = true
 	dialogue_started.emit(dialogue_id)
 	_show_node(tree.get("start", ""))
+	return true
+
+
+## Aborts whatever is playing right now, running no further actions.
+##
+## Only for developer tooling that yanks game state out from under a running
+## dialogue (DebugPanel's "jump to location" and "reset"). Normal gameplay
+## never needs it: every dialogue ends by reaching a null "next", and
+## Investigation refuses to start a new interaction while one is active.
+## Emits dialogue_ended so the UI unwinds exactly as it would normally.
+func stop() -> void:
+	if not is_active:
+		return
+	_end_dialogue()
 
 
 ## Called by the UI when the player advances a line that has no (visible) choices.
