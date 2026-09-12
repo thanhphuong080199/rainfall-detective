@@ -154,21 +154,31 @@ func _finish() -> void:
 
 ## 6. This repo
 
+`scenes/test/` holds several small, independent `-s` scripts plus
+`smoke_test.gd` (the critical-path/integration fixture) — see
+`docs/testing.md` for the full list, what each covers, and the exact
+FAST/FULL commands (the FULL one is also what CI runs):
+
 ```bash
 V=.claude/skills/godot-development/scripts/verify.sh
-$V --script res://scenes/test/validate_content.gd --script res://scenes/test/smoke_test.gd   # full check (~5 s)
+$V --script res://scenes/test/validate_content.gd --script res://scenes/test/conditions_test.gd \
+   --script res://scenes/test/effects_test.gd --script res://scenes/test/events_test.gd \
+   --script res://scenes/test/duplicate_execution_test.gd --script res://scenes/test/save_load_regression_test.gd \
+   --script res://scenes/test/negative_progression_test.gd --script res://scenes/test/dependency_analysis_test.gd \
+   --script res://scenes/test/smoke_test.gd   # FULL check (~10 s)
 $V --skip-import --skip-load-all --skip-boot --script res://scenes/test/validate_content.gd   # after editing only data/*.json
 ```
 
-- `smoke_test.gd` ends with `--- N passed, 0 failed ---` and
-  `ALL TESTS PASSED`, exit 0. It prints several intentional `ERROR:` /
+- Every one of these ends with `--- N passed, 0 failed ---` and
+  `ALL TESTS PASSED`, exit 0. Several intentionally print `ERROR:` /
   `WARNING:` lines (mistyped conditions, a non-boolean flag, unknown dialogue
-  ids, verbs rejected mid-dialogue). Those are expected.
+  ids, verbs rejected mid-dialogue, a locked destination refusing `move_to`).
+  Those are expected — see each file's own header comment.
 - The main scene is `TitleScreen.tscn`; a plain boot never loads `Main.tscn`
-  or its overlays. The smoke test instantiates them, so run it after any UI
+  or its overlays. `smoke_test.gd` instantiates them, so run it after any UI
   change.
-- New behaviour gets new `_check(...)` calls in `smoke_test.gd`, in the
-  existing `_test_*` style.
+- A new Condition/Effect check goes in `conditions_test.gd`/`effects_test.gd`
+  (see `docs/testing.md`), never into `smoke_test.gd`.
 - Engine quirks this repo already works around are listed in
   `docs/architecture.md` → "Known limitations".
 

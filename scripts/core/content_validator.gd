@@ -39,6 +39,7 @@ static func validate() -> Dictionary:
 	_validate_chapters(errors, warnings)
 	_validate_cases(errors, warnings)
 	_validate_events(errors, warnings)
+	_validate_dependency_reachability(warnings)
 
 	return {"errors": errors, "warnings": warnings}
 
@@ -617,6 +618,280 @@ static func _collect_flag_requirements(condition, out: Dictionary) -> void:
 		if typeof(sub_conditions) == TYPE_ARRAY:
 			for sub_condition in sub_conditions:
 				_collect_flag_requirements(sub_condition, out)
+
+
+# ---------------------------------------------------------------------------
+# Dependency reachability (Milestone 1.7) — cheap, best-effort static checks,
+# NOT a solver. See docs/architecture.md's "Known limitations" and
+# docs/testing.md's "Soft-lock safety philosophy": this does not prove a case
+# is completable, does not check whether an effect capable of setting a flag
+# is ITSELF reachable, and does not attempt "chapter X depends on content
+# scoped exclusively to chapter Y" (there is no first-class chapter-scope
+# condition in this project to detect that from — see docs/case-system.md,
+# "What remains open" — inferring it from flag-naming convention alone would
+# be speculative and noisy, which section 19 of the Milestone 1.7 brief
+# explicitly warns against). What it DOES catch cheaply and reliably: a
+# condition gating content on a flag/evidence id/interaction-complete id that
+# NOTHING in loaded content is capable of ever producing — dead content
+# today, not a future risk.
+
+## For every condition anywhere in loaded content that requires a flag to be
+## true, evidence to be held, or an interaction to be marked complete,
+## confirms some Effect somewhere is at least capable of producing it.
+## WARNING, not ERROR (see docs/testing.md, "ERROR vs WARNING"): this is
+## static progression analysis that may have legitimate exceptions (e.g.
+## content still mid-authoring), not a broken reference.
+static func _validate_dependency_reachability(warnings: Array[String]) -> void:
+	var settable_flags: Dictionary = {}
+	var grantable_evidence: Dictionary = {}
+	var markable_interactions: Dictionary = {}
+	_collect_effect_targets_everywhere(settable_flags, grantable_evidence, markable_interactions)
+
+	var required_flags: Dictionary = {}
+	var required_evidence: Dictionary = {}
+	var required_interactions: Dictionary = {}
+	_collect_condition_requirements_everywhere(required_flags, required_evidence, required_interactions)
+
+	for flag_name in required_flags:
+		if not settable_flags.has(flag_name):
+			warnings.append('Dependency check: a condition requires flag "%s" to be true, but no Effect anywhere in loaded content ever sets it — this content may be permanently unreachable' % flag_name)
+	for evidence_id in required_evidence:
+		if ContentDB.get_evidence(evidence_id).is_empty():
+			continue  # Already reported as an unknown-reference error elsewhere.
+		if not grantable_evidence.has(evidence_id):
+			warnings.append('Dependency check: a condition requires evidence "%s", but no Effect anywhere in loaded content grants it — this content may be permanently unreachable' % evidence_id)
+	for interaction_id in required_interactions:
+		if not markable_interactions.has(interaction_id):
+			warnings.append('Dependency check: a condition requires interaction_complete "%s", but no Effect anywhere in loaded content marks it — this content may be permanently unreachable' % interaction_id)
+
+
+## Populates flags_out/evidence_out/interactions_out with every id an effect
+## anywhere in loaded content is capable of producing: dialogue node/choice
+## "actions", event "effects", and chapter "entry_effects" — the same three
+## effect-carrying places docs/content-guide.md documents. A flag is only
+## recorded when some effect sets it to true (a set_flag ... value:false
+## can't satisfy a plain {"flag": "x"} requirement — see the calling
+## function's "equals:false" note below).
+static func _collect_effect_targets_everywhere(flags_out: Dictionary, evidence_out: Dictionary, interactions_out: Dictionary) -> void:
+	for dialogue_id in ContentDB.get_all_dialogues():
+		var tree: Dictionary = ContentDB.get_all_dialogues()[dialogue_id]
+		var nodes: Dictionary = tree.get("nodes", {})
+		for node_id in nodes:
+			var node = nodes[node_id]
+			if typeof(node) != TYPE_DICTIONARY:
+				continue
+			_collect_effect_targets(node.get("actions", []), flags_out, evidence_out, interactions_out)
+			for choice in node.get("choices", []):
+				if typeof(choice) == TYPE_DICTIONARY:
+					_collect_effect_targets(choice.get("actions", []), flags_out, evidence_out, interactions_out)
+
+	for event_id in ContentDB.get_all_events():
+		_collect_effect_targets(ContentDB.get_all_events()[event_id].get("effects", []), flags_out, evidence_out, interactions_out)
+
+	for chapter_id in ContentDB.get_all_chapters():
+		_collect_effect_targets(ContentDB.get_all_chapters()[chapter_id].get("entry_effects", []), flags_out, evidence_out, interactions_out)
+
+
+## Pure function (no ContentDB access) so it's directly unit-testable — see
+## scenes/test/dependency_analysis_test.gd.
+static func _collect_effect_targets(effects, flags_out: Dictionary, evidence_out: Dictionary, interactions_out: Dictionary) -> void:
+	if typeof(effects) != TYPE_ARRAY:
+		return
+	for effect in effects:
+		if typeof(effect) != TYPE_DICTIONARY:
+			continue
+		match effect.get("type", ""):
+			"set_flag":
+				if effect.get("value", true) == true:
+					flags_out[effect.get("flag", "")] = true
+			"add_evidence":
+				evidence_out[effect.get("evidence_id", "")] = true
+			"mark_interaction_complete":
+				interactions_out[effect.get("id", "")] = true
+
+
+## Populates flags_out/evidence_out/interactions_out with every id required
+## by a condition anywhere in loaded content: location npc-presence/topic/
+## examine-variant/destination conditions, dialogue choice conditions, and
+## event conditions. Delegates the actual leaf/composite walk to
+## _collect_condition_requirements() below.
+static func _collect_condition_requirements_everywhere(flags_out: Dictionary, evidence_out: Dictionary, interactions_out: Dictionary) -> void:
+	for location_id in ContentDB.get_all_locations():
+		var data: Dictionary = ContentDB.get_all_locations()[location_id]
+		for npc in data.get("npcs", []):
+			if typeof(npc) != TYPE_DICTIONARY:
+				continue
+			_collect_condition_requirements(npc.get("condition"), flags_out, evidence_out, interactions_out)
+			for topic in npc.get("topics", []):
+				if typeof(topic) == TYPE_DICTIONARY:
+					_collect_condition_requirements(topic.get("condition"), flags_out, evidence_out, interactions_out)
+		for point in data.get("examine_points", []):
+			if typeof(point) != TYPE_DICTIONARY:
+				continue
+			for variant in point.get("variants", []):
+				if typeof(variant) == TYPE_DICTIONARY:
+					_collect_condition_requirements(variant.get("condition"), flags_out, evidence_out, interactions_out)
+		for destination in data.get("destinations", []):
+			if typeof(destination) == TYPE_DICTIONARY:
+				_collect_condition_requirements(destination.get("condition"), flags_out, evidence_out, interactions_out)
+
+	for dialogue_id in ContentDB.get_all_dialogues():
+		var tree: Dictionary = ContentDB.get_all_dialogues()[dialogue_id]
+		for node_id in tree.get("nodes", {}):
+			var node = tree.get("nodes", {}).get(node_id)
+			if typeof(node) != TYPE_DICTIONARY:
+				continue
+			for choice in node.get("choices", []):
+				if typeof(choice) == TYPE_DICTIONARY:
+					_collect_condition_requirements(choice.get("condition"), flags_out, evidence_out, interactions_out)
+
+	for event_id in ContentDB.get_all_events():
+		_collect_condition_requirements(ContentDB.get_all_events()[event_id].get("conditions"), flags_out, evidence_out, interactions_out)
+
+
+## Pure function (no ContentDB access) so it's directly unit-testable — see
+## scenes/test/dependency_analysis_test.gd. Recurses into a top-level
+## condition and "all" branches only — deliberately mirrors
+## _validate_repeatable_self_reset's existing _collect_flag_requirements
+## precedent below: a requirement hidden inside an "any" isn't a bug on its
+## own (the other alternative may well be reachable), and "not" inverts
+## meaning enough that "required" stops being a well-defined word for it.
+## Only a "flag" leaf with equals:true (or omitted, which defaults to true)
+## counts as a requirement — an equals:false leaf is already satisfied by
+## that flag simply never being set, which is the default state, not
+## something that needs an Effect to produce.
+static func _collect_condition_requirements(condition, flags_out: Dictionary, evidence_out: Dictionary, interactions_out: Dictionary) -> void:
+	if typeof(condition) != TYPE_DICTIONARY:
+		return
+	if condition.has("all"):
+		var sub_conditions = condition.get("all")
+		if typeof(sub_conditions) == TYPE_ARRAY:
+			for sub_condition in sub_conditions:
+				_collect_condition_requirements(sub_condition, flags_out, evidence_out, interactions_out)
+		return
+	if condition.has("any") or condition.has("not"):
+		return
+	if condition.has("flag"):
+		if condition.get("equals", true) == true:
+			flags_out[condition.get("flag", "")] = true
+		return
+	if condition.has("has_evidence"):
+		evidence_out[condition.get("has_evidence", "")] = true
+		return
+	if condition.has("interaction_complete"):
+		interactions_out[condition.get("interaction_complete", "")] = true
+
+
+# ---------------------------------------------------------------------------
+# Known producers (Milestone 1.8, Case Debugger) — debug-only, not part of
+# validate()/report(). _validate_dependency_reachability above only answers
+# "does SOME producer exist" (cheap, for a WARNING). The Case Debugger's
+# Inspector tab needs the stronger "WHICH ones, and where" so a developer can
+# jump straight to the content responsible — this walks the exact same three
+# effect-carrying places (dialogue actions, event effects, chapter
+# entry_effects) a second time, deliberately kept separate from
+# _collect_effect_targets_everywhere/_collect_effect_targets above rather than
+# generalizing both into one visitor: those two stay a simple `id -> true`
+# collector for a cheap existence check, this stays a simple `source ->
+# effect` list for display — forcing a shared abstraction between "do you
+# exist" and "list yourself, with your source" would be more machinery than
+# either job needs on its own.
+##
+## Like the WARNING check, this is explicitly NOT a reachability proof — see
+## docs/case-debugger.md, "Known producers" — only that returns non-empty
+## proves anything, and even then only "some effect could set this," never
+## "and that effect itself is reachable."
+
+## Every {"source": String, "effect": Dictionary} pair for an effect anywhere
+## in loaded content, source being a human-readable pointer to where it lives
+## (a dialogue node/choice, an event, or a chapter's entry_effects).
+static func _collect_effects_with_sources() -> Array[Dictionary]:
+	var entries: Array[Dictionary] = []
+	for dialogue_id in ContentDB.get_all_dialogues():
+		var tree: Dictionary = ContentDB.get_all_dialogues()[dialogue_id]
+		var nodes: Dictionary = tree.get("nodes", {})
+		for node_id in nodes:
+			var node = nodes[node_id]
+			if typeof(node) != TYPE_DICTIONARY:
+				continue
+			_append_effect_sources(node.get("actions", []), 'dialogue "%s" node "%s"' % [dialogue_id, node_id], entries)
+			var choices: Array = node.get("choices", [])
+			for i in choices.size():
+				var choice = choices[i]
+				if typeof(choice) == TYPE_DICTIONARY:
+					_append_effect_sources(choice.get("actions", []), 'dialogue "%s" node "%s" choice %d' % [dialogue_id, node_id, i], entries)
+
+	for event_id in ContentDB.get_all_events():
+		_append_effect_sources(ContentDB.get_event(event_id).get("effects", []), 'event "%s"' % event_id, entries)
+
+	for chapter_id in ContentDB.get_all_chapters():
+		_append_effect_sources(ContentDB.get_chapter(chapter_id).get("entry_effects", []), 'chapter "%s" entry_effects' % chapter_id, entries)
+
+	return entries
+
+
+static func _append_effect_sources(effects, source: String, out: Array[Dictionary]) -> void:
+	if typeof(effects) != TYPE_ARRAY:
+		return
+	for effect in effects:
+		if typeof(effect) == TYPE_DICTIONARY:
+			out.append({"source": source, "effect": effect})
+
+
+## Pure predicates (no ContentDB access, so directly unit-testable — see
+## scenes/test/dependency_analysis_test.gd) deciding whether one effect
+## produces the given flag/evidence/interaction. Kept separate from
+## find_*_producers() below purely so the filter itself can be tested without
+## depending on real loaded content containing a counter-example (e.g. a
+## set_flag ... value:false effect) to prove the exclusion actually works.
+
+## A set_flag effect with value:true, or the implicit default when "value" is
+## omitted — matching EffectRunner.run()'s own default. value:false never
+## counts: it can't satisfy a plain {"flag": x} requirement (same "equals:true
+## only" rule _collect_effect_targets above already enforces).
+static func _effect_produces_flag(effect: Dictionary, flag_name: String) -> bool:
+	return effect.get("type", "") == "set_flag" and effect.get("flag", "") == flag_name and effect.get("value", true) == true
+
+
+static func _effect_produces_evidence(effect: Dictionary, evidence_id: String) -> bool:
+	return effect.get("type", "") == "add_evidence" and effect.get("evidence_id", "") == evidence_id
+
+
+static func _effect_produces_interaction(effect: Dictionary, interaction_id: String) -> bool:
+	return effect.get("type", "") == "mark_interaction_complete" and effect.get("id", "") == interaction_id
+
+
+## Every known producer of flag_name becoming true. {"source": String,
+## "description": String} per match, description via EffectRunner.describe()
+## so it can never drift from what the effect actually does when it runs.
+static func find_flag_producers(flag_name: String) -> Array[Dictionary]:
+	var results: Array[Dictionary] = []
+	for entry in _collect_effects_with_sources():
+		var effect: Dictionary = entry.get("effect", {})
+		if _effect_produces_flag(effect, flag_name):
+			results.append({"source": entry.get("source", ""), "description": EffectRunner.describe(effect)})
+	return results
+
+
+## Every known producer of evidence_id being granted (an add_evidence effect).
+static func find_evidence_producers(evidence_id: String) -> Array[Dictionary]:
+	var results: Array[Dictionary] = []
+	for entry in _collect_effects_with_sources():
+		var effect: Dictionary = entry.get("effect", {})
+		if _effect_produces_evidence(effect, evidence_id):
+			results.append({"source": entry.get("source", ""), "description": EffectRunner.describe(effect)})
+	return results
+
+
+## Every known producer of interaction_id being marked complete (a
+## mark_interaction_complete effect).
+static func find_interaction_producers(interaction_id: String) -> Array[Dictionary]:
+	var results: Array[Dictionary] = []
+	for entry in _collect_effects_with_sources():
+		var effect: Dictionary = entry.get("effect", {})
+		if _effect_produces_interaction(effect, interaction_id):
+			results.append({"source": entry.get("source", ""), "description": EffectRunner.describe(effect)})
+	return results
 
 
 # ---------------------------------------------------------------------------

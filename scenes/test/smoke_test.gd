@@ -1,17 +1,47 @@
 extends SceneTree
-## Headless end-to-end verification for Milestone 0. Run with:
+## The project's critical-path / integration fixture (see docs/testing.md).
+## Drives GameState/ContentDB/DialogueManager/Investigation/EventManager/
+## CaseManager/SaveManager/LocaleManager through the full demo flow AND the
+## two-chapter Test Case end to end, exercising the exact flow from
+## docs/architecture.md's Verification section, since a headless run can't
+## click real buttons. Run with:
 ##   godot --headless --path . -s res://scenes/test/smoke_test.gd
 ## Exits 0 and prints ALL TESTS PASSED if every check passes, exits 1 and
 ## lists failures otherwise (grep output for "FAIL:"/"SCRIPT ERROR" — Godot
 ## does not reliably reflect script errors in the process exit code).
 ##
-## Drives GameState/ContentDB/DialogueManager/Investigation/SaveManager
-## directly, exercising the exact flow from docs/architecture.md's
-## Verification section, since a headless run can't click real buttons.
+## As of Milestone 1.7, this is deliberately NOT where a new Condition/Effect
+## check goes — see the focused, independent test scripts alongside this one
+## (conditions_test.gd, effects_test.gd, events_test.gd,
+## duplicate_execution_test.gd, save_load_regression_test.gd,
+## negative_progression_test.gd, dependency_analysis_test.gd) and
+## docs/testing.md, "Test organization", for where new coverage belongs. This
+## file stays the one place that proves the whole chain — Talk -> Examine ->
+## Evidence -> Event -> Chapter completion -> Case completion — actually
+## works end to end with real dialogue/content, continuing several of its
+## own _test_* functions from one another's state deliberately (see the
+## comment above each one) to prove that, not just each piece in isolation.
+##
 ## Autoloads are fetched via get_root().get_node() rather than by bare name
 ## — a script run as the -s entry point doesn't get the usual compile-time
 ## autoload name resolution that every *other* script in this project gets
 ## (see docs/architecture.md, "A Godot quirk this project works around").
+
+## The one ContentValidator warning this sandbox's real content is expected
+## to produce (Milestone 1.7's dependency-reachability check, see
+## content_validator.gd): "test_repeatable_pulse" exists purely so tests can
+## exercise the "repeatable" trigger policy (docs/event-system.md), and its
+## "pulse_flag" condition is deliberately driven only by direct GameState
+## pokes from test code (see events_test.gd), never by any in-game Effect —
+## exactly like test_effects_remove_evidence's dialogue tree is deliberately
+## unreachable through normal play (see docs/architecture.md's "Known
+## limitations"). This is a legitimate exception (docs/testing.md, "ERROR vs
+## WARNING": "Do not make valid unusual content impossible to author"), kept
+## as an explicit, named allow-list of exactly one entry rather than silently
+## dropped, so a second, unrelated dependency warning still fails this check.
+const KNOWN_ACCEPTED_WARNINGS: Array[String] = [
+	'Dependency check: a condition requires flag "pulse_flag" to be true, but no Effect anywhere in loaded content ever sets it — this content may be permanently unreachable',
+]
 
 var game_state
 var content_db
@@ -67,7 +97,6 @@ func _initialize() -> void:
 	print("=== Milestone 0 Sandbox — Headless Smoke Test ===")
 	_test_content_loaded()
 	_test_localization()
-	_test_conditions()
 	_test_progression_flow()
 	# Continues from wherever _test_progression_flow() left off, then leaves
 	# behind character_a_moved/mirror_note_ready (both triggered) for
@@ -126,11 +155,19 @@ func _test_content_loaded() -> void:
 
 	# ContentValidator (see content_validator.gd) runs automatically in
 	# ContentDB._ready() — the real sandbox content must always pass with
-	# zero errors (warnings are fine; none expected here either).
+	# zero errors and zero UNEXPECTED warnings. One warning is a known,
+	# deliberate exception (see the constant below) rather than noise to
+	# silence — see docs/testing.md, "ERROR vs WARNING", for why it's
+	# intentional and why it's still asserted here explicitly (a SECOND
+	# dependency warning appearing would still fail this check).
 	var validation: Dictionary = content_db.get_last_validation_result()
 	var validation_errors: Array = validation.get("errors", [])
 	_check(validation_errors.is_empty(), "content validation should find zero errors in the sandbox content: %s" % [validation_errors])
-	_check(validation.get("warnings", []).is_empty(), "content validation should find zero warnings in the sandbox content: %s" % [validation.get("warnings", [])])
+	var unexpected_warnings: Array = []
+	for warning in validation.get("warnings", []):
+		if not KNOWN_ACCEPTED_WARNINGS.has(String(warning)):
+			unexpected_warnings.append(warning)
+	_check(unexpected_warnings.is_empty(), "content validation should find zero unexpected warnings in the sandbox content: %s" % [unexpected_warnings])
 
 
 ## Bilingual localization (Milestone: VI default, EN supported — see
@@ -206,74 +243,6 @@ func _test_localization() -> void:
 	_check(real_key_errors.is_empty(), "a real, fully-translated key should not be reported as missing")
 
 	locale_manager.set_locale("vi")  # leave the project's default in place for whatever runs after this
-
-
-## The condition mini-language's edge cases, which content authors hit far
-## more often than they hit the happy path: a mistyped key must NOT silently
-## unlock content, and explain() must not claim both halves of an `any` are
-## missing when only one is needed.
-func _test_conditions() -> void:
-	game_state.start_new_game("case_00_sandbox")
-	var evaluator = load("res://scripts/core/condition_evaluator.gd")
-
-	_check(evaluator.evaluate(null), "a null condition should always pass")
-	_check(not evaluator.evaluate({"has_evidnce": "test_key"}), "a mistyped condition key should fail CLOSED, not unlock content")
-	_check(not evaluator.evaluate({}), "an empty condition object should fail closed")
-	_check(not evaluator.evaluate("has_evidence:test_key"), "a non-object condition should fail closed")
-	_check(not evaluator.evaluate({"all": "not-an-array"}), "a non-array \"all\" should fail closed")
-	_check(evaluator.evaluate({"flag": "hallway_unlocked", "equals": false}), "\"equals\" should still be a recognized modifier, not an unknown key")
-
-	# explain(): a top-level `all` is flattened (each part really is
-	# required), an `any` stays one line that spells out the alternatives.
-	var all_lines: Array = evaluator.explain({"all": [{"has_evidence": "test_key"}, {"has_evidence": "test_badge"}]})
-	_check(all_lines.size() == 2, "explain() should list each part of an \"all\" separately")
-	var any_lines: Array = evaluator.explain({"any": [{"has_evidence": "test_key"}, {"has_evidence": "test_note"}]})
-	_check(any_lines.size() == 1, "explain() should keep an \"any\" as a single entry rather than listing both halves as missing")
-	_check(
-		String(any_lines[0].get("description", "")).contains(" OR "),
-		"an \"any\" explanation should spell out the alternatives"
-	)
-
-	# Non-boolean flags must never reach get_flag()'s bool return type.
-	game_state.flags["not_a_bool"] = "yes"
-	_check(not game_state.get_flag("not_a_bool"), "a non-boolean flag should be reported and treated as the default")
-	game_state.flags.erase("not_a_bool")
-
-	# A flag explicitly set to false must still be recorded, so the debug
-	# panel can list it and a save can round-trip it.
-	game_state.set_flag("explicitly_false", false)
-	_check(game_state.flags.has("explicitly_false"), "setting a flag to false should still record it")
-
-	# Two checks in one object: evaluate() honours whichever comes first in
-	# its own fixed precedence order (KEYS) and silently drops the rest, so
-	# the validator has to reject the shape rather than let it read as "and".
-	game_state.add_evidence("test_key")
-	_check(
-		not evaluator.evaluate({"has_evidence": "test_key", "flag": "definitely_not_set"}),
-		"evaluate() resolves \"flag\" before \"has_evidence\" and drops the rest — exactly why the validator rejects the shape"
-	)
-	var validator = load("res://scripts/core/content_validator.gd")
-	var stacked_errors: Array[String] = []
-	validator._validate_condition({"has_evidence": "test_key", "flag": "x"}, "probe", stacked_errors)
-	_check(stacked_errors.size() == 1, "stacking two checks in one condition should be a validation error")
-	_check(
-		String(stacked_errors[0] if not stacked_errors.is_empty() else "").contains('only check "flag"'),
-		"the error should name the check that would actually win, not the first key in the object"
-	)
-	var composite_errors: Array[String] = []
-	validator._validate_condition({"all": [{"flag": "a"}], "has_evidence": "test_key"}, "probe", composite_errors)
-	_check(not composite_errors.is_empty(), "mixing a composite and a leaf check in one object should also be rejected")
-	var unreachable_warnings: Array[String] = []
-	validator._validate_dialogue_reachability("probe", {
-		"start": "n1",
-		"nodes": {"n1": {"next": "n2"}, "n2": {}, "orphan": {}},
-	}, unreachable_warnings)
-	_check(unreachable_warnings.size() == 1, "an unreachable dialogue node should be reported once")
-	_check(
-		String(unreachable_warnings[0] if not unreachable_warnings.is_empty() else "").contains("orphan"),
-		"the unreachable-node warning should name the orphaned node"
-	)
-	game_state.remove_evidence("test_key")
 
 
 func _test_progression_flow() -> void:

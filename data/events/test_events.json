@@ -4,7 +4,8 @@
     "conditions": {
       "all": [
         { "interaction_complete": "character_a_ready_to_move" },
-        { "has_evidence": "test_key" }
+        { "has_evidence": "test_key" },
+        { "flag": "hallway_unlocked" }
       ]
     },
     "trigger_policy": "once",

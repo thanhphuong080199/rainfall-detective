@@ -1,0 +1,48 @@
+name: verify
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      GODOT_VERSION: "4.7.2"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Godot binary
+        id: cache-godot
+        uses: actions/cache@v4
+        with:
+          path: godot-bin
+          key: godot-${{ env.GODOT_VERSION }}-linux-x86_64
+
+      - name: Download Godot ${{ env.GODOT_VERSION }}
+        if: steps.cache-godot.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p godot-bin
+          curl -fL -o godot.zip "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q godot.zip -d godot-bin
+          mv "godot-bin/Godot_v${GODOT_VERSION}-stable_linux.x86_64" godot-bin/godot
+          chmod +x godot-bin/godot
+          rm godot.zip
+
+      # Reuses the repository's own verification script rather than
+      # duplicating any check in this workflow — see docs/testing.md, "CI".
+      # This is the same FULL command documented there and in CLAUDE.md.
+      - name: Run verify.sh (FULL)
+        env:
+          GODOT: ${{ github.workspace }}/godot-bin/godot
+        run: |
+          .claude/skills/godot-development/scripts/verify.sh \
+            --script res://scenes/test/validate_content.gd \
+            --script res://scenes/test/conditions_test.gd \
+            --script res://scenes/test/effects_test.gd \
+            --script res://scenes/test/events_test.gd \
+            --script res://scenes/test/duplicate_execution_test.gd \
+            --script res://scenes/test/save_load_regression_test.gd \
+            --script res://scenes/test/negative_progression_test.gd \
+            --script res://scenes/test/dependency_analysis_test.gd \
+            --script res://scenes/test/smoke_test.gd

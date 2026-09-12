@@ -29,10 +29,10 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -460.0
-offset_top = -370.0
-offset_right = 460.0
-offset_bottom = 370.0
+offset_left = -540.0
+offset_top = -310.0
+offset_right = 540.0
+offset_bottom = 310.0
 grow_horizontal = 2
 grow_vertical = 2
 
@@ -54,139 +54,395 @@ layout_mode = 2
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 20
-text = "Debug Panel — F1 to toggle"
+text = "Case Debugger — F1 to toggle"
 
 [node name="CloseButton" type="Button" parent="CenterPanel/Margin/VBox/Header"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Close"
 
-[node name="ReportScroll" type="ScrollContainer" parent="CenterPanel/Margin/VBox"]
-custom_minimum_size = Vector2(0, 340)
+[node name="SummaryLabel" type="Label" parent="CenterPanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 2
+text = "Case: — | Chapter: — | Location: —"
+
+[node name="HSeparator" type="HSeparator" parent="CenterPanel/Margin/VBox"]
+layout_mode = 2
+
+[node name="Tabs" type="TabContainer" parent="CenterPanel/Margin/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 420)
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="ReportList" type="VBoxContainer" parent="CenterPanel/Margin/VBox/ReportScroll"]
+[node name="StateTab" type="VBoxContainer" parent="CenterPanel/Margin/VBox/Tabs"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="FilterRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox/Tabs/StateTab"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="FilterLabel" type="Label" parent="CenterPanel/Margin/VBox/Tabs/StateTab/FilterRow"]
+layout_mode = 2
+text = "Filter:"
+
+[node name="StateFilterEdit" type="LineEdit" parent="CenterPanel/Margin/VBox/Tabs/StateTab/FilterRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "substring match on flag/marker name"
+
+[node name="SetFlagRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox/Tabs/StateTab"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="FlagNameEdit" type="LineEdit" parent="CenterPanel/Margin/VBox/Tabs/StateTab/SetFlagRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "flag_name (works even if never set before)"
+
+[node name="SetFlagTrueButton" type="Button" parent="CenterPanel/Margin/VBox/Tabs/StateTab/SetFlagRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Set True"
+
+[node name="SetFlagFalseButton" type="Button" parent="CenterPanel/Margin/VBox/Tabs/StateTab/SetFlagRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Set False"
+
+[node name="StateScroll" type="ScrollContainer" parent="CenterPanel/Margin/VBox/Tabs/StateTab"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="StateList" type="VBoxContainer" parent="CenterPanel/Margin/VBox/Tabs/StateTab/StateScroll"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 2
 
-[node name="HSeparator" type="HSeparator" parent="CenterPanel/Margin/VBox"]
-layout_mode = 2
-
-[node name="ActionsLabel" type="Label" parent="CenterPanel/Margin/VBox"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 14
-text = "Actions (dev-only, bypasses normal gameplay rules)"
-
-[node name="FlagRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox"]
+[node name="EvidenceTab" type="VBoxContainer" parent="CenterPanel/Margin/VBox/Tabs"]
+visible = false
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="FlagNameEdit" type="LineEdit" parent="CenterPanel/Margin/VBox/FlagRow"]
+[node name="FilterRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox/Tabs/EvidenceTab"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="FilterLabel" type="Label" parent="CenterPanel/Margin/VBox/Tabs/EvidenceTab/FilterRow"]
+layout_mode = 2
+text = "Filter:"
+
+[node name="EvidenceFilterEdit" type="LineEdit" parent="CenterPanel/Margin/VBox/Tabs/EvidenceTab/FilterRow"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-placeholder_text = "flag_name"
+placeholder_text = "substring match on evidence id/name"
 
-[node name="ToggleFlagButton" type="Button" parent="CenterPanel/Margin/VBox/FlagRow"]
-unique_name_in_owner = true
-layout_mode = 2
-text = "Toggle Flag"
-
-[node name="EvidenceRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox"]
+[node name="EvidenceRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox/Tabs/EvidenceTab"]
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="EvidenceIdEdit" type="LineEdit" parent="CenterPanel/Margin/VBox/EvidenceRow"]
+[node name="EvidenceIdEdit" type="LineEdit" parent="CenterPanel/Margin/VBox/Tabs/EvidenceTab/EvidenceRow"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 placeholder_text = "evidence_id"
 
-[node name="AddEvidenceButton" type="Button" parent="CenterPanel/Margin/VBox/EvidenceRow"]
+[node name="AddEvidenceButton" type="Button" parent="CenterPanel/Margin/VBox/Tabs/EvidenceTab/EvidenceRow"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Add"
 
-[node name="RemoveEvidenceButton" type="Button" parent="CenterPanel/Margin/VBox/EvidenceRow"]
+[node name="RemoveEvidenceButton" type="Button" parent="CenterPanel/Margin/VBox/Tabs/EvidenceTab/EvidenceRow"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Remove"
 
-[node name="LocationRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox"]
+[node name="EvidenceScroll" type="ScrollContainer" parent="CenterPanel/Margin/VBox/Tabs/EvidenceTab"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="EvidenceList" type="VBoxContainer" parent="CenterPanel/Margin/VBox/Tabs/EvidenceTab/EvidenceScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="LocationTab" type="VBoxContainer" parent="CenterPanel/Margin/VBox/Tabs"]
+visible = false
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="LocationIdEdit" type="LineEdit" parent="CenterPanel/Margin/VBox/LocationRow"]
+[node name="JumpRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox/Tabs/LocationTab"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="LocationIdEdit" type="LineEdit" parent="CenterPanel/Margin/VBox/Tabs/LocationTab/JumpRow"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 placeholder_text = "location_id"
 
-[node name="JumpButton" type="Button" parent="CenterPanel/Margin/VBox/LocationRow"]
+[node name="JumpButton" type="Button" parent="CenterPanel/Margin/VBox/Tabs/LocationTab/JumpRow"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Jump"
+text = "Jump (bypasses destination condition)"
 
-[node name="EventRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox"]
+[node name="LocationScroll" type="ScrollContainer" parent="CenterPanel/Margin/VBox/Tabs/LocationTab"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="LocationList" type="VBoxContainer" parent="CenterPanel/Margin/VBox/Tabs/LocationTab/LocationScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="NpcTab" type="VBoxContainer" parent="CenterPanel/Margin/VBox/Tabs"]
+visible = false
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="EventIdEdit" type="LineEdit" parent="CenterPanel/Margin/VBox/EventRow"]
+[node name="FilterRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox/Tabs/NpcTab"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="FilterLabel" type="Label" parent="CenterPanel/Margin/VBox/Tabs/NpcTab/FilterRow"]
+layout_mode = 2
+text = "Filter:"
+
+[node name="NpcFilterEdit" type="LineEdit" parent="CenterPanel/Margin/VBox/Tabs/NpcTab/FilterRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "substring match on npc/topic id or label"
+
+[node name="NpcScroll" type="ScrollContainer" parent="CenterPanel/Margin/VBox/Tabs/NpcTab"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="NpcList" type="VBoxContainer" parent="CenterPanel/Margin/VBox/Tabs/NpcTab/NpcScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="EventsTab" type="VBoxContainer" parent="CenterPanel/Margin/VBox/Tabs"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="FilterRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox/Tabs/EventsTab"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="FilterLabel" type="Label" parent="CenterPanel/Margin/VBox/Tabs/EventsTab/FilterRow"]
+layout_mode = 2
+text = "Filter:"
+
+[node name="EventFilterEdit" type="LineEdit" parent="CenterPanel/Margin/VBox/Tabs/EventsTab/FilterRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "substring match on event id"
+
+[node name="EventRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox/Tabs/EventsTab"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="EventIdEdit" type="LineEdit" parent="CenterPanel/Margin/VBox/Tabs/EventsTab/EventRow"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 placeholder_text = "event_id"
 
-[node name="TriggerEventButton" type="Button" parent="CenterPanel/Margin/VBox/EventRow"]
+[node name="TriggerEventButton" type="Button" parent="CenterPanel/Margin/VBox/Tabs/EventsTab/EventRow"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Trigger Event"
+text = "Trigger (bypasses conditions)"
 
-[node name="CaseRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox"]
+[node name="ResetEventButton" type="Button" parent="CenterPanel/Margin/VBox/Tabs/EventsTab/EventRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Reset Trigger (does not undo effects)"
+
+[node name="EventScroll" type="ScrollContainer" parent="CenterPanel/Margin/VBox/Tabs/EventsTab"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="EventList" type="VBoxContainer" parent="CenterPanel/Margin/VBox/Tabs/EventsTab/EventScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="CaseChapterTab" type="VBoxContainer" parent="CenterPanel/Margin/VBox/Tabs"]
+visible = false
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="CaseIdEdit" type="LineEdit" parent="CenterPanel/Margin/VBox/CaseRow"]
+[node name="StartCaseRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox/Tabs/CaseChapterTab"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="CaseIdEdit" type="LineEdit" parent="CenterPanel/Margin/VBox/Tabs/CaseChapterTab/StartCaseRow"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 placeholder_text = "case_id (e.g. test_case)"
 
-[node name="StartCaseButton" type="Button" parent="CenterPanel/Margin/VBox/CaseRow"]
+[node name="StartCaseButton" type="Button" parent="CenterPanel/Margin/VBox/Tabs/CaseChapterTab/StartCaseRow"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Start Case"
 
-[node name="ChapterRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox"]
+[node name="ChapterRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox/Tabs/CaseChapterTab"]
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="ChapterIdEdit" type="LineEdit" parent="CenterPanel/Margin/VBox/ChapterRow"]
+[node name="ChapterIdEdit" type="LineEdit" parent="CenterPanel/Margin/VBox/Tabs/CaseChapterTab/ChapterRow"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 placeholder_text = "chapter_id"
 
-[node name="JumpChapterButton" type="Button" parent="CenterPanel/Margin/VBox/ChapterRow"]
+[node name="JumpChapterButton" type="Button" parent="CenterPanel/Margin/VBox/Tabs/CaseChapterTab/ChapterRow"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Jump"
 
-[node name="CompleteChapterButton" type="Button" parent="CenterPanel/Margin/VBox/ChapterRow"]
+[node name="CompleteChapterButton" type="Button" parent="CenterPanel/Margin/VBox/Tabs/CaseChapterTab/ChapterRow"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Complete Current"
+text = "Force Complete Current"
 
-[node name="ResetButton" type="Button" parent="CenterPanel/Margin/VBox"]
+[node name="ResetButton" type="Button" parent="CenterPanel/Margin/VBox/Tabs/CaseChapterTab"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Reset Case"
+
+[node name="CaseChapterScroll" type="ScrollContainer" parent="CenterPanel/Margin/VBox/Tabs/CaseChapterTab"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="CaseChapterList" type="VBoxContainer" parent="CenterPanel/Margin/VBox/Tabs/CaseChapterTab/CaseChapterScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="InspectorTab" type="VBoxContainer" parent="CenterPanel/Margin/VBox/Tabs"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="ConditionLabel" type="Label" parent="CenterPanel/Margin/VBox/Tabs/InspectorTab"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "Condition Inspector — nested ALL/ANY/NOT breakdown"
+
+[node name="ConditionRow1" type="HBoxContainer" parent="CenterPanel/Margin/VBox/Tabs/InspectorTab"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="InspectorKindOption" type="OptionButton" parent="CenterPanel/Margin/VBox/Tabs/InspectorTab/ConditionRow1"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="InspectorIdEdit" type="LineEdit" parent="CenterPanel/Margin/VBox/Tabs/InspectorTab/ConditionRow1"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "id (event id / npc id / location id / chapter id)"
+
+[node name="InspectorSecondIdEdit" type="LineEdit" parent="CenterPanel/Margin/VBox/Tabs/InspectorTab/ConditionRow1"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "topic_id / destination location_id (if applicable)"
+
+[node name="InspectorShowButton" type="Button" parent="CenterPanel/Margin/VBox/Tabs/InspectorTab/ConditionRow1"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Inspect"
+
+[node name="InspectorScroll" type="ScrollContainer" parent="CenterPanel/Margin/VBox/Tabs/InspectorTab"]
+custom_minimum_size = Vector2(0, 160)
+layout_mode = 2
+
+[node name="InspectorConditionTree" type="VBoxContainer" parent="CenterPanel/Margin/VBox/Tabs/InspectorTab/InspectorScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 0
+
+[node name="HSeparator" type="HSeparator" parent="CenterPanel/Margin/VBox/Tabs/InspectorTab"]
+layout_mode = 2
+
+[node name="ProducerLabel" type="Label" parent="CenterPanel/Margin/VBox/Tabs/InspectorTab"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "Known Producers (existence only — NOT proof of reachability)"
+
+[node name="ProducerRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox/Tabs/InspectorTab"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="ProducerKindOption" type="OptionButton" parent="CenterPanel/Margin/VBox/Tabs/InspectorTab/ProducerRow"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="ProducerIdEdit" type="LineEdit" parent="CenterPanel/Margin/VBox/Tabs/InspectorTab/ProducerRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "flag name / evidence id / interaction_complete id"
+
+[node name="ProducerLookupButton" type="Button" parent="CenterPanel/Margin/VBox/Tabs/InspectorTab/ProducerRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Find Producers"
+
+[node name="ProducerScroll" type="ScrollContainer" parent="CenterPanel/Margin/VBox/Tabs/InspectorTab"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ProducerResults" type="VBoxContainer" parent="CenterPanel/Margin/VBox/Tabs/InspectorTab/ProducerScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="LogTab" type="VBoxContainer" parent="CenterPanel/Margin/VBox/Tabs"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="LogLabel" type="Label" parent="CenterPanel/Margin/VBox/Tabs/LogTab"]
+layout_mode = 2
+text = "Recent debug actions this session (most recent first) — also printed to the console with a [CaseDebugger] prefix."
+
+[node name="LogScroll" type="ScrollContainer" parent="CenterPanel/Margin/VBox/Tabs/LogTab"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="LogList" type="VBoxContainer" parent="CenterPanel/Margin/VBox/Tabs/LogTab/LogScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
 
 [node name="StatusLabel" type="Label" parent="CenterPanel/Margin/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
 autowrap_mode = 2
 text = ""
+
+[node name="ConfirmDialog" type="ConfirmationDialog" parent="."]
+unique_name_in_owner = true
+title = "Confirm debug override"

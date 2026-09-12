@@ -49,9 +49,10 @@ Desktop only (mouse + keyboard). No controller or touch support yet.
 | Evidence inventory | Click an item | Selects it and shows its details on the right. |
 | Evidence inventory (present mode) | **Present** button | Hands the selected item to the NPC you opened it from. |
 | Evidence inventory / Menu | **Esc** | Closes the overlay. |
-| Anywhere (debug builds only) | **F1** | Toggles the developer debug panel. **Esc** closes it. |
+| Anywhere (debug builds only) | **F1** | Toggles the developer Case Debugger panel. **Esc** closes it. |
 
-The debug panel is inert in release exports — see `scripts/debug/debug_panel.gd`.
+The Case Debugger is inert in release exports — see
+`scripts/debug/debug_panel.gd` and `docs/case-debugger.md`.
 
 The game is in Vietnamese by default. Open **Menu** and use the **VI / EN**
 buttons to switch languages — the choice is remembered between sessions.
@@ -82,7 +83,7 @@ The placeholder content demonstrates one full loop:
 
 See `docs/event-system.md` for how step 11 works (and for the sandbox's
 other two events — a chained content-change event and a `repeatable`-policy
-one exercised only by the automated test / the F1 debug panel's manual
+one exercised only by the automated test / the F1 Case Debugger's manual
 trigger, not by this playthrough).
 
 ## The Test Case (Case/Chapter architecture)
@@ -91,8 +92,8 @@ This same content is also reachable as a two-chapter **Test Case**
 (`test_case`), proving the Case/Chapter organization layer (Milestone 1.6)
 without any real story content — see `docs/case-system.md`. "New Game" from
 the title screen still boots `case_00_sandbox` above; to try `test_case`,
-press **F1** in a running debug build, type `test_case` into the CASE
-section's case-id field, and press **Start Case**. Chapter 1 is steps 1-3 and
+press **F1** in a running debug build, open the **Case & Chapter** tab, type
+`test_case` into the case-id field, and press **Start Case**. Chapter 1 is steps 1-3 and
 5-6 above plus step 11-12's event-driven move, followed by talking to
 Character A in the hallway; Chapter 2 then activates a new talk topic on
 Character B ("Ask if there's anything else") — completing it completes the
@@ -100,13 +101,25 @@ Test Case.
 
 ## Verification
 
+See `docs/testing.md` for the full test organization, and
+`.claude/skills/godot-development/scripts/verify.sh` for the recommended way
+to run any of this (raw Godot exit codes don't reliably reflect script
+errors — see that skill for why). Quick reference:
+
 ```bash
 # Content validation only (fast; exits 1 on any validation error).
 godot --headless --path . -s res://scenes/test/validate_content.gd
 
-# Full end-to-end headless test of every system.
+# Focused, independent tests — one system each (Conditions, Effects, Events,
+# duplicate-execution regressions, save/load regressions, negative paths,
+# dependency-reachability warnings): scenes/test/*_test.gd.
+
+# The critical-path / integration fixture: the full demo flow plus the
+# two-chapter Test Case, end to end.
 godot --headless --path . -s res://scenes/test/smoke_test.gd
 ```
 
-Both are safe to run at any time; the smoke test uses its own throwaway save
-file and never touches `user://save_game.json`.
+Every test script is safe to run at any time; each that touches save/load
+uses its own throwaway `user://` file and never touches the real
+`user://save_game.json`. `.github/workflows/verify.yml` runs the full suite
+on every push/PR.

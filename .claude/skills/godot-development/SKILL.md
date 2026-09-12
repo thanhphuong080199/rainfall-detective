@@ -178,7 +178,10 @@ Two facts shape everything here (observed on 4.7.2):
   with `--fixed-fps 60` finished in under a second. Every call gets a
   timeout; every run gets `--fixed-fps 60`.
 
-Use the bundled wrapper, from the repo root:
+Use the bundled wrapper, from the repo root (this example passes the two
+oldest test scripts; `docs/testing.md` and the `godot-testing` skill own
+which `--script` flags to actually pass for a given change — several more
+independent focused test scripts now live alongside `smoke_test.gd`):
 
 ```bash
 .claude/skills/godot-development/scripts/verify.sh \

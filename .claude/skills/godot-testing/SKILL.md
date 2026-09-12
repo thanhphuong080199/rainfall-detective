@@ -82,31 +82,52 @@ minimum, because it's shared infrastructure. Match effort to blast radius.
    *behavior* change (existing script logic), or a *schema* change (new
    condition leaf, new effect type, new content field). Schema changes have
    the widest regression surface — see "Regression surface" below.
-2. **Check existing coverage first.** `scenes/test/smoke_test.gd` already
+2. **Check existing coverage first.** `scenes/test/` is several small,
+   independent `-s` scripts (Milestone 1.7 split this from one monolithic
+   file — see `docs/testing.md` for the full layout and rationale) plus
+   `smoke_test.gd`, the critical-path/integration fixture that still
    exercises most of this project's progression paths end to end — read
-   `references/test-catalog.md` for which `_test_*` function already covers
-   the system you're touching, so you extend it instead of duplicating setup.
-3. **Add or update the smallest useful check.** A new `_check(...)` call
-   inside the relevant `_test_*` function, in the same style already there
-   (see the mental model above — assert both sides of the transition). Don't
-   build a parallel test file or a fixture framework for this; the project
-   has exactly two headless test scripts by design.
+   `references/test-catalog.md` for which file/`_test_*` function already
+   covers the system you're touching, so you extend it instead of
+   duplicating setup.
+3. **Add or update the smallest useful check.** A Condition or Effect check
+   goes in `conditions_test.gd`/`effects_test.gd` — a new `_check(...)` call,
+   or a new small `_test_*` function, in the same style already there (see
+   the mental model above — assert both sides of the transition), never
+   into `smoke_test.gd`. An Event/Case/save-load/negative-path regression
+   goes in the matching focused file (`events_test.gd`,
+   `duplicate_execution_test.gd`, `save_load_regression_test.gd`,
+   `negative_progression_test.gd`) when it can be set up independently of
+   the narrative walkthrough; only extend `smoke_test.gd` itself for
+   something that genuinely needs the full chain's built-up state. Don't
+   invent a fixture framework beyond `test_helpers.gd`'s existing small
+   shared boilerplate.
 4. **Run verification proportional to the change:**
    - Only `data/*.json` edited, no new field/shape:
      ```bash
      .claude/skills/godot-development/scripts/verify.sh --skip-import --skip-load-all --skip-boot \
        --script res://scenes/test/validate_content.gd
      ```
-   - Anything else (script changes, new content shape, UI, a bug fix):
+   - Anything else (script changes, new content shape, UI, a bug fix) — the
+     FULL command from `docs/testing.md`:
      ```bash
      .claude/skills/godot-development/scripts/verify.sh \
        --script res://scenes/test/validate_content.gd \
+       --script res://scenes/test/conditions_test.gd \
+       --script res://scenes/test/effects_test.gd \
+       --script res://scenes/test/events_test.gd \
+       --script res://scenes/test/duplicate_execution_test.gd \
+       --script res://scenes/test/save_load_regression_test.gd \
+       --script res://scenes/test/negative_progression_test.gd \
+       --script res://scenes/test/dependency_analysis_test.gd \
        --script res://scenes/test/smoke_test.gd
      ```
-   `validate_content.gd` is content-only and fast; `smoke_test.gd` is
-   authoritative and asserts **zero** `ContentValidator` errors *and*
-   warnings on top of the full demo flow — treat a new warning it surfaces
-   as a real regression, not noise (see "Content validation" below).
+   `validate_content.gd` is content-only and fast; every other script is
+   authoritative for its own system, and `smoke_test.gd` additionally
+   asserts **zero unexpected** `ContentValidator` errors/warnings on top of
+   the full demo flow — treat a new warning it surfaces as a real
+   regression, not noise (see "Content validation" below), unless it's the
+   one documented exception `docs/testing.md` names.
 5. **Report what you tested and what you couldn't.** Only claim a check
    passed if you actually ran it — see "Final report" below. Headless runs
    cannot prove real click routing, layout, or visual correctness
@@ -118,17 +139,17 @@ minimum, because it's shared infrastructure. Match effort to blast radius.
 
 | System | Where it lives | Existing coverage |
 |---|---|---|
-| Game state | `scripts/core/game_state.gd` (`GameState`) | `_test_progression_flow`, `_test_conditions` |
-| Conditions | `scripts/core/condition_evaluator.gd` (`ConditionEvaluator`) | `_test_conditions` |
-| Effects | `scripts/core/effect_runner.gd` (`EffectRunner`) | exercised throughout `_test_progression_flow`/`_test_event_system` |
+| Game state | `scripts/core/game_state.gd` (`GameState`) | `_test_progression_flow`, `conditions_test.gd` |
+| Conditions | `scripts/core/condition_evaluator.gd` (`ConditionEvaluator`) | `conditions_test.gd` |
+| Effects | `scripts/core/effect_runner.gd` (`EffectRunner`) | `effects_test.gd`, plus as consequences throughout `_test_progression_flow`/`_test_event_system` |
 | Dialogue | `scripts/dialogue/dialogue_manager.gd` (`DialogueManager`) | `_test_progression_flow`, `_test_interaction_guards` |
-| Investigation (Examine/Talk/Present/Move) | `scripts/investigation/investigation_manager.gd` (`Investigation`) | `_test_progression_flow`, `_test_interaction_guards` |
-| Events | `scripts/events/event_manager.gd` (`EventManager`) | `_test_event_system` |
-| Case/Chapter progression | `scripts/cases/case_manager.gd` (`CaseManager`) | `_test_case_system`, `_test_case_debug_tools` |
-| Save/Load | `scripts/save/save_manager.gd` (`SaveManager`) | `_test_save_load`, plus the mid-chapter round trips inside `_test_case_system` |
-| Content validation | `scripts/core/content_validator.gd` (`ContentValidator`) | `_test_content_loaded` (asserts zero errors/warnings in real content), `validate_content.gd` |
+| Investigation (Examine/Talk/Present/Move) | `scripts/investigation/investigation_manager.gd` (`Investigation`) | `_test_progression_flow`, `_test_interaction_guards`, `negative_progression_test.gd` |
+| Events | `scripts/events/event_manager.gd` (`EventManager`) | `_test_event_system`, `events_test.gd`, `duplicate_execution_test.gd` |
+| Case/Chapter progression | `scripts/cases/case_manager.gd` (`CaseManager`) | `_test_case_system`, `_test_case_debug_tools`, `duplicate_execution_test.gd`, `negative_progression_test.gd` |
+| Save/Load | `scripts/save/save_manager.gd` (`SaveManager`) | `_test_save_load` + mid-chapter round trips inside `_test_case_system`, plus the dedicated `save_load_regression_test.gd` |
+| Content validation | `scripts/core/content_validator.gd` (`ContentValidator`) | `_test_content_loaded` (asserts zero unexpected errors/warnings in real content), `validate_content.gd`, `dependency_analysis_test.gd` |
 | Localization | `scripts/core/locale_manager.gd` (`LocaleManager`) | `_test_localization` |
-| Debug tools | `scripts/debug/debug_panel.gd` | `_test_scene_instantiation`, `_test_case_debug_tools` |
+| Debug tools (Case Debugger) | `scripts/debug/debug_panel.gd` | `_test_scene_instantiation`, `_test_case_debug_tools`, plus `explain_tree`/`find_*_producers`/`debug_reset_trigger` in `conditions_test.gd`/`dependency_analysis_test.gd`/`events_test.gd` |
 
 Full detail per system — exactly what each `_test_*` function proves, and
 what a change to that system should add — is in `references/test-catalog.md`.
@@ -171,18 +192,24 @@ save/load-specific and event-specific traps that don't fit a simple chain.
 every reference this project's content can get wrong — unknown ids, unknown
 condition keys (fails closed, never silently unlocks), duplicate ids,
 stacked conditions, unreachable dialogue nodes, missing fallback
-`present_responses`/`examine_points` entries, and (for chapter-based cases)
-bad chapter/completion-event references. It does **not** attempt to prove
-content is *reachable* or *solvable* — see "Soft-lock risk" below for what
-that gap means in practice.
+`present_responses`/`examine_points` entries, (for chapter-based cases) bad
+chapter/completion-event references, and (Milestone 1.7) a cheap
+dependency-reachability WARNING when a condition requires a flag/evidence/
+interaction-complete id that no Effect anywhere in loaded content can ever
+produce (`_validate_dependency_reachability` — see `docs/testing.md`,
+"Progression dependency validation", for its deliberate scope and limits).
+It does **not** attempt to prove content is *reachable* or *solvable* — see
+"Soft-lock risk" below for what that gap means in practice.
 
 `smoke_test.gd` asserts the real sandbox content produces **zero** errors and
-**zero** warnings. That means: if your change makes `ContentValidator` print
-a new warning against real content, that is a regression to fix, not a
-message to shrug off — a "no generic present_responses fallback" warning, for
-instance, means presenting unrelated evidence to that NPC does nothing at all
-and gives the player no feedback, which is exactly the kind of soft dead end
-this project can't afford to accumulate as placeholder content grows.
+**zero unexpected** warnings (one dependency-reachability warning is a
+documented, named exception — `docs/testing.md` explains why). That means:
+if your change makes `ContentValidator` print a NEW warning against real
+content, that is a regression to fix, not a message to shrug off — a "no
+generic present_responses fallback" warning, for instance, means presenting
+unrelated evidence to that NPC does nothing at all and gives the player no
+feedback, which is exactly the kind of soft dead end this project can't
+afford to accumulate as placeholder content grows.
 
 ## Soft-lock risk — cheap checks, not a solver
 
@@ -227,10 +254,12 @@ mid-chapter round trips inside `_test_case_system` are the working templates.
 
 ## Test independence
 
-Follow `smoke_test.gd`'s own pattern: point `SaveManager.save_path` and
-`LocaleManager.settings_path` at throwaway `user://` filenames before
-touching either, and delete them when done — every copy of this project
-(including a git worktree) shares one real `user://` folder, so a stray write
+Use `TestHelpers.isolate_save(save_manager, "your_test_name")` /
+`TestHelpers.isolate_locale(...)` (`scenes/test/test_helpers.gd`) at the top
+of any test that touches `SaveManager`/`LocaleManager` — it points
+`save_path`/`settings_path` at a throwaway `user://` filename unique to that
+test and deletes any leftover file from a previous run. Every copy of this
+project (including a git worktree) shares one real `user://` folder, so a stray write
 lands in an actual player's save or settings. Reset to a known case
 (`game_state.start_new_game(...)` or `case_manager.start_case(...)`) at the
 start of any test function that needs clean state; only chain off a previous

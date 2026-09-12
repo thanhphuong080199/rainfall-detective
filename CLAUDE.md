@@ -16,24 +16,34 @@ godot --path .   # from repo root; or open project.godot in the editor and press
 ```
 Main scene: `scenes/main/TitleScreen.tscn`.
 
-Verify changes headlessly — do this (at least the content-validation step) before calling any change done:
+Verify changes headlessly — do this (at least the content-validation step) before calling any change done. `docs/testing.md` is the source of truth for test organization; the two canonical commands it defines:
 ```bash
-# Full check: import, load every script/scene, boot the main scene, run both test scripts.
+# FAST — routine development (assumes .godot/ already built):
+.claude/skills/godot-development/scripts/verify.sh --skip-import --skip-load-all --skip-boot \
+  --script res://scenes/test/validate_content.gd \
+  --script res://scenes/test/conditions_test.gd \
+  --script res://scenes/test/effects_test.gd \
+  --script res://scenes/test/dependency_analysis_test.gd
+
+# FULL — before finishing a milestone/refactor; also what CI runs on every push/PR:
 .claude/skills/godot-development/scripts/verify.sh \
   --script res://scenes/test/validate_content.gd \
+  --script res://scenes/test/conditions_test.gd \
+  --script res://scenes/test/effects_test.gd \
+  --script res://scenes/test/events_test.gd \
+  --script res://scenes/test/duplicate_execution_test.gd \
+  --script res://scenes/test/save_load_regression_test.gd \
+  --script res://scenes/test/negative_progression_test.gd \
+  --script res://scenes/test/dependency_analysis_test.gd \
   --script res://scenes/test/smoke_test.gd
-
-# Fast path after only editing data/*.json:
-.claude/skills/godot-development/scripts/verify.sh --skip-import --skip-load-all --skip-boot \
-  --script res://scenes/test/validate_content.gd
 ```
-Raw equivalents exist (`godot --headless --path . -s res://scenes/test/validate_content.gd` and `.../smoke_test.gd`) but **Godot's exit codes lie** — a `SCRIPT ERROR`, `push_error()`, or parse failure still exits 0, and a `-s` script that errors before calling `quit()` can hang indefinitely. `verify.sh` handles both (output-based pass/fail, per-step timeouts); prefer it over raw invocations. There is no separate lint/build step — import + boot + these two tests are the whole pipeline.
+Raw equivalents exist (`godot --headless --path . -s res://scenes/test/<name>.gd`) but **Godot's exit codes lie** — a `SCRIPT ERROR`, `push_error()`, or parse failure still exits 0, and a `-s` script that errors before calling `quit()` can hang indefinitely. `verify.sh` handles both (output-based pass/fail, per-step timeouts); prefer it over raw invocations. There is no separate lint/build step — import + boot + these test scripts are the whole pipeline, and `.github/workflows/verify.yml` runs the FULL command above in CI, reusing `verify.sh` rather than duplicating any check.
 
-`validate_content.gd` is fast, content-only (checks broken references in `data/`, exits 1 on any error). `smoke_test.gd` is the authoritative end-to-end check: drives every autoload through the full demo flow (examine/talk/present/move, conditions, events, event chains, save/load) and asserts zero `ContentValidator` errors *and* warnings; it prints `ALL TESTS PASSED` and exits 0 on success.
+`validate_content.gd` is fast, content-only (checks broken references *and* dependency-reachability smells in `data/`, exits 1 on any error). `conditions_test.gd`/`effects_test.gd`/`events_test.gd`/`duplicate_execution_test.gd`/`save_load_regression_test.gd`/`negative_progression_test.gd`/`dependency_analysis_test.gd` are small, independent focused tests — see `docs/testing.md` for what each covers and how to add a new one. `smoke_test.gd` is the critical-path/integration fixture: drives every autoload through the full demo flow (examine/talk/present/move, conditions, events, event chains, the two-chapter Test Case, save/load) and asserts zero *unexpected* `ContentValidator` errors/warnings; it prints `ALL TESTS PASSED` and exits 0 on success. A new Condition/Effect check goes in `conditions_test.gd`/`effects_test.gd`, never into `smoke_test.gd`.
 
 ## Architecture
 
-`docs/architecture.md`, `docs/content-guide.md`, `docs/event-system.md`, `docs/case-system.md`, and `docs/localization.md` are the source of truth — read the relevant one before non-trivial work; what follows is only a map. Where they and generic conventions disagree, the docs win.
+`docs/architecture.md`, `docs/content-guide.md`, `docs/event-system.md`, `docs/case-system.md`, `docs/localization.md`, and `docs/testing.md` are the source of truth — read the relevant one before non-trivial work; what follows is only a map. Where they and generic conventions disagree, the docs win.
 
 **The `.claude/skills/godot-development` project skill** (tracked in git, shared by everyone working on this repo) encodes this repo's Godot 4/GDScript conventions in full — typed GDScript, composition/signals/Resources, node lifecycle, scene ownership, when to add an autoload, avoiding NodePath coupling, resource loading, naming — plus the CLI verification workflow in detail. It auto-loads for any `.gd`/`.tscn`/`.tres`/`project.godot` work; read it and its `references/*.md` rather than re-deriving those rules.
 

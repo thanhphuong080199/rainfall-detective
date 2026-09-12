@@ -66,6 +66,20 @@ func has_seen(key: String) -> bool:
 	return seen_interactions.has(key)
 
 
+## Developer-only (Milestone 1.8 Case Debugger): removes `key` from
+## seen_interactions if present. No normal gameplay path ever calls this —
+## mark_seen() is a one-way "this happened" record everywhere else in this
+## project. See EventManager.debug_reset_trigger(), the only caller, for why
+## it exists and exactly what it does and does not undo: clearing a "seen"
+## marker never undoes an Effect that already ran because of it. Returns
+## false (a no-op) if the key wasn't present.
+func unmark_seen(key: String) -> bool:
+	if not seen_interactions.has(key):
+		return false
+	seen_interactions.erase(key)
+	return true
+
+
 ## Flags are always booleans. A non-boolean can only get in through content
 ## data (a case's initial_flags) or a hand-edited save, so it is reported
 ## loudly and treated as `default_value` rather than crashing the getter's
