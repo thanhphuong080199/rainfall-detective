@@ -25,8 +25,31 @@ func get_examine_points() -> Array:
 	return get_current_location().get("examine_points", [])
 
 
-func get_npcs() -> Array:
+## Every npc entry this location defines, unfiltered by presence — used by
+## debug tooling to show a character who has moved away (or hasn't arrived
+## yet) alongside those currently present. Gameplay code should use
+## get_npcs() instead.
+func get_all_npcs() -> Array:
 	return get_current_location().get("npcs", [])
+
+
+## NPCs actually present at this location right now (already filtered by
+## each entry's own optional "condition" — same "absent condition = always
+## available" shape topics and destinations already use). This is the whole
+## mechanism behind a character moving location: give the same character id
+## an npc entry in two different locations with complementary conditions
+## (usually driven by one flag an event sets — see docs/event-system.md,
+## "Character presence"), and this filter does the rest. No separate
+## add_character_to_location/remove_character_from_location effect exists —
+## see docs/architecture.md, "Key Architecture Decisions", for why that
+## would just be a second code path for what set_flag + condition already
+## does uniformly for everything else in this project.
+func get_npcs() -> Array:
+	var npcs: Array = []
+	for npc in get_all_npcs():
+		if ConditionEvaluator.evaluate(npc.get("condition")):
+			npcs.append(npc)
+	return npcs
 
 
 func get_npc(npc_id: String) -> Dictionary:
@@ -34,6 +57,14 @@ func get_npc(npc_id: String) -> Dictionary:
 		if npc.get("id", "") == npc_id:
 			return npc
 	return {}
+
+
+## Debug-only: why (if at all) a given npc entry is not currently present at
+## its location. Same shape as explain_topic_lock()/explain_destination_lock()
+## — see DebugPanel, the only caller.
+func explain_npc_presence(npc_entry: Dictionary) -> Dictionary:
+	var condition = npc_entry.get("condition")
+	return {"locked": not ConditionEvaluator.evaluate(condition), "conditions": ConditionEvaluator.explain(condition)}
 
 
 ## Every topic this NPC defines, unfiltered by condition — used by debug

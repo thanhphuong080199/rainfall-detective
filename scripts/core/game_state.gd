@@ -21,12 +21,14 @@ var variables: Dictionary = {}
 
 ## Generic "has this happened before" set, used for state that isn't a
 ## simple on/off flag: e.g. "has this topic been talked about", "has this
-## examine point been examined", "has this custom milestone occurred".
-## Keys are namespaced strings chosen by whoever calls mark_seen() — see
-## Investigation (topic:/examine: prefixes) and the "interaction_complete"
-## effect (custom: prefix) in dialogue_manager.gd. Never read/written
-## directly by content JSON; content only sees it through condition shapes
-## like {"examined": "..."} — see condition_evaluator.gd.
+## examine point been examined", "has this custom milestone occurred", "has
+## this event already triggered". Keys are namespaced strings chosen by
+## whoever calls mark_seen() — see Investigation (topic:/examine: prefixes),
+## the "mark_interaction_complete" effect (custom: prefix) in
+## effect_runner.gd, and EventManager (event: prefix, for a "once" event's
+## triggered state). Never read/written directly by content JSON; content
+## only sees it through condition shapes like {"examined": "..."} — see
+## condition_evaluator.gd.
 var seen_interactions: Array[String] = []
 
 

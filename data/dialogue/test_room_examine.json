@@ -6,13 +6,13 @@
       "n1": {
         "speaker": "",
         "expression": "",
-        "text": "The desk is cluttered with old papers. Something small and metallic glints from underneath a folder.",
+        "text": "DLG_EXAMINE_DESK_BEFORE_N1_TEXT",
         "next": "n2"
       },
       "n2": {
         "speaker": "",
         "expression": "",
-        "text": "You picked up the Old Key.",
+        "text": "DLG_EXAMINE_DESK_BEFORE_N2_TEXT",
         "actions": [
           { "type": "add_evidence", "evidence_id": "test_key" },
           { "type": "set_flag", "flag": "desk_examined", "value": true }
@@ -28,7 +28,7 @@
       "n1": {
         "speaker": "",
         "expression": "",
-        "text": "Just papers now. You already found what was hidden here.",
+        "text": "DLG_EXAMINE_DESK_AFTER_N1_TEXT",
         "next": null
       }
     }
@@ -40,13 +40,13 @@
       "n1": {
         "speaker": "",
         "expression": "",
-        "text": "The window overlooks a quiet street. A torn note is wedged in the frame.",
+        "text": "DLG_EXAMINE_WINDOW_BEFORE_N1_TEXT",
         "next": "n2"
       },
       "n2": {
         "speaker": "",
         "expression": "",
-        "text": "You picked up a Torn Note.",
+        "text": "DLG_EXAMINE_WINDOW_BEFORE_N2_TEXT",
         "actions": [{ "type": "add_evidence", "evidence_id": "test_note" }],
         "next": null
       }
@@ -59,7 +59,7 @@
       "n1": {
         "speaker": "",
         "expression": "",
-        "text": "Just the street outside. Nothing else catches your eye.",
+        "text": "DLG_EXAMINE_WINDOW_AFTER_N1_TEXT",
         "next": null
       }
     }

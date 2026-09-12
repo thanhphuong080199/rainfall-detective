@@ -11,5 +11,7 @@
 # Editor/OS cruft
 .DS_Store
 
-# Claude Code session state (not project content)
-.claude/
+# Claude Code session state (not project content) — except project skills,
+# which are shared with everyone working on the repo.
+.claude/*
+!.claude/skills/

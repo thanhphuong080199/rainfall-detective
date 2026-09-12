@@ -8,11 +8,20 @@ Restart the game (or re-run `scenes/test/smoke_test.gd`) to pick up changes —
 Read `docs/architecture.md` first if you haven't — it explains *why* the
 schema looks like this. This doc is the *how*.
 
+**Every `name`/`label`/`text`/`display_name`/`description` field below is a
+translation key, not literal text.** This project supports Vietnamese
+(default) and English — see `docs/localization.md` for the full design and
+the key-naming convention. Concretely: don't write
+`"text": "Hello there."` — write `"text": "DLG_SOME_DIALOGUE_N1_TEXT"`, then
+add a row for that key to `localization/strings.csv` with both an `en` and
+a `vi` value. `ContentValidator` treats a key missing from either locale as
+an error, the same severity as a broken id reference.
+
 General rules that apply everywhere below:
 
 - Every id (`character_a`, `test_key`, `examine_desk_before`, ...) must be
   unique **within its own category** (characters / evidence / locations /
-  dialogue trees / cases are separate namespaces). If you duplicate one, the
+  dialogue trees / cases / events are separate namespaces). If you duplicate one, the
   **later**-loaded entry wins — and load order isn't guaranteed, so which one
   that is isn't either. The content validator reports duplicates as errors
   and names both files, so just run it.
@@ -258,6 +267,26 @@ Add an entry to an NPC's `topics` array, inside that location's `npcs` list:
 ]
 ```
 
+**An npc entry can also take its own top-level `condition`** — omit it for a
+character who's always here (like every npc entry before this pass), or add
+one to make their presence itself conditional:
+
+```json
+"npcs": [
+  { "id": "character_a", "condition": { "flag": "character_a_moved", "equals": false }, "topics": [...] }
+]
+```
+
+This is how a character "moves" location: give them a second npc entry (with
+its own `topics`/`present_responses`) in a different location's JSON, with
+the complementary condition (`{ "flag": "character_a_moved" }`, no
+`equals`), and flip that one flag from an event — see
+`docs/event-system.md`, "Character presence," and `data/locations/test_room.json`
+/ `data/locations/test_hallway.json`'s `character_a` entries for the working
+example. `Investigation.get_npcs()` only returns npc entries whose
+`condition` currently passes, so a hidden character simply doesn't appear —
+no separate "locked" state to manage, exactly like a topic's own `condition`.
+
 Omit `condition` for a topic that's always available (like `greeting` in the
 existing content). A topic with a false condition simply doesn't appear in
 the Talk list — no separate "locked" state to manage.
@@ -313,6 +342,120 @@ missing, but listing them here makes the file self-documenting about what
 flags exist. `SaveManager.new_game("case_01_example")` (or edit the default
 argument in `scripts/save/save_manager.gd` / the call in
 `scripts/ui/title_screen.gd`) switches which case "New Game" boots into.
+
+**Optional: organize the case into Chapters.** Add `starting_chapter` and an
+ordered `chapters` array of chapter ids:
+
+```json
+{
+  "id": "case_01_example",
+  "display_name": "Example Case",
+  "start_location": "test_room",
+  "starting_chapter": "case_01_example_chapter_01",
+  "chapters": ["case_01_example_chapter_01", "case_01_example_chapter_02"],
+  "initial_flags": { "hallway_unlocked": false }
+}
+```
+
+A case that omits both fields (like `case_00_sandbox`) is a **flat case** —
+`CaseManager.start_case()` still works for it, it just never tracks a
+current chapter. See `docs/case-system.md` for the full design (why chapter
+completion reuses the Event system instead of a new one, runtime state,
+save/load, developer tools, ID-namespacing convention) and section 10 below
+for how to author a chapter.
+
+## 9. Add an event
+
+Create or add to `data/events/<file>.json` — like dialogue, each file holds
+an **array** of event objects:
+
+```json
+[
+  {
+    "id": "character_a_moves_to_hallway",
+    "conditions": {
+      "all": [
+        { "interaction_complete": "character_a_ready_to_move" },
+        { "has_evidence": "test_key" }
+      ]
+    },
+    "trigger_policy": "once",
+    "effects": [
+      { "type": "set_flag", "flag": "character_a_moved", "value": true }
+    ]
+  }
+]
+```
+
+- `conditions` — optional; the exact same mini-language as "Conditions
+  reference" below. Omit it for an event that fires the moment it's first
+  evaluated.
+- `trigger_policy` — `"once"` (default) or `"repeatable"` (fires again on
+  every false→true transition of `conditions`, not on every unrelated state
+  change while it stays true) — see `docs/event-system.md`, "Trigger
+  policies."
+- `effects` — a list of effect dictionaries, the exact same vocabulary as a
+  dialogue node's `actions` (see section 3 above) — `set_flag`,
+  `add_evidence`, `remove_evidence`, `mark_interaction_complete`. An event
+  with no effects does nothing when it fires; the validator warns about
+  this.
+
+Events are evaluated automatically whenever relevant game state changes —
+nothing plays them the way a dialogue tree or an examine variant is played.
+See `docs/event-system.md` for the full design, including how one event's
+effects can trigger another (event chains), how a character "moves" location
+this way (section 2 above), and how to debug/manually trigger an event from
+the F1 developer panel.
+
+## 10. Add a chapter
+
+Only relevant for a case that opted into Chapters (section 8 above). Create
+`data/chapters/<case_id>/<chapter_id>.json` — one chapter per file, id
+prefixed with the case id (see "ID namespacing" below):
+
+```json
+{
+  "id": "case_01_example_chapter_01",
+  "display_name": "Chapter 01",
+  "entry_effects": [],
+  "completion_event": "case_01_example_chapter_01_complete",
+  "next_chapter": "case_01_example_chapter_02"
+}
+```
+
+- `entry_effects` — optional; the same effect vocabulary as section 3 above
+  (`set_flag`, `add_evidence`, `remove_evidence`, `mark_interaction_complete`),
+  run once (via `EffectRunner`) the moment this chapter becomes current. Use
+  this to set a scope flag for content that should only be reachable during
+  this chapter (see "Chapter-scoped content" below).
+- `completion_event` — optional; the **id of a normal event** in
+  `data/events/*.json` (section 9 above). That event's `conditions` are this
+  chapter's completion conditions, and its `effects` are this chapter's
+  completion effects — there is no separate "chapter conditions"/"chapter
+  effects" shape to learn. A chapter with no `completion_event` can only be
+  completed manually, from the F1 debug panel's "Complete Current" button.
+- `next_chapter` — optional id of the chapter to activate once this one
+  completes. **Omit it entirely** on a case's last chapter (don't write
+  `"next_chapter": null`) — that chapter completing instead completes the
+  case.
+
+**Chapter-scoped content**: to make a topic/examine variant/event only
+reachable during one chapter, have that chapter's `entry_effects` set a flag
+(e.g. `case_01_example_chapter_02_active`), and add `{"flag": "..."}` to
+that content's own `condition` (or `all`-nest it into an event's
+`conditions`) — the same `set_flag` + `condition` idiom every other
+"unlock" in this project already uses, just applied to "unlock for the
+duration of a chapter." See `data/locations/test_hallway.json`'s
+`chapter_02_debrief` topic for the working example, and
+`docs/case-system.md`, "Event/content scope," for why this is the chosen
+mechanism instead of a dedicated case/chapter condition type.
+
+`ContentDB`/`ContentValidator` treat `chapters` as their own content
+category, exactly like `characters`/`evidence`/`locations`/etc — a duplicate
+chapter id, an unknown `completion_event`/`next_chapter` reference, or a
+case's `starting_chapter`/`chapters` pointing at something that doesn't
+exist are all reported the same way section 8's validator errors already
+are. See `docs/case-system.md`, "Content validation".
 
 ## Conditions reference
 
@@ -396,6 +539,19 @@ problem). Errors it catches:
   `true` or `false`.
 - A condition object holding more than one check (see "Conditions reference"
   above) — only one of them would ever be evaluated.
+- The same reference/shape checks, applied to `data/events/*.json`: an
+  unknown `trigger_policy`, and everything a dialogue's `actions`/conditions
+  already get applied to an event's `effects`/`conditions` too — see
+  `docs/event-system.md`, "Content validation."
+- For a case that uses Chapters (section 8/10 above): an unknown chapter id
+  referenced from `chapters`/`starting_chapter`/`next_chapter`, a missing
+  `starting_chapter`, an obvious chapter-transition cycle, and a chapter's
+  `completion_event` referencing an unknown event — see `docs/case-system.md`,
+  "Content validation." A flat case (no `chapters` field) gets none of these
+  checks, by design.
+- A translation key (any `name`/`label`/`text`/`display_name`/`description`
+  field) missing an entry in `localization/strings.csv` for either
+  supported locale — see `docs/localization.md`, "Content validation."
 
 And warnings (which do **not** fail the run) for easy-to-forget structural
 gaps: a `present_responses` list with no generic fallback entry, an NPC with
@@ -416,15 +572,23 @@ nothing ever sets the flag it needs" or similar design-level gaps.
 ## Developer tools
 
 Press **F1** in a running debug build to open a developer overlay showing
-the current location, evidence held, every flag, visited locations, and —
-per NPC topic and per destination — whether it's available or locked, with
-the specific missing condition(s) listed if it's locked. From there you can
-toggle any flag, add/remove any evidence id, jump straight to any location
-id (skipping that destination's `condition` — useful for reaching content
-deep in a case without replaying everything to unlock it), or reset the
-sandbox back to the case's starting state. **Esc** closes it. When a topic is
-locked behind an `any`, the panel shows the alternatives as one grouped line
-(`ANY of: (... OR ...)`) rather than listing each as separately missing — you
-only need one of them. It's gone entirely in an
-exported release build (`OS.is_debug_build()` is false there) — nothing to
-remember to strip out later. See `docs/architecture.md`, "Developer tools".
+the current location, evidence held, every flag, visited locations, every
+NPC's presence (present/absent, per location) and topics, every destination,
+and every event's status — each with the specific missing condition(s)
+listed if it's locked/absent/not-yet-triggered. From there you can toggle
+any flag, add/remove any evidence id, jump straight to any location id
+(skipping that destination's `condition` — useful for reaching content deep
+in a case without replaying everything to unlock it), manually trigger any
+event by id (bypassing its `conditions`/`trigger_policy` — useful for
+testing an event's effects without replaying everything that would normally
+satisfy it), or reset the current case back to its starting state. **Esc**
+closes it. When a topic/event is locked behind an `any`, the panel shows the
+alternatives as one grouped line (`ANY of: (... OR ...)`) rather than listing
+each as separately missing — you only need one of them. It's gone entirely
+in an exported release build (`OS.is_debug_build()` is false there) —
+nothing to remember to strip out later. A **CASE** section additionally
+shows the current case/chapter and why the current chapter hasn't completed
+yet, with actions to start any case by id, jump to any chapter, or force the
+current chapter to complete. See `docs/architecture.md`, "Developer tools",
+`docs/event-system.md`, "Developer tools", and `docs/case-system.md`,
+"Developer tools".

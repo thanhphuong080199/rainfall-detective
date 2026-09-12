@@ -60,9 +60,12 @@ func load_game() -> bool:
 
 ## Starts a fresh game for the given case, discarding current in-memory
 ## state. Does not touch the save file on disk — the player must explicitly
-## Save afterwards if they want to overwrite it.
+## Save afterwards if they want to overwrite it. Routed through
+## CaseManager.start_case() rather than GameState.start_new_game() directly
+## so any case — chapter-based or flat — gets its chapter state (if any)
+## initialized the same way; see docs/case-system.md, "Case initialization".
 func new_game(case_id: String = "case_00_sandbox") -> void:
-	GameState.start_new_game(case_id)
+	CaseManager.start_case(case_id)
 
 
 func delete_save() -> void:

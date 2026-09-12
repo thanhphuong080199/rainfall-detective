@@ -1,17 +1,33 @@
 {
   "id": "test_hallway",
-  "name": "Test Hallway",
+  "name": "LOC_TEST_HALLWAY_NAME",
   "background_color": "#3E3A4E",
   "npcs": [
     {
+      "id": "character_a",
+      "condition": { "flag": "character_a_moved" },
+      "topics": [
+        { "id": "greeting_hallway", "label": "LOC_TEST_HALLWAY_TOPIC_CHARACTER_A_GREETING_HALLWAY_LABEL", "dialogue_id": "character_a_greeting_hallway" }
+      ],
+      "present_responses": [
+        { "dialogue_id": "character_a_present_generic" }
+      ]
+    },
+    {
       "id": "character_b",
       "topics": [
-        { "id": "greeting", "label": "Say hello", "dialogue_id": "character_b_greeting" },
+        { "id": "greeting", "label": "LOC_TEST_HALLWAY_TOPIC_CHARACTER_B_GREETING_LABEL", "dialogue_id": "character_b_greeting" },
         {
           "id": "clue",
-          "label": "Ask about the badge",
+          "label": "LOC_TEST_HALLWAY_TOPIC_CHARACTER_B_CLUE_LABEL",
           "dialogue_id": "character_b_clue",
           "condition": { "all": [{ "has_evidence": "test_key" }, { "has_evidence": "test_badge" }] }
+        },
+        {
+          "id": "chapter_02_debrief",
+          "label": "LOC_TEST_HALLWAY_TOPIC_CHARACTER_B_CHAPTER_02_DEBRIEF_LABEL",
+          "dialogue_id": "character_b_chapter_02_debrief",
+          "condition": { "flag": "test_case_chapter_02_active" }
         }
       ],
       "present_responses": [
@@ -23,7 +39,7 @@
   "examine_points": [
     {
       "id": "shelf",
-      "label": "Examine the Shelf",
+      "label": "LOC_TEST_HALLWAY_EXAMINE_SHELF_LABEL",
       "variants": [
         { "condition": { "has_evidence": "test_badge" }, "dialogue_id": "examine_shelf_after" },
         { "dialogue_id": "examine_shelf_before" }
@@ -31,14 +47,15 @@
     },
     {
       "id": "mirror",
-      "label": "Examine the Mirror",
+      "label": "LOC_TEST_HALLWAY_EXAMINE_MIRROR_LABEL",
       "variants": [
+        { "condition": { "flag": "mirror_note_ready" }, "dialogue_id": "examine_mirror_note_ready" },
         { "condition": { "examined": "mirror" }, "dialogue_id": "examine_mirror_after" },
         { "dialogue_id": "examine_mirror_before" }
       ]
     }
   ],
   "destinations": [
-    { "location_id": "test_room", "label": "Back to the Room" }
+    { "location_id": "test_room", "label": "LOC_TEST_HALLWAY_DEST_TEST_ROOM_LABEL" }
   ]
 }

@@ -6,13 +6,13 @@
       "n1": {
         "speaker": "",
         "expression": "",
-        "text": "A dusty shelf. Something is tucked behind a stack of boxes.",
+        "text": "DLG_EXAMINE_SHELF_BEFORE_N1_TEXT",
         "next": "n2"
       },
       "n2": {
         "speaker": "",
         "expression": "",
-        "text": "You picked up a Brass Badge.",
+        "text": "DLG_EXAMINE_SHELF_BEFORE_N2_TEXT",
         "actions": [{ "type": "add_evidence", "evidence_id": "test_badge" }],
         "next": null
       }
@@ -25,7 +25,7 @@
       "n1": {
         "speaker": "",
         "expression": "",
-        "text": "Just an empty shelf now.",
+        "text": "DLG_EXAMINE_SHELF_AFTER_N1_TEXT",
         "next": null
       }
     }
@@ -37,7 +37,7 @@
       "n1": {
         "speaker": "",
         "expression": "",
-        "text": "A plain mirror hangs on the wall. Your reflection looks tired. This is a flavor-only examine point — it grants no evidence, and demonstrates the \"examined\" condition instead of an evidence-gated variant.",
+        "text": "DLG_EXAMINE_MIRROR_BEFORE_N1_TEXT",
         "next": null
       }
     }
@@ -49,7 +49,19 @@
       "n1": {
         "speaker": "",
         "expression": "",
-        "text": "Just your reflection again. Nothing new to see.",
+        "text": "DLG_EXAMINE_MIRROR_AFTER_N1_TEXT",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "examine_mirror_note_ready",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_EXAMINE_MIRROR_NOTE_READY_N1_TEXT",
         "next": null
       }
     }

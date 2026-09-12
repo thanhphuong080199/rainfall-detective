@@ -1,0 +1,29 @@
+[
+  {
+    "id": "test_case_chapter_01_complete",
+    "conditions": {
+      "all": [
+        { "flag": "character_a_moved" },
+        { "visited_location": "test_hallway" },
+        { "interaction_complete": "talked_to_character_a_in_hallway" }
+      ]
+    },
+    "trigger_policy": "once",
+    "effects": [
+      { "type": "set_flag", "flag": "test_case_chapter_01_complete", "value": true }
+    ]
+  },
+  {
+    "id": "test_case_chapter_02_complete",
+    "conditions": {
+      "all": [
+        { "flag": "test_case_chapter_02_active" },
+        { "interaction_complete": "chapter_02_debrief_done" }
+      ]
+    },
+    "trigger_policy": "once",
+    "effects": [
+      { "type": "set_flag", "flag": "test_case_complete", "value": true }
+    ]
+  }
+]

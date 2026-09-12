@@ -2,9 +2,10 @@ extends Node
 ## Autoload: ContentDB
 ##
 ## Loads and caches every piece of data-driven content (characters, evidence,
-## locations, dialogue trees, cases) from plain JSON files under res://data/
-## at startup. This is the ONLY system that reads data/ directly — everything
-## else (DialogueManager, Investigation, UI) goes through the getters below.
+## locations, dialogue trees, cases, events) from plain JSON files under
+## res://data/ at startup. This is the ONLY system that reads data/ directly —
+## everything else (DialogueManager, Investigation, EventManager, UI) goes
+## through the getters below.
 ## Centralizing access here means a typo in a content key breaks loudly in
 ## one place instead of being repeated across every consumer.
 ##
@@ -20,7 +21,9 @@ var _characters: Dictionary = {}
 var _evidence: Dictionary = {}
 var _locations: Dictionary = {}
 var _dialogues: Dictionary = {}
+var _chapters: Dictionary = {}
 var _cases: Dictionary = {}
+var _events: Dictionary = {}
 var _last_validation_result: Dictionary = {}
 
 ## Duplicate-id collisions noticed while loading, as ready-to-print messages.
@@ -36,9 +39,11 @@ func _ready() -> void:
 	_evidence = _load_json_dir(DATA_ROOT + "/evidence")
 	_locations = _load_json_dir(DATA_ROOT + "/locations")
 	_dialogues = _load_json_dir(DATA_ROOT + "/dialogue", true)
+	_chapters = _load_json_dir(DATA_ROOT + "/chapters")
 	_cases = _load_json_dir(DATA_ROOT + "/cases")
-	print("[ContentDB] loaded %d characters, %d evidence, %d locations, %d dialogue trees, %d cases" % [
-		_characters.size(), _evidence.size(), _locations.size(), _dialogues.size(), _cases.size(),
+	_events = _load_json_dir(DATA_ROOT + "/events", true)
+	print("[ContentDB] loaded %d characters, %d evidence, %d locations, %d dialogue trees, %d chapters, %d cases, %d events" % [
+		_characters.size(), _evidence.size(), _locations.size(), _dialogues.size(), _chapters.size(), _cases.size(), _events.size(),
 	])
 	_last_validation_result = ContentValidator.validate()
 	ContentValidator.report(_last_validation_result)
@@ -73,8 +78,16 @@ func get_dialogue(dialogue_id: String) -> Dictionary:
 	return _dialogues.get(dialogue_id, {})
 
 
+func get_chapter(chapter_id: String) -> Dictionary:
+	return _chapters.get(chapter_id, {})
+
+
 func get_case(case_id: String) -> Dictionary:
 	return _cases.get(case_id, {})
+
+
+func get_event(event_id: String) -> Dictionary:
+	return _events.get(event_id, {})
 
 
 func get_all_evidence_ids() -> Array:
@@ -93,8 +106,16 @@ func get_all_dialogue_ids() -> Array:
 	return _dialogues.keys()
 
 
+func get_all_chapter_ids() -> Array:
+	return _chapters.keys()
+
+
 func get_all_case_ids() -> Array:
 	return _cases.keys()
+
+
+func get_all_event_ids() -> Array:
+	return _events.keys()
 
 
 ## Raw id -> content dictionaries, for systems that need to iterate every
@@ -117,8 +138,16 @@ func get_all_evidence() -> Dictionary:
 	return _evidence
 
 
+func get_all_chapters() -> Dictionary:
+	return _chapters
+
+
 func get_all_cases() -> Dictionary:
 	return _cases
+
+
+func get_all_events() -> Dictionary:
+	return _events
 
 
 ## Loads every *.json file inside `dir_path`, recursing into subfolders so a

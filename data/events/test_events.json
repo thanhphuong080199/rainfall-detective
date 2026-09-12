@@ -1,0 +1,31 @@
+[
+  {
+    "id": "character_a_moves_to_hallway",
+    "conditions": {
+      "all": [
+        { "interaction_complete": "character_a_ready_to_move" },
+        { "has_evidence": "test_key" }
+      ]
+    },
+    "trigger_policy": "once",
+    "effects": [
+      { "type": "set_flag", "flag": "character_a_moved", "value": true }
+    ]
+  },
+  {
+    "id": "mirror_note_ready",
+    "conditions": { "flag": "character_a_moved" },
+    "trigger_policy": "once",
+    "effects": [
+      { "type": "set_flag", "flag": "mirror_note_ready", "value": true }
+    ]
+  },
+  {
+    "id": "test_repeatable_pulse",
+    "conditions": { "flag": "pulse_flag" },
+    "trigger_policy": "repeatable",
+    "effects": [
+      { "type": "mark_interaction_complete", "id": "test_repeatable_pulse_ran" }
+    ]
+  }
+]

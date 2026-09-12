@@ -6,13 +6,13 @@
       "n1": {
         "speaker": "character_b",
         "expression": "normal",
-        "text": "...Oh. Didn't see you there.",
+        "text": "DLG_CHARACTER_B_GREETING_N1_TEXT",
         "next": "n2"
       },
       "n2": {
         "speaker": "character_b",
         "expression": "normal",
-        "text": "Can I help you?",
+        "text": "DLG_CHARACTER_B_GREETING_N2_TEXT",
         "actions": [{ "type": "mark_interaction_complete", "id": "met_character_b" }],
         "next": null
       }
@@ -25,13 +25,13 @@
       "n1": {
         "speaker": "character_b",
         "expression": "surprised",
-        "text": "You found the badge too? And the key...",
+        "text": "DLG_CHARACTER_B_CLUE_N1_TEXT",
         "next": "n2"
       },
       "n2": {
         "speaker": "character_b",
         "expression": "angry",
-        "text": "...That's not something I wanted anyone to see. Fine — ask your questions.",
+        "text": "DLG_CHARACTER_B_CLUE_N2_TEXT",
         "next": null
       }
     }
@@ -43,7 +43,7 @@
       "n1": {
         "speaker": "character_b",
         "expression": "angry",
-        "text": "Where did you get that?! That's mine.",
+        "text": "DLG_CHARACTER_B_PRESENT_BADGE_N1_TEXT",
         "next": null
       }
     }
@@ -55,7 +55,7 @@
       "n1": {
         "speaker": "character_b",
         "expression": "normal",
-        "text": "That doesn't belong to me.",
+        "text": "DLG_CHARACTER_B_PRESENT_GENERIC_N1_TEXT",
         "next": null
       }
     }

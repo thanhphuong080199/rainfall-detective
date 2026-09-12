@@ -20,6 +20,12 @@ extends RefCounted
 ##   warnings — a content smell that isn't broken yet but likely should be
 ##              fixed (e.g. a present_responses list with no generic
 ##              fallback — see docs/content-guide.md section 7).
+##
+## Also validates data/events/*.json (see docs/event-system.md) — an event's
+## "conditions" and "effects" reuse the exact same checks (_validate_condition,
+## _validate_effects) dialogue/topic/destination conditions and dialogue
+## actions already go through, plus a couple of event-specific checks
+## (unknown trigger_policy, a repeatable event that can't self-reset).
 
 static func validate() -> Dictionary:
 	var errors: Array[String] = []
@@ -30,7 +36,9 @@ static func validate() -> Dictionary:
 	_validate_evidence(errors, warnings)
 	_validate_locations(errors, warnings)
 	_validate_dialogues(errors, warnings)
+	_validate_chapters(errors, warnings)
 	_validate_cases(errors, warnings)
+	_validate_events(errors, warnings)
 
 	return {"errors": errors, "warnings": warnings}
 
@@ -45,11 +53,11 @@ static func report(result: Dictionary) -> void:
 		print("[ContentValidator] ERROR: %s" % message)
 	for message in warnings:
 		print("[ContentValidator] WARNING: %s" % message)
-	print("[ContentValidator] %d error(s), %d warning(s) across %d characters, %d evidence, %d locations, %d dialogue trees, %d cases" % [
+	print("[ContentValidator] %d error(s), %d warning(s) across %d characters, %d evidence, %d locations, %d dialogue trees, %d chapters, %d cases, %d events" % [
 		errors.size(), warnings.size(),
 		ContentDB.get_all_character_ids().size(), ContentDB.get_all_evidence_ids().size(),
 		ContentDB.get_all_location_ids().size(), ContentDB.get_all_dialogue_ids().size(),
-		ContentDB.get_all_case_ids().size(),
+		ContentDB.get_all_chapter_ids().size(), ContentDB.get_all_case_ids().size(), ContentDB.get_all_event_ids().size(),
 	])
 
 
@@ -91,6 +99,7 @@ static func _validate_characters(errors: Array[String], warnings: Array[String])
 	var characters: Dictionary = ContentDB.get_all_characters()
 	for character_id in characters:
 		var data: Dictionary = characters[character_id]
+		_validate_translatable(data.get("name", ""), 'Character "%s" name' % character_id, errors)
 		var expressions: Dictionary = data.get("expressions", {})
 		if expressions.is_empty():
 			warnings.append('Character "%s" has no expressions defined' % character_id)
@@ -113,6 +122,9 @@ static func _validate_evidence(errors: Array[String], warnings: Array[String]) -
 			warnings.append('Evidence "%s" references missing icon "%s"' % [evidence_id, icon_color])
 		if String(data.get("detailed_description", "")).is_empty():
 			warnings.append('Evidence "%s" has no detailed_description (shown in the inventory detail panel)' % evidence_id)
+		_validate_translatable(data.get("name", ""), 'Evidence "%s" name' % evidence_id, errors)
+		_validate_translatable(data.get("short_description", ""), 'Evidence "%s" short_description' % evidence_id, errors)
+		_validate_translatable(data.get("detailed_description", ""), 'Evidence "%s" detailed_description' % evidence_id, errors)
 
 
 # ---------------------------------------------------------------------------
@@ -122,6 +134,7 @@ static func _validate_locations(errors: Array[String], warnings: Array[String]) 
 	var locations: Dictionary = ContentDB.get_all_locations()
 	for location_id in locations:
 		var data: Dictionary = locations[location_id]
+		_validate_translatable(data.get("name", ""), 'Location "%s" name' % location_id, errors)
 		var npcs: Array = data.get("npcs", [])
 		var examine_points: Array = data.get("examine_points", [])
 		var destinations: Array = data.get("destinations", [])
@@ -145,6 +158,7 @@ static func _validate_npcs(location_id: String, npcs: Array, errors: Array[Strin
 			continue
 		if ContentDB.get_character(npc_id).is_empty():
 			errors.append('Location "%s" npc "%s" is not a known character' % [location_id, npc_id])
+		_validate_condition(npc.get("condition"), 'Location "%s" npc "%s" presence condition' % [location_id, npc_id], errors, location_id)
 
 		_validate_unique_ids(npc.get("topics", []), "id", 'Location "%s" npc "%s" topics' % [location_id, npc_id], errors)
 		for topic in npc.get("topics", []):
@@ -156,6 +170,7 @@ static func _validate_npcs(location_id: String, npcs: Array, errors: Array[Strin
 			if dialogue_id == "" or ContentDB.get_dialogue(dialogue_id).is_empty():
 				errors.append('Location "%s" npc "%s" topic "%s" references unknown dialogue "%s"' % [location_id, npc_id, topic_id, dialogue_id])
 			_validate_condition(topic.get("condition"), 'Location "%s" npc "%s" topic "%s" condition' % [location_id, npc_id, topic_id], errors, location_id)
+			_validate_translatable(topic.get("label", ""), 'Location "%s" npc "%s" topic "%s" label' % [location_id, npc_id, topic_id], errors)
 
 		var present_responses: Array = npc.get("present_responses", [])
 		var has_generic_fallback := false
@@ -185,6 +200,7 @@ static func _validate_examine_points(location_id: String, examine_points: Array,
 			errors.append('Location "%s" has a malformed examine_points entry' % location_id)
 			continue
 		var point_id: String = point.get("id", "")
+		_validate_translatable(point.get("label", ""), 'Location "%s" examine point "%s" label' % [location_id, point_id], errors)
 		var variants: Array = point.get("variants", [])
 		if variants.is_empty():
 			errors.append('Location "%s" examine point "%s" has no variants' % [location_id, point_id])
@@ -213,6 +229,7 @@ static func _validate_destinations(location_id: String, destinations: Array, err
 		if destination_id == "" or ContentDB.get_location(destination_id).is_empty():
 			errors.append('Location "%s" destination references unknown location "%s"' % [location_id, destination_id])
 		_validate_condition(destination.get("condition"), 'Location "%s" destination "%s" condition' % [location_id, destination_id], errors, location_id)
+		_validate_translatable(destination.get("label", ""), 'Location "%s" destination "%s" label' % [location_id, destination_id], errors)
 
 
 ## Checks the id references inside a condition (has_evidence / visited_location
@@ -373,7 +390,8 @@ static func _validate_dialogue_node(dialogue_id: String, node_id, node: Dictiona
 		if not expressions.is_empty() and not expressions.has(expression):
 			errors.append('Dialogue "%s" node "%s" references unknown expression "%s" for character "%s"' % [dialogue_id, node_id, expression, speaker])
 
-	_validate_actions(node.get("actions", []), dialogue_id, node_id, "", errors, warnings)
+	_validate_effects(node.get("actions", []), 'Dialogue "%s" node "%s"' % [dialogue_id, node_id], errors, warnings)
+	_validate_translatable(node.get("text", ""), 'Dialogue "%s" node "%s" text' % [dialogue_id, node_id], errors)
 
 	var next_id = node.get("next")
 	if next_id != null and String(next_id) != "" and not nodes.has(next_id):
@@ -385,38 +403,43 @@ static func _validate_dialogue_node(dialogue_id: String, node_id, node: Dictiona
 		if typeof(choice) != TYPE_DICTIONARY:
 			errors.append('Dialogue "%s" node "%s" choice %d is not an object' % [dialogue_id, node_id, i])
 			continue
-		_validate_actions(choice.get("actions", []), dialogue_id, node_id, "choice %d " % i, errors, warnings)
+		_validate_effects(choice.get("actions", []), 'Dialogue "%s" node "%s" choice %d' % [dialogue_id, node_id, i], errors, warnings)
 		var choice_next = choice.get("next")
 		if choice_next != null and String(choice_next) != "" and not nodes.has(choice_next):
 			errors.append('Dialogue "%s" node "%s" choice %d next references unknown node "%s"' % [dialogue_id, node_id, i, choice_next])
 		_validate_condition(choice.get("condition"), 'Dialogue "%s" node "%s" choice %d condition' % [dialogue_id, node_id, i], errors)
+		_validate_translatable(choice.get("text", ""), 'Dialogue "%s" node "%s" choice %d text' % [dialogue_id, node_id, i], errors)
 
 
-static func _validate_actions(actions, dialogue_id: String, node_id, prefix: String, errors: Array[String], warnings: Array[String]) -> void:
-	if typeof(actions) != TYPE_ARRAY:
+## Validates a list of effect dictionaries — the one shared vocabulary both
+## dialogue "actions" and event "effects" use (see EffectRunner). `context`
+## is a full, pre-formatted description of where this list came from,
+## exactly like _validate_condition()'s `context` parameter.
+static func _validate_effects(effects, context: String, errors: Array[String], warnings: Array[String]) -> void:
+	if typeof(effects) != TYPE_ARRAY:
 		return
-	for action in actions:
-		if typeof(action) != TYPE_DICTIONARY:
-			errors.append('Dialogue "%s" node "%s" %shas a malformed action' % [dialogue_id, node_id, prefix])
+	for effect in effects:
+		if typeof(effect) != TYPE_DICTIONARY:
+			errors.append('%s has a malformed effect' % context)
 			continue
-		var action_type: String = action.get("type", "")
-		match action_type:
+		var effect_type: String = effect.get("type", "")
+		match effect_type:
 			"set_flag":
-				if String(action.get("flag", "")).is_empty():
-					errors.append('Dialogue "%s" node "%s" %saction "set_flag" is missing "flag"' % [dialogue_id, node_id, prefix])
-				if action.has("value") and typeof(action.get("value")) != TYPE_BOOL:
-					errors.append('Dialogue "%s" node "%s" %saction "set_flag" value must be true or false, got %s' % [dialogue_id, node_id, prefix, action.get("value")])
+				if String(effect.get("flag", "")).is_empty():
+					errors.append('%s effect "set_flag" is missing "flag"' % context)
+				if effect.has("value") and typeof(effect.get("value")) != TYPE_BOOL:
+					errors.append('%s effect "set_flag" value must be true or false, got %s' % [context, effect.get("value")])
 			"add_evidence", "remove_evidence":
-				var evidence_id: String = action.get("evidence_id", "")
+				var evidence_id: String = effect.get("evidence_id", "")
 				if evidence_id == "" or ContentDB.get_evidence(evidence_id).is_empty():
-					errors.append('Dialogue "%s" node "%s" %saction "%s" references unknown evidence "%s"' % [dialogue_id, node_id, prefix, action_type, evidence_id])
+					errors.append('%s effect "%s" references unknown evidence "%s"' % [context, effect_type, evidence_id])
 			"mark_interaction_complete":
-				if String(action.get("id", "")).is_empty():
-					errors.append('Dialogue "%s" node "%s" %saction "mark_interaction_complete" is missing "id"' % [dialogue_id, node_id, prefix])
+				if String(effect.get("id", "")).is_empty():
+					errors.append('%s effect "mark_interaction_complete" is missing "id"' % context)
 			"":
-				errors.append('Dialogue "%s" node "%s" %shas an action with no "type"' % [dialogue_id, node_id, prefix])
+				errors.append('%s has an effect with no "type"' % context)
 			_:
-				warnings.append('Dialogue "%s" node "%s" %shas an action with unknown type "%s"' % [dialogue_id, node_id, prefix, action_type])
+				warnings.append('%s has an effect with unknown type "%s" — supported types are %s' % [context, effect_type, ", ".join(EffectRunner.KNOWN_TYPES)])
 
 
 # ---------------------------------------------------------------------------
@@ -429,13 +452,171 @@ static func _validate_cases(errors: Array[String], warnings: Array[String]) -> v
 		var start_location: String = data.get("start_location", "")
 		if start_location == "" or ContentDB.get_location(start_location).is_empty():
 			errors.append('Case "%s" start_location "%s" is not a known location' % [case_id, start_location])
+		_validate_translatable(data.get("display_name", data.get("title", "")), 'Case "%s" display_name' % case_id, errors)
+		if data.has("description"):
+			_validate_translatable(data.get("description", ""), 'Case "%s" description' % case_id, errors)
 		var initial_flags = data.get("initial_flags", {})
 		if typeof(initial_flags) != TYPE_DICTIONARY:
 			errors.append('Case "%s" initial_flags must be an object' % case_id)
+		else:
+			for flag_name in initial_flags:
+				if typeof(initial_flags[flag_name]) != TYPE_BOOL:
+					errors.append('Case "%s" initial flag "%s" must be true or false, got %s' % [case_id, flag_name, initial_flags[flag_name]])
+		_validate_case_chapters(case_id, data, errors)
+
+
+## Chapter fields are entirely opt-in — a case with no (or an empty)
+## "chapters" array is a flat/legacy case (case_00_sandbox) and is skipped
+## here completely, so this adds zero validation noise for existing content.
+## See docs/case-system.md, "Content validation".
+static func _validate_case_chapters(case_id: String, data: Dictionary, errors: Array[String]) -> void:
+	var chapters = data.get("chapters", [])
+	if typeof(chapters) != TYPE_ARRAY or chapters.is_empty():
+		return
+
+	# Only ids that are both known chapters AND declared by this case — used
+	# below so a next_chapter pointing at a real chapter that just isn't
+	# *this* case's is still flagged (catches a chapter reused/misrouted
+	# across cases).
+	var declared: Dictionary = {}
+	for raw_chapter_id in chapters:
+		var chapter_id: String = String(raw_chapter_id)
+		if ContentDB.get_chapter(chapter_id).is_empty():
+			errors.append('Case "%s" chapters references unknown chapter "%s"' % [case_id, chapter_id])
 			continue
-		for flag_name in initial_flags:
-			if typeof(initial_flags[flag_name]) != TYPE_BOOL:
-				errors.append('Case "%s" initial flag "%s" must be true or false, got %s' % [case_id, flag_name, initial_flags[flag_name]])
+		declared[chapter_id] = true
+
+	var starting_chapter: String = data.get("starting_chapter", "")
+	if starting_chapter == "":
+		errors.append('Case "%s" declares chapters but has no starting_chapter' % case_id)
+	elif not declared.has(starting_chapter):
+		errors.append('Case "%s" starting_chapter "%s" is not in its own chapters list' % [case_id, starting_chapter])
+	else:
+		_validate_chapter_chain(case_id, starting_chapter, declared, errors)
+
+
+## Walks next_chapter from starting_chapter, bounded by the case's own
+## declared chapter count — catches an obvious transition cycle and a
+## next_chapter that leaks outside this case's chapters list. Not a proof
+## every chapter is reachable or that the case is completable (a chapter
+## listed in "chapters" but never pointed at by any next_chapter is
+## legitimate mid-authoring) — same stance ContentValidator already takes on
+## unreferenced dialogue, see docs/architecture.md's "Known limitations".
+static func _validate_chapter_chain(case_id: String, starting_chapter: String, declared: Dictionary, errors: Array[String]) -> void:
+	var visited: Dictionary = {}
+	var current: String = starting_chapter
+	var steps := 0
+	var max_steps: int = declared.size() + 1
+	while current != "" and steps <= max_steps:
+		if visited.has(current):
+			errors.append('Case "%s" has a chapter transition cycle starting at "%s"' % [case_id, current])
+			return
+		visited[current] = true
+		steps += 1
+		var next_chapter: String = ContentDB.get_chapter(current).get("next_chapter", "")
+		if next_chapter == "":
+			return
+		if not declared.has(next_chapter):
+			errors.append('Case "%s" chapter "%s" next_chapter "%s" is not in this case\'s chapters list' % [case_id, current, next_chapter])
+			return
+		current = next_chapter
+
+
+# ---------------------------------------------------------------------------
+# Chapters
+
+## Validates every loaded chapter's own fields (entry_effects, and the
+## chapter/event references a case can't check on its behalf, since those
+## are meaningful independent of which case — if any — currently lists this
+## chapter). See docs/case-system.md.
+static func _validate_chapters(errors: Array[String], warnings: Array[String]) -> void:
+	var chapters: Dictionary = ContentDB.get_all_chapters()
+	for chapter_id in chapters:
+		var data: Dictionary = chapters[chapter_id]
+		_validate_effects(data.get("entry_effects", []), 'Chapter "%s" entry_effects' % chapter_id, errors, warnings)
+		_validate_translatable(data.get("display_name", ""), 'Chapter "%s" display_name' % chapter_id, errors)
+
+		var completion_event: String = data.get("completion_event", "")
+		if completion_event != "":
+			var event: Dictionary = ContentDB.get_event(completion_event)
+			if event.is_empty():
+				errors.append('Chapter "%s" completion_event references unknown event "%s"' % [chapter_id, completion_event])
+			elif event.get("trigger_policy", "once") == "repeatable":
+				warnings.append('Chapter "%s" completion_event "%s" is "repeatable" — a chapter should only complete once, use "once"' % [chapter_id, completion_event])
+
+		var next_chapter: String = data.get("next_chapter", "")
+		if next_chapter != "" and ContentDB.get_chapter(next_chapter).is_empty():
+			errors.append('Chapter "%s" next_chapter references unknown chapter "%s"' % [chapter_id, next_chapter])
+
+
+# ---------------------------------------------------------------------------
+# Events
+
+const KNOWN_TRIGGER_POLICIES := ["once", "repeatable"]
+
+static func _validate_events(errors: Array[String], warnings: Array[String]) -> void:
+	var events: Dictionary = ContentDB.get_all_events()
+	for event_id in events:
+		var data: Dictionary = events[event_id]
+
+		var policy: String = data.get("trigger_policy", "once")
+		if not KNOWN_TRIGGER_POLICIES.has(policy):
+			errors.append('Event "%s" has unknown trigger_policy "%s" — supported values are %s' % [event_id, policy, ", ".join(KNOWN_TRIGGER_POLICIES)])
+
+		# No examined_scope_location_id: an event isn't scoped to one fixed
+		# location the way an examine-point variant is, so {"examined": ...}
+		# can't be checked against a specific location's points here — same
+		# reasoning _validate_dialogue_node uses for a choice condition. See
+		# docs/event-system.md for why {"examined": ...} in an event
+		# condition is best avoided anyway (it resolves against whatever the
+		# player's *current* location happens to be at evaluation time).
+		_validate_condition(data.get("conditions"), 'Event "%s" conditions' % event_id, errors)
+
+		var effects: Array = data.get("effects", [])
+		if effects.is_empty():
+			warnings.append('Event "%s" has no effects — triggering it will do nothing' % event_id)
+		_validate_effects(effects, 'Event "%s"' % event_id, errors, warnings)
+
+		if policy == "repeatable":
+			_validate_repeatable_self_reset(event_id, data.get("conditions"), effects, warnings)
+
+
+## Cheap, best-effort "obvious self-reference" check — not a general proof
+## (see docs/architecture.md's Content validation section on why this
+## project doesn't attempt that). A repeatable event whose own effects set
+## the exact same flag/value its own top-level condition (or a direct
+## sub-condition of a top-level "all") requires can never see that condition
+## go false again on its own, so in practice it will only ever fire once —
+## almost certainly not what "repeatable" was meant to do. Only "flag" leaves
+## are checked (the only leaf set_flag can actually affect); "any"/"not"
+## branches are skipped since there's no longer one single required value to
+## compare against there.
+static func _validate_repeatable_self_reset(event_id: String, conditions, effects: Array, warnings: Array[String]) -> void:
+	var required: Dictionary = {}
+	_collect_flag_requirements(conditions, required)
+	if required.is_empty():
+		return
+	for effect in effects:
+		if typeof(effect) != TYPE_DICTIONARY or effect.get("type", "") != "set_flag":
+			continue
+		var flag_name: String = effect.get("flag", "")
+		if required.has(flag_name) and effect.get("value", true) == required[flag_name]:
+			warnings.append('Event "%s" is repeatable but its effects set flag "%s" to the same value its own conditions require — that condition can never go false again on its own, so this event will likely only ever fire once in practice' % [event_id, flag_name])
+
+
+## Collects {flag_name: required_bool} for every direct "flag" leaf reachable
+## through a top-level condition or a nested "all".
+static func _collect_flag_requirements(condition, out: Dictionary) -> void:
+	if typeof(condition) != TYPE_DICTIONARY:
+		return
+	if condition.has("flag"):
+		out[condition.get("flag", "")] = condition.get("equals", true)
+		return
+	if condition.has("all"):
+		var sub_conditions = condition.get("all")
+		if typeof(sub_conditions) == TYPE_ARRAY:
+			for sub_condition in sub_conditions:
+				_collect_flag_requirements(sub_condition, out)
 
 
 # ---------------------------------------------------------------------------
@@ -447,3 +628,26 @@ static func _is_hex_color(value) -> bool:
 	if not text.begins_with("#") or (text.length() != 7 and text.length() != 9):
 		return false
 	return text.substr(1).is_valid_hex_number()
+
+
+# ---------------------------------------------------------------------------
+# Localization (see docs/localization.md)
+
+## Every player-facing content field (name/label/text/display_name/
+## description) is authored as a translation key resolved through
+## LocaleManager's registered Translation objects, not literal text. A key
+## missing from a supported locale is checked directly against that
+## locale's own Translation object — never via tr()/TranslationServer.translate(),
+## which would silently succeed through the configured fallback locale
+## (locale/fallback="en" in project.godot) and hide a missing "vi" message
+## behind whatever "en" happens to say. `key` may be a Variant (most callers
+## pass a dict.get(field, "") result straight through) since a missing field
+## is already reported elsewhere as its own error — this only checks keys
+## that are actually present.
+static func _validate_translatable(key, context: String, errors: Array[String]) -> void:
+	if typeof(key) != TYPE_STRING or key == "":
+		return
+	for locale in LocaleManager.SUPPORTED_LOCALES:
+		var translation: Translation = TranslationServer.get_translation_object(locale)
+		if translation == null or translation.get_message(key) == "":
+			errors.append('%s ("%s") has no "%s" translation — add it to localization/strings.csv' % [context, key, locale])

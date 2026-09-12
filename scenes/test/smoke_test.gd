@@ -18,9 +18,16 @@ var content_db
 var dialogue_manager
 var investigation
 var save_manager
+var event_manager
+var case_manager
+var locale_manager
 
 var _last_choice_texts: Array = []
 var _last_dialogue_id: String = ""
+var _fired_events: Array[String] = []
+var _activated_chapters: Array[String] = []
+var _completed_chapters_seen: Array[String] = []
+var _completed_cases: Array[String] = []
 var _failures: Array[String] = []
 var _pass_count: int = 0
 
@@ -31,6 +38,9 @@ func _initialize() -> void:
 	dialogue_manager = get_root().get_node("DialogueManager")
 	investigation = get_root().get_node("Investigation")
 	save_manager = get_root().get_node("SaveManager")
+	event_manager = get_root().get_node("EventManager")
+	case_manager = get_root().get_node("CaseManager")
+	locale_manager = get_root().get_node("LocaleManager")
 
 	# Autoload nodes exist as soon as get_node finds them, but their _ready()
 	# (where ContentDB actually loads data/*.json) hasn't run yet at this
@@ -40,20 +50,37 @@ func _initialize() -> void:
 
 	dialogue_manager.choices_shown.connect(func(texts): _last_choice_texts = texts)
 	dialogue_manager.dialogue_started.connect(_on_dialogue_started_for_test)
+	event_manager.event_triggered.connect(func(event_id): _fired_events.append(event_id))
+	case_manager.chapter_activated.connect(func(chapter_id): _activated_chapters.append(chapter_id))
+	case_manager.chapter_completed.connect(func(chapter_id): _completed_chapters_seen.append(chapter_id))
+	case_manager.case_completed.connect(func(case_id): _completed_cases.append(case_id))
 
 	# Never touch the real save slot: this process writes and reloads a save
 	# several times, and a developer running the test should not lose the
 	# game they had in progress.
 	save_manager.save_path = "user://smoke_test_save.json"
 	save_manager.delete_save()
+	# Same reasoning as save_path: never touch the real player's persisted
+	# language preference.
+	locale_manager.settings_path = "user://smoke_test_settings.cfg"
 
 	print("=== Milestone 0 Sandbox — Headless Smoke Test ===")
 	_test_content_loaded()
+	_test_localization()
 	_test_conditions()
 	_test_progression_flow()
+	# Continues from wherever _test_progression_flow() left off, then leaves
+	# behind character_a_moved/mirror_note_ready (both triggered) for
+	# _test_save_load() below to carry through a save/reset/load round trip.
+	_test_event_system()
 	# After the save/load round-trip, because it resets the sandbox: _test_save_load
 	# asserts against the state the full progression flow above built up.
 	_test_save_load()
+	# Milestone 1.6: the Case/Chapter layer, exercised through the Test Case.
+	# Resets state via CaseManager.start_case(), so anything after this must
+	# not depend on state _test_save_load() left behind — _test_interaction_guards()
+	# already resets case_00_sandbox itself for exactly this reason.
+	_test_case_system()
 	_test_interaction_guards()
 	_test_scene_instantiation()
 	save_manager.delete_save()
@@ -90,6 +117,12 @@ func _test_content_loaded() -> void:
 	_check(not content_db.get_location("test_room").is_empty(), "test_room should load")
 	_check(not content_db.get_location("test_hallway").is_empty(), "test_hallway should load")
 	_check(not content_db.get_case("case_00_sandbox").is_empty(), "case_00_sandbox should load")
+	_check(content_db.get_all_event_ids().size() >= 3, "at least 3 events should load")
+	_check(not content_db.get_event("character_a_moves_to_hallway").is_empty(), "character_a_moves_to_hallway event should load")
+	_check(not content_db.get_case("test_case").is_empty(), "test_case should load")
+	_check(content_db.get_all_chapter_ids().size() >= 2, "at least 2 chapters should load")
+	_check(not content_db.get_chapter("test_case_chapter_01").is_empty(), "test_case_chapter_01 should load")
+	_check(not content_db.get_chapter("test_case_chapter_02").is_empty(), "test_case_chapter_02 should load")
 
 	# ContentValidator (see content_validator.gd) runs automatically in
 	# ContentDB._ready() — the real sandbox content must always pass with
@@ -98,6 +131,81 @@ func _test_content_loaded() -> void:
 	var validation_errors: Array = validation.get("errors", [])
 	_check(validation_errors.is_empty(), "content validation should find zero errors in the sandbox content: %s" % [validation_errors])
 	_check(validation.get("warnings", []).is_empty(), "content validation should find zero warnings in the sandbox content: %s" % [validation.get("warnings", [])])
+
+
+## Bilingual localization (Milestone: VI default, EN supported — see
+## docs/localization.md). Verifies LocaleManager actually loaded
+## localization/strings.csv into real TranslationServer Translation objects,
+## that content fields hold translation keys (not literal text) resolving
+## correctly in both locales, that switching locale updates an
+## already-instantiated screen (not just a screen rendered after the
+## switch — the load-bearing behavior the whole design depends on, and the
+## one a raw headless probe first disproved for a bare Control.text query
+## before this project settled on explicit tr() calls everywhere), and that
+## a translation missing from a locale is reported exactly like any other
+## broken content reference.
+func _test_localization() -> void:
+	game_state.start_new_game("case_00_sandbox")
+	locale_manager.set_locale("vi")
+	_check(locale_manager.get_locale() == "vi", "vi should be settable and is this project's default locale")
+	_check(locale_manager.get_known_keys().size() > 50, "the localization CSV should have loaded a meaningful number of keys")
+
+	_check(TranslationServer.translate("UI_SAVE") == "Lưu", "a static UI key should resolve to Vietnamese in the vi locale")
+	var char_a_name_key: String = content_db.get_character("character_a").get("name", "")
+	_check(char_a_name_key != "Character A", "character name fields should hold a translation key, not literal English text")
+	_check(TranslationServer.translate(char_a_name_key) == "Nhân Vật A", "a content-driven key should resolve correctly in the vi locale")
+
+	locale_manager.set_locale("en")
+	_check(locale_manager.get_locale() == "en", "set_locale should switch to another supported locale")
+	_check(TranslationServer.translate("UI_SAVE") == "Save", "the same key should resolve to English after switching locale")
+	_check(TranslationServer.translate(char_a_name_key) == "Character A", "a content-driven key should resolve correctly in the en locale too")
+
+	locale_manager.set_locale("fr")
+	_check(locale_manager.get_locale() == "en", "an unsupported locale should be rejected (fail closed), not silently applied")
+
+	# Persistence: a player's language preference is a ConfigFile setting,
+	# independent of GameState/save (docs/architecture.md already documents
+	# why settings and save games are separate files).
+	var config := ConfigFile.new()
+	_check(config.load(locale_manager.settings_path) == OK, "set_locale should have written the settings file")
+	_check(config.get_value("localization", "locale", "") == "en", "the persisted locale should match the last set_locale call")
+
+	# UI reactivity: an already-rendered screen must reflect a locale change,
+	# not just a screen instantiated after it.
+	locale_manager.set_locale("vi")
+	var main_instance: Node = (load("res://scenes/main/Main.tscn") as PackedScene).instantiate()
+	get_root().add_child(main_instance)
+	var action_list: VBoxContainer = main_instance.get_node("%InvestigationView").get_node("%ActionList")
+	var found_vi_label := false
+	for child in action_list.get_children():
+		if child is Label and child.text == "Khám xét":
+			found_vi_label = true
+	_check(found_vi_label, "a freshly instantiated InvestigationView should render the vi locale's 'Examine' section label")
+
+	locale_manager.set_locale("en")
+	var found_en_label := false
+	for child in action_list.get_children():
+		if child is Label and child.text == "Examine":
+			found_en_label = true
+	_check(found_en_label, "switching locale must re-render an already-visible InvestigationView, not just future ones")
+	main_instance.queue_free()
+
+	# ContentValidator: a translation key missing from a locale is caught the
+	# same way any other broken content reference is — never silently shown
+	# as raw key text with no report. Loaded via load() rather than the bare
+	# class_name (see the -s entry-point compile-order note at the top of
+	# this file / docs/architecture.md's "Known limitations") since
+	# ContentValidator itself references ContentDB and now LocaleManager by
+	# bare autoload name.
+	var validator = load("res://scripts/core/content_validator.gd")
+	var missing_errors: Array[String] = []
+	validator._validate_translatable("THIS_KEY_DOES_NOT_EXIST_ANYWHERE", "probe", missing_errors)
+	_check(missing_errors.size() == 2, "a key missing from both locales should be reported once per missing locale")
+	var real_key_errors: Array[String] = []
+	validator._validate_translatable("UI_SAVE", "probe", real_key_errors)
+	_check(real_key_errors.is_empty(), "a real, fully-translated key should not be reported as missing")
+
+	locale_manager.set_locale("vi")  # leave the project's default in place for whatever runs after this
 
 
 ## The condition mini-language's edge cases, which content authors hit far
@@ -300,6 +408,79 @@ func _test_progression_flow() -> void:
 	_check(not game_state.has_evidence("test_note"), "remove_evidence action should remove test_note")
 
 
+## Milestone 1.5: events react to GameState changes that investigation
+## content already produces, reusing the exact ConditionEvaluator/EffectRunner
+## investigation content itself uses — no separate condition/effect language.
+## Continues from exactly where _test_progression_flow() left off (test_room,
+## character_a present, test_key + test_badge held, hallway_unlocked true)
+## rather than resetting, so this also proves events fire correctly off state
+## real gameplay actions built up, not just hand-set flags.
+func _test_event_system() -> void:
+	_check(game_state.current_location == "test_room", "event test should continue from where the progression flow left off")
+	_check(not event_manager.is_event_triggered("character_a_moves_to_hallway"), "character_a_moves_to_hallway should not have triggered yet")
+	_check(_topic_ids("character_a").has("greeting"), "character_a should still be present in test_room before the move event fires")
+
+	# The event's other condition (has_evidence: test_key) is already true —
+	# talking to this topic is the last missing piece, so the event (and its
+	# chained follow-up) fires mid-dialogue, from this one player action.
+	investigation.talk("character_a", "about_moving")
+	_drain_dialogue()
+
+	_check(event_manager.is_event_triggered("character_a_moves_to_hallway"), "character_a_moves_to_hallway should have triggered")
+	_check(game_state.get_flag("character_a_moved"), "the event's effect should have set character_a_moved")
+	_check(_fired_events.has("character_a_moves_to_hallway"), "event_triggered should have fired for character_a_moves_to_hallway")
+
+	# Event chain: mirror_note_ready's only condition is character_a_moved,
+	# so it fires automatically in the same evaluation pass — no further
+	# player action in between the two.
+	_check(event_manager.is_event_triggered("mirror_note_ready"), "mirror_note_ready should chain-trigger once character_a_moved is set")
+	_check(_fired_events.has("mirror_note_ready"), "event_triggered should have fired for the chained mirror_note_ready event")
+
+	# Character presence: driven entirely by content/condition (two npc
+	# entries for character_a, complementary conditions on one flag), not by
+	# any story-specific code.
+	_check(not _topic_ids("character_a").has("greeting"), "character_a should no longer be present in test_room after moving")
+	investigation.move_to("test_hallway")
+	_check(_topic_ids("character_a").has("greeting_hallway"), "character_a should now be present in test_hallway")
+
+	# Event-driven content change: the mirror's examine response changed too,
+	# ahead of the older examined-based before/after variants.
+	investigation.examine("mirror")
+	_check(_last_dialogue_id == "examine_mirror_note_ready", "the mirror should show the event-unlocked variant")
+	_drain_dialogue()
+
+	# The new interaction the moved character offers.
+	investigation.talk("character_a", "greeting_hallway")
+	_drain_dialogue()
+	_check(game_state.has_seen("custom:talked_to_character_a_in_hallway"), "talking to character_a in the hallway should be reachable and run its own effects")
+
+	investigation.move_to("test_room")
+
+	# A "once" event must not refire on further unrelated state changes.
+	var once_fires_before: int = _fired_events.count("character_a_moves_to_hallway")
+	game_state.set_flag("event_test_probe", true)
+	_check(_fired_events.count("character_a_moves_to_hallway") == once_fires_before, "a 'once' event must not refire on unrelated state changes")
+
+	# Manual trigger (DebugPanel): runs through the exact same pipeline,
+	# bypassing conditions — proven here against an event whose conditions
+	# are not currently met.
+	_check(not event_manager.is_event_triggered("test_repeatable_pulse"), "test_repeatable_pulse should not be triggered yet")
+	_check(event_manager.force_trigger("test_repeatable_pulse"), "force_trigger should succeed for a known event id")
+	_check(game_state.has_seen("custom:test_repeatable_pulse_ran"), "force_trigger should run the event's real effects")
+	_check(not event_manager.force_trigger("no_such_event"), "force_trigger should fail for an unknown event id")
+
+	# Repeatable trigger policy: fires again on a false->true transition, but
+	# not on every unrelated change while its own condition stays satisfied.
+	var repeat_fires_before: int = _fired_events.count("test_repeatable_pulse")
+	game_state.set_flag("pulse_flag", true)
+	_check(_fired_events.count("test_repeatable_pulse") == repeat_fires_before + 1, "repeatable event should fire on a false->true transition")
+	game_state.set_flag("event_test_probe", false)  # unrelated change while pulse_flag stays true
+	_check(_fired_events.count("test_repeatable_pulse") == repeat_fires_before + 1, "repeatable event must not refire while its own condition stays satisfied")
+	game_state.set_flag("pulse_flag", false)
+	game_state.set_flag("pulse_flag", true)
+	_check(_fired_events.count("test_repeatable_pulse") == repeat_fires_before + 2, "repeatable event should fire again once its condition goes false then true")
+
+
 ## Nothing may mutate progression state while a dialogue is on screen. The
 ## examine case is the one that actually bit: a rejected examine still marked
 ## the point as examined, so its evidence-granting "before" variant was
@@ -411,6 +592,125 @@ func _test_save_load() -> void:
 	# after loading), but the mirror was examined in test_hallway — check the
 	# composite key directly rather than through that location-scoped helper.
 	_check(game_state.has_seen("examine:test_hallway:mirror"), "loaded state should still show the mirror examine point as seen")
+
+	# Section 15's actual point: a "once" event that already triggered before
+	# save/reset/load must not fire again just because reload re-evaluates
+	# every event against the restored (still-satisfying) state.
+	_check(event_manager.is_event_triggered("character_a_moves_to_hallway"), "the triggered event's state should survive save/reset/load")
+	_check(game_state.get_flag("character_a_moved"), "character_a_moved should survive save/reset/load")
+	_check(_fired_events.count("character_a_moves_to_hallway") == 1, "a 'once' event whose conditions are still satisfied must not fire again after loading")
+	_check(not _topic_ids("character_a").has("greeting"), "character_a should still be gone from test_room after loading (character_a_moved persisted)")
+
+
+## Milestone 1.6: Case/Chapter progression, exercised end-to-end through the
+## Test Case (two chapters, chapter-scoped content, case completion) —
+## including save/load mid-chapter, developer tools, and that a flat case
+## (case_00_sandbox) is entirely unaffected. See docs/case-system.md.
+func _test_case_system() -> void:
+	case_manager.start_case("test_case")
+	_check(case_manager.get_current_case_id() == "test_case", "start_case should set the current case id")
+	_check(case_manager.get_current_chapter_id() == "test_case_chapter_01", "start_case should activate the case's starting_chapter")
+	_check(_activated_chapters.has("test_case_chapter_01"), "chapter_activated should fire for the starting chapter")
+	_check(not case_manager.is_chapter_complete("test_case_chapter_01"), "chapter_01 should not be complete at case start")
+
+	var explain_info: Dictionary = case_manager.explain_chapter_completion("test_case_chapter_01")
+	_check(explain_info.get("has_completion_event", false), "chapter_01 should report it has a completion_event")
+	_check(not explain_info.get("conditions_satisfied", true), "chapter_01's completion conditions should not be satisfied at case start")
+	_check(not explain_info.get("conditions", []).is_empty(), "explain_chapter_completion should report a condition breakdown")
+
+	# Partial chapter_01 progress, then a save/reset/load round trip mid-chapter.
+	investigation.examine("desk")
+	_drain_dialogue()
+	investigation.present("test_key", "character_a")
+	_drain_dialogue()
+	_check(game_state.get_flag("hallway_unlocked"), "presenting the key should still unlock the hallway inside the Test Case")
+	_check(not case_manager.is_chapter_complete("test_case_chapter_01"), "chapter_01 should still be incomplete before its full conditions are met")
+
+	_check(save_manager.save_game(), "mid-chapter-1 save should succeed")
+	case_manager.start_case("test_case")  # simulate "quit to title, start fresh"
+	_check(save_manager.load_game(), "mid-chapter-1 load should succeed")
+	_check(case_manager.get_current_chapter_id() == "test_case_chapter_01", "loading should restore the current chapter")
+	_check(game_state.has_evidence("test_key"), "loading should restore evidence held mid-chapter")
+	_check(game_state.get_flag("hallway_unlocked"), "loading should restore flags set mid-chapter")
+	_check(not case_manager.is_chapter_complete("test_case_chapter_01"), "loading should not mark an incomplete chapter complete")
+
+	# Finish chapter_01's real completion conditions: character_a moves to the
+	# hallway (the existing SHARED event from Milestone 1.5), the player
+	# follows, and talks to them there. chapter_01's own completion_event
+	# reuses ConditionEvaluator/EventManager as-is — no case-specific
+	# condition-evaluation logic exists anywhere in this pass.
+	investigation.talk("character_a", "about_moving")
+	_drain_dialogue()
+	_check(game_state.get_flag("character_a_moved"), "the shared event system should still move character_a inside the Test Case")
+	investigation.move_to("test_hallway")
+	investigation.talk("character_a", "greeting_hallway")
+	_drain_dialogue()
+
+	_check(case_manager.is_chapter_complete("test_case_chapter_01"), "chapter_01 should be complete once its completion_event has fired")
+	_check(_completed_chapters_seen.has("test_case_chapter_01"), "chapter_completed should fire for chapter_01")
+	_check(case_manager.get_current_chapter_id() == "test_case_chapter_02", "completing chapter_01 should activate chapter_02")
+	_check(_activated_chapters.has("test_case_chapter_02"), "chapter_activated should fire for chapter_02")
+	_check(game_state.get_flag("test_case_chapter_02_active"), "chapter_02's entry_effects should run when it becomes current")
+	_check(not case_manager.is_case_complete("test_case"), "the case should not be complete after only chapter_01")
+
+	# The chapter-scoped topic must not have been reachable before chapter_02
+	# activated it — see the scope-flag condition on it in
+	# data/locations/test_hallway.json (section 11's "event/content scope").
+	_check(_topic_ids("character_b").has("chapter_02_debrief"), "the chapter-2-scoped topic should be available once chapter_02 is active")
+
+	# Save/load mid-chapter-2.
+	_check(save_manager.save_game(), "mid-chapter-2 save should succeed")
+	case_manager.start_case("test_case")
+	_check(save_manager.load_game(), "mid-chapter-2 load should succeed")
+	_check(case_manager.get_current_chapter_id() == "test_case_chapter_02", "loading should restore chapter_02 as current")
+	_check(case_manager.is_chapter_complete("test_case_chapter_01"), "loading should not un-complete a chapter that already completed")
+	_check(_completed_chapters_seen.count("test_case_chapter_01") == 1, "a completed chapter must not re-fire chapter_completed after loading")
+
+	# Complete chapter_02 -> case completion.
+	investigation.talk("character_b", "chapter_02_debrief")
+	_drain_dialogue()
+	_check(case_manager.is_chapter_complete("test_case_chapter_02"), "chapter_02 should complete once its own completion_event fires")
+	_check(case_manager.get_current_chapter_id() == "test_case_chapter_02", "a chapter with no next_chapter should stay current rather than point at a nonexistent chapter")
+	_check(case_manager.is_case_complete("test_case"), "the case should complete once its final chapter completes")
+	_check(_completed_cases.has("test_case"), "case_completed should fire once the final chapter completes")
+	_check(game_state.get_flag("test_case_complete"), "the completion event's own effects should still run")
+	var completed: Array[String] = case_manager.get_completed_chapters("test_case")
+	_check(completed.size() == 2 and completed.has("test_case_chapter_01") and completed.has("test_case_chapter_02"), "get_completed_chapters should list both chapters once the case is done")
+
+	# A flat case (no chapters/starting_chapter) must be entirely unaffected —
+	# this is the backward-compatibility guarantee case_00_sandbox relies on.
+	case_manager.start_case("case_00_sandbox")
+	_check(case_manager.get_current_case_id() == "case_00_sandbox", "start_case should work for a flat case too")
+	_check(case_manager.get_current_chapter_id() == "", "a flat case should never populate current_chapter")
+	_check(not case_manager.force_complete_current_chapter(), "force_complete_current_chapter should fail gracefully with no current chapter")
+
+	_test_case_debug_tools()
+
+
+## Developer tools (Milestone 1.6, F1 panel): jump_to_chapter and
+## force_complete_current_chapter must reuse the real progression pipeline
+## rather than duplicating it — see case_manager.gd's class doc.
+func _test_case_debug_tools() -> void:
+	case_manager.start_case("test_case")
+	_check(not case_manager.jump_to_chapter("no_such_chapter"), "jump_to_chapter should fail for an unknown chapter id")
+
+	_check(case_manager.jump_to_chapter("test_case_chapter_02"), "jump_to_chapter should succeed for a known chapter id")
+	_check(case_manager.get_current_chapter_id() == "test_case_chapter_02", "jump_to_chapter should update the current chapter")
+	_check(game_state.get_flag("test_case_chapter_02_active"), "jump_to_chapter should still run the target chapter's entry_effects")
+	_check(not case_manager.is_chapter_complete("test_case_chapter_01"), "jumping past chapter_01 must not mark it complete — it's a teleport, not real progression")
+
+	# force_complete_current_chapter forces the completion event through
+	# EventManager.force_trigger(), which bypasses conditions entirely (same
+	# as any other manually-triggered event) — so this must succeed even
+	# though chapter_02's real completion condition was never satisfied here.
+	_check(case_manager.force_complete_current_chapter(), "force_complete_current_chapter should succeed for a chapter with a completion_event")
+	_check(case_manager.is_chapter_complete("test_case_chapter_02"), "force_complete_current_chapter should really complete the chapter, not just pretend to")
+	_check(case_manager.is_case_complete("test_case"), "forcing the final chapter should still complete the case")
+
+	case_manager.reset_case()
+	_check(case_manager.get_current_chapter_id() == "test_case_chapter_01", "reset_case should restart the case from its starting_chapter")
+	_check(not case_manager.is_chapter_complete("test_case_chapter_01"), "reset_case should clear chapter completion state")
+	_check(not case_manager.is_case_complete("test_case"), "reset_case should clear case completion state")
 
 
 func _test_scene_instantiation() -> void:

@@ -6,16 +6,16 @@
       "n1": {
         "speaker": "character_a",
         "expression": "normal",
-        "text": "Oh, hello there. Can I help you with something?",
+        "text": "DLG_CHARACTER_A_GREETING_N1_TEXT",
         "choices": [
-          { "text": "Ask about the desk.", "condition": { "flag": "desk_examined", "equals": false }, "next": "n2" },
-          { "text": "Nothing, thanks.", "next": null }
+          { "text": "DLG_CHARACTER_A_GREETING_N1_CHOICE1_TEXT", "condition": { "flag": "desk_examined", "equals": false }, "next": "n2" },
+          { "text": "DLG_CHARACTER_A_GREETING_N1_CHOICE2_TEXT", "next": null }
         ]
       },
       "n2": {
         "speaker": "character_a",
         "expression": "normal",
-        "text": "The desk? Go ahead and take a look at it yourself.",
+        "text": "DLG_CHARACTER_A_GREETING_N2_TEXT",
         "next": null
       }
     }
@@ -27,13 +27,13 @@
       "n1": {
         "speaker": "character_a",
         "expression": "happy",
-        "text": "Still thinking about that key? I already told you what I know.",
+        "text": "DLG_CHARACTER_A_ABOUT_KEY_N1_TEXT",
         "next": "n2"
       },
       "n2": {
         "speaker": "character_a",
         "expression": "normal",
-        "text": "Go on, the hallway's open now. See for yourself.",
+        "text": "DLG_CHARACTER_A_ABOUT_KEY_N2_TEXT",
         "next": null
       }
     }
@@ -45,13 +45,13 @@
       "n1": {
         "speaker": "character_a",
         "expression": "surprised",
-        "text": "Wait — where did you find that key?!",
+        "text": "DLG_CHARACTER_A_PRESENT_KEY_N1_TEXT",
         "next": "n2"
       },
       "n2": {
         "speaker": "character_a",
         "expression": "normal",
-        "text": "...Fine. It opens something down the hallway. You should go take a look.",
+        "text": "DLG_CHARACTER_A_PRESENT_KEY_N2_TEXT",
         "actions": [{ "type": "set_flag", "flag": "hallway_unlocked", "value": true }],
         "next": null
       }
@@ -64,7 +64,7 @@
       "n1": {
         "speaker": "character_a",
         "expression": "normal",
-        "text": "Hm. I don't think that has anything to do with me.",
+        "text": "DLG_CHARACTER_A_PRESENT_GENERIC_N1_TEXT",
         "next": null
       }
     }
@@ -76,7 +76,7 @@
       "n1": {
         "speaker": "character_a",
         "expression": "normal",
-        "text": "You're holding onto something interesting there. Let me know if you find anything else.",
+        "text": "DLG_CHARACTER_A_ABOUT_EVIDENCE_N1_TEXT",
         "next": null
       }
     }
@@ -88,13 +88,13 @@
       "n1": {
         "speaker": "character_a",
         "expression": "happy",
-        "text": "Oh, you went and looked around the hallway? What did you think?",
+        "text": "DLG_CHARACTER_A_ABOUT_HALLWAY_TRIP_N1_TEXT",
         "next": "n2"
       },
       "n2": {
         "speaker": "character_a",
         "expression": "normal",
-        "text": "Nothing much to say about it, honestly.",
+        "text": "DLG_CHARACTER_A_ABOUT_HALLWAY_TRIP_N2_TEXT",
         "next": null
       }
     }
@@ -106,7 +106,39 @@
       "n1": {
         "speaker": "character_a",
         "expression": "normal",
-        "text": "Yes, I know Character B. We don't talk much.",
+        "text": "DLG_CHARACTER_A_ABOUT_CHARACTER_B_N1_TEXT",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "character_a_about_moving",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "character_a",
+        "expression": "normal",
+        "text": "DLG_CHARACTER_A_ABOUT_MOVING_N1_TEXT",
+        "actions": [{ "type": "mark_interaction_complete", "id": "character_a_ready_to_move" }],
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "character_a_greeting_hallway",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "character_a",
+        "expression": "surprised",
+        "text": "DLG_CHARACTER_A_GREETING_HALLWAY_N1_TEXT",
+        "next": "n2"
+      },
+      "n2": {
+        "speaker": "character_a",
+        "expression": "normal",
+        "text": "DLG_CHARACTER_A_GREETING_HALLWAY_N2_TEXT",
+        "actions": [{ "type": "mark_interaction_complete", "id": "talked_to_character_a_in_hallway" }],
         "next": null
       }
     }
