@@ -1,9 +1,12 @@
 {
   "id": "case_00_sandbox",
-  "title": "Milestone 0 Sandbox",
+  "title": "CASE_CASE_00_SANDBOX_NAME",
   "start_location": "test_room",
   "initial_flags": {
     "hallway_unlocked": false,
-    "desk_examined": false
+    "desk_examined": false,
+    "character_a_moved": false,
+    "mirror_note_ready": false,
+    "pulse_flag": false
   }
 }

@@ -29,12 +29,15 @@ func _ready() -> void:
 	visible = false
 	close_button.pressed.connect(close)
 	present_button.pressed.connect(_on_present_pressed)
+	close_button.text = tr("UI_CLOSE_ESC")
+	present_button.text = tr("UI_PRESENT")
+	%FooterHint.text = tr("UI_EVIDENCE_HINT")
 
 
 func open(mode: String = "browse") -> void:
 	_mode = mode
 	_selected_evidence_id = ""
-	title_label.text = "Select Evidence to Present" if mode == "select" else "Evidence"
+	title_label.text = tr("UI_SELECT_EVIDENCE_TO_PRESENT") if mode == "select" else tr("UI_EVIDENCE_TITLE")
 	present_button.visible = (mode == "select")
 	_refresh_grid()
 	_show_details("")
@@ -55,7 +58,7 @@ func _refresh_grid() -> void:
 		# as "you haven't found anything yet" — especially in "select" mode,
 		# where the player opened it expecting something to hand over.
 		var empty_label := Label.new()
-		empty_label.text = "(no evidence collected yet)"
+		empty_label.text = tr("UI_NO_EVIDENCE_COLLECTED")
 		slot_grid.add_child(empty_label)
 		return
 
@@ -65,7 +68,7 @@ func _refresh_grid() -> void:
 			continue
 		var slot: Button = EvidenceSlotScene.instantiate()
 		slot_grid.add_child(slot)
-		slot.setup(evidence_id, data.get("name", evidence_id), data.get("icon_color", "#888888"))
+		slot.setup(evidence_id, tr(data.get("name", evidence_id)), data.get("icon_color", "#888888"))
 		slot.evidence_selected.connect(_on_slot_selected)
 		_slots[evidence_id] = slot
 
@@ -82,17 +85,17 @@ func _show_details(evidence_id: String) -> void:
 	if data.is_empty():
 		detail_visual.set_color(Color(0.3, 0.3, 0.3))
 		detail_visual.set_caption("")
-		detail_name.text = "No evidence selected"
+		detail_name.text = tr("UI_NO_EVIDENCE_SELECTED")
 		detail_short.text = ""
 		detail_description.text = ""
 		present_button.disabled = true
 		return
 
 	detail_visual.set_color_hex(data.get("icon_color", "#888888"))
-	detail_visual.set_caption(data.get("name", evidence_id))
-	detail_name.text = data.get("name", evidence_id)
-	detail_short.text = data.get("short_description", "")
-	detail_description.text = data.get("detailed_description", "")
+	detail_visual.set_caption(tr(data.get("name", evidence_id)))
+	detail_name.text = tr(data.get("name", evidence_id))
+	detail_short.text = tr(data.get("short_description", ""))
+	detail_description.text = tr(data.get("detailed_description", ""))
 	present_button.disabled = false
 
 

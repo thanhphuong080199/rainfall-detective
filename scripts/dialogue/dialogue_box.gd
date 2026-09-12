@@ -22,6 +22,7 @@ var _pending_choice_texts: Array = []
 func _ready() -> void:
 	visible = false
 	mouse_filter = MOUSE_FILTER_STOP
+	advance_hint.text = tr("UI_ADVANCE_HINT")
 	DialogueManager.dialogue_started.connect(_on_dialogue_started)
 	DialogueManager.line_shown.connect(_on_line_shown)
 	DialogueManager.choices_shown.connect(_on_choices_shown)
@@ -56,13 +57,20 @@ func _on_line_shown(character_id: String, expression: String, text: String) -> v
 	else:
 		var character: Dictionary = ContentDB.get_character(character_id)
 		var expressions: Dictionary = character.get("expressions", {})
-		speaker_label.text = character.get("name", character_id)
+		speaker_label.text = tr(character.get("name", character_id))
 		portrait_visual.visible = true
 		portrait_visual.set_color_hex(expressions.get(expression, expressions.get("normal", "#888888")))
 		portrait_visual.set_caption(expression)
 
-	_full_text = text
-	dialogue_text.text = text
+	# `text` is a content JSON field, which now holds a translation key —
+	# see docs/localization.md. Resolved here, once, rather than relying on
+	# Control's automatic re-translation: a probe confirmed a Control's own
+	# `text` property does NOT reflect a later TranslationServer locale
+	# change when read back from script, so anything depending on that
+	# couldn't be verified headlessly. Explicit tr() calls are used
+	# everywhere in this project's UI for exactly that reason.
+	_full_text = tr(text)
+	dialogue_text.text = _full_text
 	dialogue_text.visible_characters = 0
 	_typewriter_progress = 0.0
 	_is_typing = true
@@ -102,7 +110,7 @@ func _show_choices(choice_texts: Array) -> void:
 	UiUtil.clear_children(choices_box)
 	for i in choice_texts.size():
 		var choice_button := Button.new()
-		choice_button.text = choice_texts[i]
+		choice_button.text = tr(choice_texts[i])
 		choice_button.pressed.connect(_on_choice_pressed.bind(i))
 		choices_box.add_child(choice_button)
 	choices_box.visible = true

@@ -48,6 +48,7 @@ layout_mode = 2
 theme_override_constants/separation = 10
 
 [node name="TitleLabel" type="Label" parent="CenterPanel/Margin/VBox"]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 22
 text = "Menu"
@@ -77,6 +78,29 @@ text = "Resume (Esc)"
 unique_name_in_owner = true
 layout_mode = 2
 text = "Quit to Title"
+
+[node name="LanguageRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="LanguageLabel" type="Label" parent="CenterPanel/Margin/VBox/LanguageRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+vertical_alignment = 1
+text = "Language"
+
+[node name="ViButton" type="Button" parent="CenterPanel/Margin/VBox/LanguageRow"]
+unique_name_in_owner = true
+layout_mode = 2
+toggle_mode = true
+text = "VI"
+
+[node name="EnButton" type="Button" parent="CenterPanel/Margin/VBox/LanguageRow"]
+unique_name_in_owner = true
+layout_mode = 2
+toggle_mode = true
+text = "EN"
 
 [node name="StatusLabel" type="Label" parent="CenterPanel/Margin/VBox"]
 unique_name_in_owner = true

@@ -1,0 +1,19 @@
+{
+  "id": "test_case",
+  "display_name": "CASE_TEST_CASE_NAME",
+  "description": "CASE_TEST_CASE_DESC",
+  "version": 1,
+  "start_location": "test_room",
+  "starting_chapter": "test_case_chapter_01",
+  "chapters": ["test_case_chapter_01", "test_case_chapter_02"],
+  "initial_flags": {
+    "hallway_unlocked": false,
+    "desk_examined": false,
+    "character_a_moved": false,
+    "mirror_note_ready": false,
+    "test_case_chapter_02_active": false,
+    "test_case_chapter_01_complete": false,
+    "test_case_chapter_02_complete": false,
+    "test_case_complete": false
+  }
+}

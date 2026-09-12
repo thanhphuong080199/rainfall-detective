@@ -8,8 +8,18 @@
 # default settings. Godot's own recommended ignore list is just .godot/ and
 # /android/.
 
+# Exception: localization/strings.csv is parsed at runtime by LocaleManager,
+# not through Godot's import pipeline (see docs/localization.md) — but a
+# local `godot --import` still auto-generates a default "Translation" import
+# for it that nothing in the project references. Ignore that byproduct
+# specifically, not .import files in general.
+localization/strings.csv.import
+localization/*.translation
+
 # Editor/OS cruft
 .DS_Store
 
-# Claude Code session state (not project content)
-.claude/
+# Claude Code session state (not project content) — except project skills,
+# which are shared with everyone working on the repo.
+.claude/*
+!.claude/skills/

@@ -1,0 +1,8 @@
+{
+  "id": "test_case_chapter_02",
+  "display_name": "CHAPTER_TEST_CASE_CHAPTER_02_NAME",
+  "entry_effects": [
+    { "type": "set_flag", "flag": "test_case_chapter_02_active", "value": true }
+  ],
+  "completion_event": "test_case_chapter_02_complete"
+}

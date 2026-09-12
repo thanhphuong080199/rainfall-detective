@@ -9,6 +9,11 @@ extends Control
 
 
 func _ready() -> void:
+	%TitleLabel.text = tr("UI_TITLE_SCREEN_TITLE")
+	%SubtitleLabel.text = tr("UI_TITLE_SCREEN_SUBTITLE")
+	new_game_button.text = tr("UI_NEW_GAME")
+	continue_button.text = tr("UI_CONTINUE")
+	quit_button.text = tr("UI_QUIT")
 	continue_button.disabled = not SaveManager.has_save()
 	new_game_button.pressed.connect(_on_new_game_pressed)
 	continue_button.pressed.connect(_on_continue_pressed)
@@ -24,4 +29,4 @@ func _on_continue_pressed() -> void:
 	if SaveManager.load_game():
 		get_tree().change_scene_to_file("res://scenes/main/Main.tscn")
 	else:
-		status_label.text = "Could not load save — see console."
+		status_label.text = tr("UI_COULD_NOT_LOAD_SAVE")

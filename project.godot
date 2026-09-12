@@ -16,8 +16,11 @@ config/features=PackedStringArray("4.7", "GL Compatibility")
 
 [autoload]
 
+LocaleManager="*res://scripts/core/locale_manager.gd"
 GameState="*res://scripts/core/game_state.gd"
 ContentDB="*res://scripts/core/content_db.gd"
+EventManager="*res://scripts/events/event_manager.gd"
+CaseManager="*res://scripts/cases/case_manager.gd"
 DialogueManager="*res://scripts/dialogue/dialogue_manager.gd"
 Investigation="*res://scripts/investigation/investigation_manager.gd"
 SaveManager="*res://scripts/save/save_manager.gd"
@@ -27,6 +30,10 @@ SaveManager="*res://scripts/save/save_manager.gd"
 window/size/viewport_width=1280
 window/size/viewport_height=720
 window/stretch/mode="canvas_items"
+
+[internationalization]
+
+locale/fallback="en"
 
 [rendering]
 

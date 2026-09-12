@@ -41,7 +41,14 @@ func _ready() -> void:
 	GameState.evidence_removed.connect(func(_evidence_id): _render_current())
 	GameState.interaction_seen.connect(func(_key): _render_current())
 	DialogueManager.dialogue_ended.connect(_render_current)
+	LocaleManager.locale_changed.connect(func(_locale): _apply_static_labels(); _render_current())
+	_apply_static_labels()
 	_render_current()
+
+
+func _apply_static_labels() -> void:
+	evidence_button.text = tr("UI_EVIDENCE_BUTTON")
+	menu_button.text = tr("UI_MENU_BUTTON")
 
 
 func set_interactive(is_interactive: bool) -> void:
@@ -106,22 +113,22 @@ func _render_main() -> void:
 	UiUtil.clear_children(action_list)
 
 	var location: Dictionary = Investigation.get_current_location()
-	location_label.text = location.get("name", GameState.current_location)
+	location_label.text = tr(location.get("name", GameState.current_location))
 	background_visual.set_color_hex(location.get("background_color", "#333333"))
 
-	_add_section_label("Examine")
+	_add_section_label(tr("UI_EXAMINE_SECTION"))
 	for point in Investigation.get_examine_points():
 		var point_id: String = point.get("id", "")
-		_add_action_button(point.get("label", point_id), _on_examine_pressed.bind(point_id))
+		_add_action_button(tr(point.get("label", point_id)), _on_examine_pressed.bind(point_id))
 
-	_add_section_label("Characters")
+	_add_section_label(tr("UI_CHARACTERS_SECTION"))
 	for npc in Investigation.get_npcs():
 		var npc_id: String = npc.get("id", "")
 		var character: Dictionary = ContentDB.get_character(npc_id)
-		_add_action_button(character.get("name", npc_id), _render_npc_menu.bind(npc_id))
+		_add_action_button(tr(character.get("name", npc_id)), _render_npc_menu.bind(npc_id))
 
-	_add_section_label("Move")
-	_add_action_button("Go somewhere else...", _render_destinations)
+	_add_section_label(tr("UI_MOVE_SECTION"))
+	_add_action_button(tr("UI_GO_SOMEWHERE_ELSE"), _render_destinations)
 	_apply_interactive()
 
 
@@ -134,10 +141,10 @@ func _render_npc_menu(npc_id: String) -> void:
 	_mode_npc_id = npc_id
 	UiUtil.clear_children(action_list)
 	var character: Dictionary = ContentDB.get_character(npc_id)
-	_add_section_label(character.get("name", npc_id))
-	_add_action_button("Talk", _render_topics.bind(npc_id))
-	_add_action_button("Present Evidence", _on_present_pressed.bind(npc_id))
-	_add_action_button("< Back", _render_main)
+	_add_section_label(tr(character.get("name", npc_id)))
+	_add_action_button(tr("UI_TALK"), _render_topics.bind(npc_id))
+	_add_action_button(tr("UI_PRESENT_EVIDENCE"), _on_present_pressed.bind(npc_id))
+	_add_action_button(tr("UI_BACK"), _render_main)
 	_apply_interactive()
 
 
@@ -150,19 +157,19 @@ func _render_topics(npc_id: String) -> void:
 	_mode_npc_id = npc_id
 	UiUtil.clear_children(action_list)
 	var character: Dictionary = ContentDB.get_character(npc_id)
-	_add_section_label("Talk to " + character.get("name", npc_id))
+	_add_section_label(tr("UI_TALK_TO_FORMAT") % tr(character.get("name", npc_id)))
 
 	var topics: Array = Investigation.get_topics(npc_id)
 	if topics.is_empty():
-		_add_section_label("(nothing to talk about yet)")
+		_add_section_label(tr("UI_NOTHING_TO_TALK_ABOUT"))
 	for topic in topics:
 		var topic_id: String = topic.get("id", "")
-		var label: String = topic.get("label", topic_id)
+		var label: String = tr(topic.get("label", topic_id))
 		if Investigation.is_topic_seen(npc_id, topic_id):
-			label += " (read)"
+			label += tr("UI_READ_SUFFIX")
 		_add_action_button(label, _on_topic_pressed.bind(npc_id, topic_id))
 
-	_add_action_button("< Back", _render_npc_menu.bind(npc_id))
+	_add_action_button(tr("UI_BACK"), _render_npc_menu.bind(npc_id))
 	_apply_interactive()
 
 
@@ -174,13 +181,13 @@ func _render_destinations() -> void:
 	_mode = "destinations"
 	_mode_npc_id = ""
 	UiUtil.clear_children(action_list)
-	_add_section_label("Move to...")
+	_add_section_label(tr("UI_MOVE_TO"))
 
 	for destination in Investigation.get_available_destinations():
 		var location_id: String = destination.get("location_id", "")
-		_add_action_button(destination.get("label", location_id), _on_destination_pressed.bind(location_id))
+		_add_action_button(tr(destination.get("label", location_id)), _on_destination_pressed.bind(location_id))
 
-	_add_action_button("< Back", _render_main)
+	_add_action_button(tr("UI_BACK"), _render_main)
 	_apply_interactive()
 
 

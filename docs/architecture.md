@@ -13,10 +13,14 @@ see `docs/content-guide.md` for how to add real content later.
 This started as a Milestone 0 sandbox (data-driven content, a condition
 mini-language, Examine/Talk/Present/Move) and has since been strengthened as
 a content pipeline and investigation-framework foundation: more condition/
-effect vocabulary, automatic content validation, and developer tooling — see
-"Content validation" and "Developer tools" below. None of this decides final
-deduction/case-solving gameplay; see this doc's closing note and
-`docs/content-guide.md` for what's still deliberately undecided.
+effect vocabulary, automatic content validation, developer tooling, an
+automatic Event system (`docs/event-system.md`), and — as of Milestone 1.6 —
+a Case/Chapter organization layer on top of all of it (`docs/case-system.md`)
+and bilingual localization, Vietnamese default / English supported
+(`docs/localization.md`) — see "Content validation", "Developer tools",
+"Case / Chapter progression", and "Localization" below. None of this
+decides final deduction/case-solving gameplay; see this doc's closing note
+and `docs/content-guide.md` for what's still deliberately undecided.
 
 ## Godot conventions used here, briefly
 
@@ -54,18 +58,29 @@ for why order barely matters here.
 
 | Autoload | Script | Owns |
 |---|---|---|
+| `LocaleManager` | `scripts/core/locale_manager.gd` | loads `localization/strings.csv` into `TranslationServer` and owns the active locale (`vi` default, `en` supported) plus its persistence. Registered **first** — no other autoload depends on it, and everything else may need translated text the moment it starts rendering. See `docs/localization.md`. |
 | `GameState` | `scripts/core/game_state.gd` | current location, visited locations, evidence inventory, flags, freeform variables, and a generic `seen_interactions` set (which topics/examine points have been played before, plus arbitrary author-chosen "this happened" markers — see "Automatic 'seen' tracking" below). Story-agnostic — never references a specific character/location/item by name. |
 | `ContentDB` | `scripts/core/content_db.gd` | loads every `*.json` under `data/` at startup and caches it, then runs `ContentValidator` and prints its report. The **only** system that reads `data/` directly — everything else goes through its getters (`get_character`, `get_evidence`, `get_location`, `get_dialogue`, `get_case`, plus `get_all_*`/`get_all_*_ids` bulk getters used by validation and dev tooling). |
 | `DialogueManager` | `scripts/dialogue/dialogue_manager.gd` | plays one dialogue tree at a time, node by node. Pure playback engine — no UI code, no opinion on *why* a given tree was chosen. |
 | `Investigation` | `scripts/investigation/investigation_manager.gd` | the "decision layer" for Examine / Talk / Present / Move: figures out *which* dialogue tree should play for the current location + game state, then hands off to `DialogueManager`. Also auto-marks topics/examine points "seen" in `GameState`, and exposes `explain_topic_lock`/`explain_destination_lock` for debug tooling. |
+| `EventManager` | `scripts/events/event_manager.gd` | evaluates `data/events/*.json` against `GameState` and runs an event's effects the moment its conditions become true — reacting to state changes instead of a player click. See `docs/event-system.md` for the full design. |
+| `CaseManager` | `scripts/cases/case_manager.gd` | orchestrates Case/Chapter progression: starting a case, tracking the current chapter, and advancing to the next chapter once the current one's `completion_event` (an ordinary Event) fires. Holds no state of its own — reads/writes `GameState` only. See `docs/case-system.md`. |
 | `SaveManager` | `scripts/save/save_manager.gd` | reads/writes `user://save_game.json`. Owns the save-file format/version; `GameState` itself has no opinion on file format. |
 
-Plus two stateless static helpers (`class_name`, not autoloads):
+Plus three stateless static helpers (`class_name`, not autoloads):
 
 - **`ConditionEvaluator`** (`scripts/core/condition_evaluator.gd`) evaluates
   the small condition mini-language used throughout content JSON. Used by
-  both `DialogueManager` (choice conditions) and `Investigation` (examine/
-  topic/destination conditions).
+  `DialogueManager` (choice conditions), `Investigation` (examine/topic/
+  destination/npc-presence conditions), and `EventManager` (event
+  conditions).
+- **`EffectRunner`** (`scripts/core/effect_runner.gd`) runs this project's
+  one effect vocabulary (`set_flag`, `add_evidence`, `remove_evidence`,
+  `mark_interaction_complete`) from a list of `{"type": ..., ...}`
+  dictionaries. Used by `DialogueManager` (a node/choice's `"actions"`) and
+  `EventManager` (an event's `"effects"`) — see `docs/event-system.md`,
+  "Reusing Conditions and Effects", for why this was pulled out of
+  `DialogueManager` rather than duplicated.
 - **`ContentValidator`** (`scripts/core/content_validator.gd`) cross-checks
   everything `ContentDB` loaded for broken references. See "Content
   validation" below.
@@ -96,8 +111,11 @@ picked) is this project's **effect system** (Part B2 in the original brief
 uses that word; the JSON key stays `actions` because it's already the clear,
 correct word for "things that happen" — renaming it would have been pure
 churn). Currently supports `set_flag`, `add_evidence`, `remove_evidence`,
-and `mark_interaction_complete` — see `scripts/dialogue/dialogue_manager.gd`'s
-`_run_actions` to add a new type.
+and `mark_interaction_complete`, executed by `EffectRunner.run()`
+(`scripts/core/effect_runner.gd`) — see "Events" below for why that's a
+standalone helper rather than a private `DialogueManager` method. Add a new
+type there (one more `match` case), and `ContentValidator._validate_effects()`
+to keep it validated.
 
 **There is deliberately no third "branch" node type** for silently jumping
 based on state with no line shown. That kind of branching — "which dialogue
@@ -201,6 +219,97 @@ keys into it:
 separate, simpler array — it only ever needed "was this location entered,"
 recorded by `GameState.go_to_location()` itself, and merging it into the
 newer namespaced set wouldn't have added anything.
+
+## Events
+
+`EventManager` reacts to `GameState` changes: `data/events/*.json` content
+defines a `condition` (the same mini-language above) plus `effects` (the
+same vocabulary dialogue actions use, via `EffectRunner`), and the moment a
+not-yet-triggered event's condition becomes true, its effects run
+automatically — no player click required. This is what lets a case express
+"talking to X plus holding Y causes Z to happen" as content instead of
+bespoke GDScript. Full design — trigger policies, event chains, character
+presence via NPC-entry conditions, debugging, save/load, validation — is in
+`docs/event-system.md`; only the parts relevant elsewhere in this document
+are summarized here:
+
+- Events add **zero** new condition or effect vocabulary — they're built
+  entirely on `ConditionEvaluator` and `EffectRunner`, the same two helpers
+  everything else in this section uses.
+- A character's location is now dynamic, via the same "flag + condition"
+  pattern the "no `unlock_topic`" decision below already established for
+  everything else — see the matching decision entry below, and
+  `docs/event-system.md`'s "Character presence."
+- No per-frame polling: evaluation runs off the same `GameState` signals
+  `InvestigationView`/`DebugPanel` already listen to.
+
+## Case / Chapter progression
+
+`CaseManager` (Milestone 1.6) organizes a case's content into an ordered
+sequence of **Chapters** — "the currently active phase" — without adding any
+new condition/effect/evaluation machinery. Full design — chapter fields, why
+completion is modeled as an ordinary Event rather than a second evaluator,
+runtime state, scoping, namespacing, save/load, developer tools, and
+validation — is in `docs/case-system.md`; only the parts relevant elsewhere
+in this document are summarized here:
+
+- A **Case** (`data/cases/*.json`) optionally declares `chapters` (an
+  ordered list of chapter ids) and `starting_chapter`. A case that omits
+  both, like `case_00_sandbox`, is a **flat case** — entirely unaffected by
+  any of this, which is how Milestone 0-1.5 backward compatibility is
+  proven rather than assumed.
+- A **Chapter** (`data/chapters/<case_id>/*.json`, its own `ContentDB`
+  category) has optional `entry_effects` (run once via `EffectRunner` when
+  it becomes current), an optional `completion_event` (an id in
+  `data/events/*.json` — its `conditions`/`effects` *are* the chapter's
+  completion conditions/effects), and an optional `next_chapter`.
+- `CaseManager` holds no persisted state of its own: "current case/chapter"
+  lives in `GameState.variables`, and "chapter/case completed" reuses the
+  same `seen_interactions` "has this happened" set a `"once"` event's
+  triggered state already uses (see "Automatic 'seen' tracking" above) — so
+  save/load round-trips case progression with zero save-format changes.
+- `CaseManager` never calls `ConditionEvaluator` itself — it only listens to
+  `EventManager.event_triggered` and checks whether the event that fired is
+  the current chapter's `completion_event`. This is deliberate: it reuses
+  `EventManager`'s already-correct reentrant evaluation loop instead of
+  building a second one. See `docs/case-system.md`, "Why chapter completion
+  is an Event, not a second evaluator."
+- Content that should only be reachable during one chapter (chapter-scoped
+  content/events) uses the same `set_flag` + `condition` idiom as every
+  other "unlock" in this project (see "Key Architecture Decisions" below): a
+  chapter's own `entry_effects` sets a scope flag, and scoped content
+  requires it.
+
+## Localization
+
+Every player-facing string — content (`data/*.json`) and static UI chrome —
+is a **translation key**, not literal text, resolved through Godot's real
+`TranslationServer`/`tr()` (a `name`/`label`/`text`/`display_name`/
+`description` field that used to hold "Old Key" now holds
+`EVID_TEST_KEY_NAME`). Full design — why the CSV is loaded at runtime
+instead of through Godot's asset-import pipeline, the key-naming convention,
+why UI code calls `tr()` explicitly instead of relying on `Control`
+auto-translation, which screens react live to a language switch, and
+content validation — is in `docs/localization.md`; only what's relevant
+elsewhere in this document is summarized here:
+
+- `LocaleManager` (registered first in `[autoload]`) loads
+  `localization/strings.csv` into `TranslationServer` and owns the active
+  locale (`vi` default) plus its persistence (`user://settings.cfg`, a
+  `ConfigFile` — a player preference, kept separate from
+  `user://save_game.json` the same way "`res://` vs `user://`" above
+  already separates content from state).
+- No new condition/effect vocabulary, and no second "translated content"
+  system alongside `ContentDB` — `ContentDB`/`Investigation`/
+  `DialogueManager`/`EventManager`/`CaseManager` are completely unaware
+  translation keys exist; they still just pass `Dictionary` values around
+  exactly as before. Only the UI layer (where a string is actually assigned
+  to a `Label`/`Button`) calls `tr()`.
+- `GameMenu` has the player-facing VI/EN toggle. `InvestigationView` (the
+  screen left visible, dimmed, behind `GameMenu`) and `DebugPanel` also
+  react live to a locale change; every other screen simply renders fresh
+  text the next time it opens, since none of them can be on screen at the
+  same moment the toggle is reachable — see `docs/localization.md` for why.
 
 ## UI scene tree
 
@@ -306,13 +415,19 @@ placeholder sandbox and a real case — no script in `scripts/` should ever
 need to change to add content. Full schemas and how-tos are in
 `docs/content-guide.md`; summary:
 
+Every `name`/`label`/`text`/`display_name`/`description` field below holds a
+**translation key** resolved through `TranslationServer`, not literal text —
+see `docs/localization.md`.
+
 | Folder | Shape |
 |---|---|
 | `data/characters/*.json` | one character per file: `id`, `name`, `expressions` (name → placeholder color) |
 | `data/evidence/*.json` | one item per file: `id`, `name`, `icon_color`, `short_description`, `detailed_description` |
-| `data/locations/*.json` | one location per file: `background_color`, `npcs` (with `topics`/`present_responses`), `examine_points` (with `variants`), `destinations` |
+| `data/locations/*.json` | one location per file: `background_color`, `npcs` (with an optional presence `condition`, `topics`/`present_responses`), `examine_points` (with `variants`), `destinations` |
 | `data/dialogue/*.json` | **array** of dialogue trees per file (a file can group several related trees) |
-| `data/cases/*.json` | one case per file: `start_location`, `initial_flags` — what "New Game" resets to |
+| `data/chapters/<case_id>/*.json` | one chapter per file: `id`, `display_name`, `entry_effects`, `completion_event`, `next_chapter` — see `docs/case-system.md` |
+| `data/cases/*.json` | one case per file: `start_location`, `initial_flags` — what "New Game" resets to; optionally `chapters` + `starting_chapter` — see `docs/case-system.md` |
+| `data/events/*.json` | **array** of events per file: `id`, `conditions`, `trigger_policy`, `effects` — see `docs/event-system.md` |
 
 Dropping a new `*.json` file into any of these folders is enough to register
 it — nothing needs to be imported or listed elsewhere. **Subfolders are
@@ -348,7 +463,8 @@ It checks two severities:
   `examined` condition referencing an id that doesn't exist, a destination
   or case `start_location` pointing at an unknown location, an `add_evidence`
   /`remove_evidence` action referencing unknown evidence, or an action with
-  no (or an unrecognized) `type`. Also: a condition using an **unknown key**
+  no (or an unrecognized) `type` — and the same for an event's `effects` and
+  an npc entry's presence `condition` (see `docs/event-system.md`). Also: a condition using an **unknown key**
   (checked against `ConditionEvaluator.KEYS`, so a typo is caught at
   validation time instead of silently locking content), an `all`/`any` that
   isn't a non-empty array, a **duplicate id** — either across content files
@@ -405,17 +521,29 @@ there.
 is an **F1-toggled** overlay, entirely self-contained — unlike `GameMenu`/
 `EvidenceInventory` it's never wired up by `Main.gd`, because nothing else
 needs to coordinate with it. It reads state through the exact same public
-APIs normal gameplay UI uses (`GameState`/`ContentDB`/`Investigation` — no
-back-door access) and shows: current location, visited locations, evidence
-held, all flags, and — per location NPC and per destination — whether it's
-`AVAILABLE` or `LOCKED`, with `Investigation.explain_topic_lock()`/
-`explain_destination_lock()` listing exactly which sub-condition(s) are
-still failing (Part E, "explain locked content") — an `any` is reported as a
-single grouped line rather than as several separately-"missing" alternatives,
-see "The condition mini-language" above. Actions: toggle any flag,
-add/remove any evidence id, jump to any location id (bypassing that
-destination's `condition` — it's a teleport for testing, not a move), and
-reset the sandbox to the current case's starting state.
+APIs normal gameplay UI uses (`GameState`/`ContentDB`/`Investigation`/
+`EventManager` — no back-door access) and shows: current location, visited
+locations, evidence held, all flags, per-location NPC presence (`PRESENT`/
+`ABSENT`, with the missing condition(s) for an absent one) and their topics,
+per destination whether it's `AVAILABLE` or `LOCKED`, and every event's
+status (`TRIGGERED`/`CONDITIONS MET`/`NOT TRIGGERED` with a per-condition
+`[x]`/`[ ]` breakdown) — using `Investigation.explain_topic_lock()`/
+`explain_destination_lock()`/`explain_npc_presence()` and
+`EventManager.explain_event()` respectively, all built on the same
+`ConditionEvaluator.explain()` (Part E, "explain locked content") — an `any`
+is reported as a single grouped line rather than as several
+separately-"missing" alternatives, see "The condition mini-language" above.
+Actions: toggle any flag, add/remove any evidence id, jump to any location
+id (bypassing that destination's `condition` — it's a teleport for testing,
+not a move), manually trigger any event by id (bypassing its `condition` and
+`trigger_policy` — see `docs/event-system.md`, "Developer tools"), and reset
+the current case to its starting state. As of Milestone 1.6 it also shows a
+**CASE** section (current case/chapter, chapter status, and why the current
+chapter hasn't completed) and lets you start any case by id, jump straight
+to any chapter, or force the current chapter to complete — see
+`docs/case-system.md`, "Developer tools", for what each of those bypasses
+and why they're still safe (they reuse `CaseManager`'s real progression
+APIs, not a separate code path).
 
 Jump and reset both call `DialogueManager.stop()` first. They are the only
 path in the game that can change location or reset the case while a dialogue
@@ -467,8 +595,45 @@ express (none has come up through Milestone 0 or this pass).
 ```
 
 ```
-DECISION: All game content (characters, evidence, locations, dialogue, cases)
-is authored as plain JSON under data/, loaded/cached at runtime by ContentDB.
+DECISION: A character's presence in a location is dynamic via the exact same
+mechanism as the decision above: an optional `condition` on each npc entry
+in location JSON, filtered by Investigation.get_npcs(). There is no
+add_character_to_location/remove_character_from_location effect and no
+GameState field tracking "where is character X" — an event "moves" a
+character by setting one flag that two locations' npc entries both
+reference with complementary conditions.
+
+WHY: This is literally the same shape as "no unlock_topic/unlock_location"
+above, applied to a third kind of content-gated availability (npcs, after
+topics/destinations). A dedicated character-location mechanism would need
+its own GameState storage (a second source of truth for "where is this
+character" alongside the location JSON that still has to define that
+character's topics/present_responses wherever they end up anyway — an event
+effect can't invent those), plus two new effect types, for a capability
+set_flag + condition already provides uniformly.
+
+ALTERNATIVES: add_character_to_location/remove_character_from_location
+effects backed by a GameState.character_location_overrides map, with
+Investigation.get_npcs() merging a location's static npcs list against that
+map. Considered and rejected — see docs/event-system.md, "Character
+presence," for the fuller comparison (the destination location still needs
+its own static npc entry for topics/present_responses either way, so the
+override map doesn't actually remove any authoring work — it just adds a
+second bookkeeping structure next to the JSON that already has to exist).
+
+IMPACT: Moving a character is entirely a content/condition concern — no new
+GameState field, no new effect type, and Investigation.get_npcs()'s filter
+is the one place that decides presence, the same way get_topics()/
+get_available_destinations() already decide topic/destination availability.
+The tradeoff: nothing enforces that a character's presence conditions across
+different locations are mutually exclusive — see docs/event-system.md,
+"Known limitations."
+```
+
+```
+DECISION: All game content (characters, evidence, locations, dialogue, cases,
+events) is authored as plain JSON under data/, loaded/cached at runtime by
+ContentDB.
 Runtime lookups return plain Dictionary, not typed Resource/wrapper classes.
 
 WHY: Needs to be easy for a human or an AI coding agent to hand-edit
@@ -640,16 +805,27 @@ godot --headless --path . --quit-after 60
 godot --headless --path . -s res://scenes/test/validate_content.gd
 
 # 4. The authoritative end-to-end check: drives GameState / ContentDB /
-#    DialogueManager / Investigation / SaveManager through the full demo
-#    flow (talk, examine + repeat, evidence, present x2 (specific +
-#    generic), flag/`all`/`any`/`visited_location`/`examined`/
-#    `interaction_complete`-gated topics, "explain locked content", topic
-#    "seen" state, move both directions, save, reset, load — including that
-#    the new seen_interactions state round-trips — then instantiates
-#    Main.tscn + TitleScreen.tscn and checks they (DebugPanel included) wire
-#    up without error. Also asserts ContentValidator found zero errors AND
-#    zero warnings in the real sandbox content. Prints "ALL TESTS PASSED"
-#    and exits 0 on success.
+#    DialogueManager / Investigation / EventManager / CaseManager /
+#    SaveManager / LocaleManager through the full demo flow (talk, examine + repeat,
+#    evidence, present x2 (specific + generic), flag/`all`/`any`/
+#    `visited_location`/`examined`/`interaction_complete`-gated topics,
+#    "explain locked content", topic "seen" state, move both directions, an
+#    event chain that moves a character and unlocks new content, a
+#    repeatable event, manual event trigger, save, reset, load — including
+#    that the new seen_interactions state (event-triggered state included)
+#    round-trips and a triggered "once" event does not refire — then the
+#    Test Case end to end (CaseManager.start_case, both chapters completing
+#    in order with chapter-scoped content and a save/load round trip mid-
+#    chapter, case completion, developer tools, and that a flat case like
+#    case_00_sandbox is unaffected) — then bilingual localization (both
+#    locales resolve correctly, an unsupported locale is rejected, the
+#    persisted preference round-trips, an already-visible InvestigationView
+#    re-renders live on a locale switch, and ContentValidator catches a
+#    translation missing from a locale) — then instantiates Main.tscn +
+#    TitleScreen.tscn and checks they (DebugPanel included) wire up without
+#    error. Also asserts ContentValidator found zero errors AND zero
+#    warnings in the real sandbox content. Prints "ALL TESTS PASSED" and
+#    exits 0 on success.
 godot --headless --path . -s res://scenes/test/smoke_test.gd
 ```
 

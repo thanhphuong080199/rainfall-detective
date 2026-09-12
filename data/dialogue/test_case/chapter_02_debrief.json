@@ -1,0 +1,15 @@
+[
+  {
+    "id": "character_b_chapter_02_debrief",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "character_b",
+        "expression": "normal",
+        "text": "DLG_CHARACTER_B_CHAPTER_02_DEBRIEF_N1_TEXT",
+        "actions": [{ "type": "mark_interaction_complete", "id": "chapter_02_debrief_done" }],
+        "next": null
+      }
+    }
+  }
+]

@@ -14,6 +14,10 @@ extends Node
 ## the dialogue. There is deliberately no separate "branch" node type —
 ## which dialogue tree to play at all is decided one level up, by
 ## Investigation, via content-data variants (see investigation_manager.gd).
+##
+## "actions" are run through EffectRunner.run() — this project's one shared
+## effect vocabulary, also used by EventManager for an event's "effects".
+## DialogueManager itself has no opinion on what an action does.
 
 signal dialogue_started(dialogue_id: String)
 signal line_shown(character_id: String, expression: String, text: String)
@@ -76,7 +80,7 @@ func choose(index: int) -> void:
 	if not is_active or index < 0 or index >= _current_choices.size():
 		return
 	var choice: Dictionary = _current_choices[index]
-	_run_actions(choice.get("actions", []))
+	EffectRunner.run(choice.get("actions", []))
 	_show_node(choice.get("next", ""))
 
 
@@ -91,7 +95,7 @@ func _show_node(node_id) -> void:
 		return
 
 	_current_node = _nodes[node_id]
-	_run_actions(_current_node.get("actions", []))
+	EffectRunner.run(_current_node.get("actions", []))
 
 	var speaker: String = _current_node.get("speaker", "")
 	var expression: String = _current_node.get("expression", "normal")
@@ -111,25 +115,6 @@ func _show_node(node_id) -> void:
 		for choice in _current_choices:
 			choice_texts.append(choice.get("text", ""))
 		choices_shown.emit(choice_texts)
-
-
-func _run_actions(actions) -> void:
-	if typeof(actions) != TYPE_ARRAY:
-		return
-	for action in actions:
-		if typeof(action) != TYPE_DICTIONARY:
-			continue
-		match action.get("type", ""):
-			"set_flag":
-				GameState.set_flag(action.get("flag", ""), action.get("value", true))
-			"add_evidence":
-				GameState.add_evidence(action.get("evidence_id", ""))
-			"remove_evidence":
-				GameState.remove_evidence(action.get("evidence_id", ""))
-			"mark_interaction_complete":
-				GameState.mark_seen("custom:%s" % action.get("id", ""))
-			_:
-				push_warning("DialogueManager: unknown action type '%s'" % [action.get("type", "")])
 
 
 func _end_dialogue() -> void:

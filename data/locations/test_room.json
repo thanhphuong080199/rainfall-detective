@@ -1,33 +1,39 @@
 {
   "id": "test_room",
-  "name": "Test Room",
+  "name": "LOC_TEST_ROOM_NAME",
   "background_color": "#2E3A46",
   "npcs": [
     {
       "id": "character_a",
+      "condition": { "flag": "character_a_moved", "equals": false },
       "topics": [
-        { "id": "greeting", "label": "Say hello", "dialogue_id": "character_a_greeting" },
+        { "id": "greeting", "label": "LOC_TEST_ROOM_TOPIC_CHARACTER_A_GREETING_LABEL", "dialogue_id": "character_a_greeting" },
+        {
+          "id": "about_moving",
+          "label": "LOC_TEST_ROOM_TOPIC_CHARACTER_A_ABOUT_MOVING_LABEL",
+          "dialogue_id": "character_a_about_moving"
+        },
         {
           "id": "about_key",
-          "label": "Ask about the key",
+          "label": "LOC_TEST_ROOM_TOPIC_CHARACTER_A_ABOUT_KEY_LABEL",
           "dialogue_id": "character_a_about_key",
           "condition": { "flag": "hallway_unlocked" }
         },
         {
           "id": "about_evidence",
-          "label": "Ask about what you're carrying",
+          "label": "LOC_TEST_ROOM_TOPIC_CHARACTER_A_ABOUT_EVIDENCE_LABEL",
           "dialogue_id": "character_a_about_evidence",
           "condition": { "any": [{ "has_evidence": "test_key" }, { "has_evidence": "test_note" }] }
         },
         {
           "id": "about_hallway_trip",
-          "label": "Ask about your trip to the hallway",
+          "label": "LOC_TEST_ROOM_TOPIC_CHARACTER_A_ABOUT_HALLWAY_TRIP_LABEL",
           "dialogue_id": "character_a_about_hallway_trip",
           "condition": { "visited_location": "test_hallway" }
         },
         {
           "id": "about_character_b",
-          "label": "Mention Character B",
+          "label": "LOC_TEST_ROOM_TOPIC_CHARACTER_A_ABOUT_CHARACTER_B_LABEL",
           "dialogue_id": "character_a_about_character_b",
           "condition": { "interaction_complete": "met_character_b" }
         }
@@ -41,7 +47,7 @@
   "examine_points": [
     {
       "id": "desk",
-      "label": "Examine the Desk",
+      "label": "LOC_TEST_ROOM_EXAMINE_DESK_LABEL",
       "variants": [
         { "condition": { "has_evidence": "test_key" }, "dialogue_id": "examine_desk_after" },
         { "dialogue_id": "examine_desk_before" }
@@ -49,7 +55,7 @@
     },
     {
       "id": "window",
-      "label": "Examine the Window",
+      "label": "LOC_TEST_ROOM_EXAMINE_WINDOW_LABEL",
       "variants": [
         { "condition": { "has_evidence": "test_note" }, "dialogue_id": "examine_window_after" },
         { "dialogue_id": "examine_window_before" }
@@ -59,7 +65,7 @@
   "destinations": [
     {
       "location_id": "test_hallway",
-      "label": "Go to the Hallway",
+      "label": "LOC_TEST_ROOM_DEST_TEST_HALLWAY_LABEL",
       "condition": { "flag": "hallway_unlocked" }
     }
   ]

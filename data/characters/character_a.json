@@ -1,6 +1,6 @@
 {
   "id": "character_a",
-  "name": "Character A",
+  "name": "CHAR_CHARACTER_A_NAME",
   "expressions": {
     "normal": "#4A6FA5",
     "happy": "#F2C14E",

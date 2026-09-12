@@ -1,7 +1,7 @@
 {
   "id": "test_badge",
-  "name": "Brass Badge",
+  "name": "EVID_TEST_BADGE_NAME",
   "icon_color": "#B08D57",
-  "short_description": "A tarnished badge.",
-  "detailed_description": "A tarnished brass badge with a worn engraving, tucked out of sight. Too faded to read clearly."
+  "short_description": "EVID_TEST_BADGE_SHORT",
+  "detailed_description": "EVID_TEST_BADGE_DETAIL"
 }

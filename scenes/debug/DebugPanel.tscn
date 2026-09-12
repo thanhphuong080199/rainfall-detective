@@ -30,9 +30,9 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -460.0
-offset_top = -330.0
+offset_top = -370.0
 offset_right = 460.0
-offset_bottom = 330.0
+offset_bottom = 370.0
 grow_horizontal = 2
 grow_vertical = 2
 
@@ -130,10 +130,60 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "Jump"
 
+[node name="EventRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="EventIdEdit" type="LineEdit" parent="CenterPanel/Margin/VBox/EventRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "event_id"
+
+[node name="TriggerEventButton" type="Button" parent="CenterPanel/Margin/VBox/EventRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Trigger Event"
+
+[node name="CaseRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="CaseIdEdit" type="LineEdit" parent="CenterPanel/Margin/VBox/CaseRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "case_id (e.g. test_case)"
+
+[node name="StartCaseButton" type="Button" parent="CenterPanel/Margin/VBox/CaseRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Start Case"
+
+[node name="ChapterRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="ChapterIdEdit" type="LineEdit" parent="CenterPanel/Margin/VBox/ChapterRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "chapter_id"
+
+[node name="JumpChapterButton" type="Button" parent="CenterPanel/Margin/VBox/ChapterRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Jump"
+
+[node name="CompleteChapterButton" type="Button" parent="CenterPanel/Margin/VBox/ChapterRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Complete Current"
+
 [node name="ResetButton" type="Button" parent="CenterPanel/Margin/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Reset Sandbox State"
+text = "Reset Case"
 
 [node name="StatusLabel" type="Label" parent="CenterPanel/Margin/VBox"]
 unique_name_in_owner = true
