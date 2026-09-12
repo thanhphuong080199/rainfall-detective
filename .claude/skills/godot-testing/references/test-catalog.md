@@ -1,29 +1,52 @@
 # Test catalog — what's already covered, and what to add
 
-`scenes/test/smoke_test.gd` is one file with one `_initialize()` that calls a
-sequence of `_test_*` functions, each covering one system (some deliberately
-continue from the state the previous one left, some deliberately reset first
-— the comments above each function say which and why; preserve that when you
-add to it). This table maps system → the function(s) that already exercise
-it → the specific behaviors it pins down → what a change to that system
-should add. Read the actual function before adding to it — this table is a
-map, not a substitute for reading `smoke_test.gd:N` itself.
+As of Milestone 1.7, `scenes/test/` is several small, independent `-s`
+scripts rather than one file — see `docs/testing.md` for the full
+organization and rationale. `scenes/test/smoke_test.gd` remains one file
+with one `_initialize()` that calls a sequence of `_test_*` functions, each
+covering one system (some deliberately continue from the state the previous
+one left, some deliberately reset first — the comments above each function
+say which and why; preserve that when you add to it) — it is the
+critical-path/integration fixture, not where a new Condition/Effect check
+goes (see "Focused test files" below for those). This table maps system →
+the function(s)/file(s) that already exercise it → the specific behaviors
+pinned down → what a change to that system should add. Read the actual
+function before adding to it — this table is a map, not a substitute for
+reading the file itself.
 
-Every function referenced below lives in `scenes/test/smoke_test.gd`, run via
-`.claude/skills/godot-development/scripts/verify.sh --script res://scenes/test/validate_content.gd --script res://scenes/test/smoke_test.gd`.
+Run the full suite via
+`.claude/skills/godot-development/scripts/verify.sh --script res://scenes/test/validate_content.gd --script res://scenes/test/conditions_test.gd --script res://scenes/test/effects_test.gd --script res://scenes/test/events_test.gd --script res://scenes/test/duplicate_execution_test.gd --script res://scenes/test/save_load_regression_test.gd --script res://scenes/test/negative_progression_test.gd --script res://scenes/test/dependency_analysis_test.gd --script res://scenes/test/smoke_test.gd`
+(docs/testing.md's FULL command) — see that doc for the FAST subset.
+
+## Focused test files (add a new Condition/Effect/Event check here, not to smoke_test.gd)
+
+| File | Covers |
+|---|---|
+| `conditions_test.gd` | Every `ConditionEvaluator` leaf/composite shape, both directions where meaningful, plus the fail-closed edge cases and the validator's stacked-check precedence rejection. Add a new leaf shape's test here. |
+| `effects_test.gd` | Every `EffectRunner` effect type: resulting `GameState`, signal-emission-only-on-real-change, idempotency on repeat run, and a safe no-op for an unknown type. Add a new effect type's test here. |
+| `events_test.gd` | Negative trigger (missing condition piece), positive trigger, a "once" event's fire count under repeated reevaluation, an isolated event-chain regression, a chapter-scoped topic not leaking into an unrelated case, and `debug_reset_trigger()`'s state transitions (Milestone 1.8). |
+| `duplicate_execution_test.gd` | Regression coverage specifically for accidental double-firing: an event under redundant reevaluation, a real chapter completion (and the next chapter's activation) under redundant reevaluation, case completion likewise. |
+| `save_load_regression_test.gd` | An exact round trip of every persisted field, a triggered "once" event surviving save/reset/load without refiring, and a mid-chapter-2 save/load that doesn't re-run entry/completion effects. Isolated `user://` save file. |
+| `negative_progression_test.gd` | The paths where a bug could let a player skip required progression: event without required evidence, chapter with partial completion conditions, locked destination, wrong evidence presented. |
+| `dependency_analysis_test.gd` | `ContentValidator`'s dependency-reachability WARNING checks — both the pure collector functions in isolation and an end-to-end check that real sandbox content produces zero *unexpected* dependency warnings — plus (Milestone 1.8) `find_flag_producers`/`find_evidence_producers`/`find_interaction_producers` against real content, and the pure `_effect_produces_*` predicates in isolation. |
+| `test_helpers.gd` | Not a test — shared `isolate_save`/`isolate_locale`/`finish` boilerplate every file above uses. |
 
 ## `ContentValidator` / `ContentDB` — `_test_content_loaded`
 
 Asserts every content category loaded at least the expected count, and —
 this is the important one — that `content_db.get_last_validation_result()`
-reports **zero errors and zero warnings** against the real sandbox content.
-Any new content shape or new placeholder content must keep that true.
+reports **zero errors and zero unexpected warnings** against the real
+sandbox content (`KNOWN_ACCEPTED_WARNINGS` names the one documented
+exception — `test_repeatable_pulse`'s deliberately test-only `pulse_flag`
+dependency, see `docs/testing.md`). Any new content shape or new placeholder
+content must keep that true, and a *second* unexpected warning still fails
+this check.
 
 Add a check here when: you add a new content *category* (new top-level
 `data/` folder) or a new bulk getter on `ContentDB` that other tooling will
 rely on (`get_all_*_ids`).
 
-## `ConditionEvaluator` — `_test_conditions`
+## `ConditionEvaluator` — `conditions_test.gd`
 
 Pins down the properties that matter more than the happy path:
 
@@ -47,24 +70,38 @@ Pins down the properties that matter more than the happy path:
 Add a check here when: you add a new leaf shape (also update `LEAF_KEYS` +
 `ContentValidator` + `docs/content-guide.md`'s conditions table in the same
 change — this is a schema change, see the SKILL.md "Regression surface"
-section), or change `evaluate()`'s precedence/failure behavior at all.
+section), or change `evaluate()`'s precedence/failure behavior at all. This
+file is independent of `smoke_test.gd` — it's the one place a new leaf
+shape's test goes (see `docs/testing.md`).
 
-## `EffectRunner` — exercised inline, no dedicated `_test_*`
+`_test_explain_tree()` (Milestone 1.8) covers `explain_tree()` — the nested
+ALL/ANY/NOT breakdown built for the Case Debugger's Condition Inspector
+(`docs/case-debugger.md`). It's additive to `explain()`'s own flattening/
+grouping behavior above, not a replacement — a new leaf shape's `evaluate()`
+test still only needs `_test_leaf_shapes()`; only touch `_test_explain_tree()`
+if you change what a tree *node* looks like (its `passed`/`children` shape).
 
-Effects (`set_flag`, `add_evidence`, `remove_evidence`,
-`mark_interaction_complete`) are asserted as *consequences* throughout
-`_test_progression_flow` and `_test_event_system` (e.g. presenting the key
-sets `hallway_unlocked`; `remove_evidence` is exercised via the dedicated
-`test_effects_remove_evidence` dialogue tree, which exists purely for this
-test and is never reachable through normal play — following that same
-pattern for a new effect type, a small unreachable-by-players dialogue tree
-or event dedicated to exercising it in isolation, is the established way to
-test one action's wiring without depending on a longer content chain).
+## `EffectRunner` — `effects_test.gd`
+
+Direct `EffectRunner.run(...)` calls against a fresh `GameState`, asserting
+the resulting state (never a private method call): each effect type's happy
+path, that a signal (`flag_changed`/`evidence_added`/`evidence_removed`/
+`interaction_seen`) only fires for a REAL change (not a no-op re-run), that
+`add_evidence`/`remove_evidence` are idempotent, that an unrecognized effect
+`type` is a safe no-op (no state mutated), and that a whole effects list is
+safe to run more than once with the same net result (chapters re-run
+`entry_effects` on `jump_to_chapter`). `_test_progression_flow` and
+`_test_event_system` in `smoke_test.gd` still exercise effects as
+*consequences* of real content (e.g. presenting the key sets
+`hallway_unlocked`) — that integration-level coverage is complementary, not
+redundant with this file's isolated unit-level checks.
 
 Add a check here when: you add a new effect `type` (also update
 `ContentValidator._validate_effects()` and `docs/content-guide.md`'s actions
 list — schema change) or change idempotency (does running it twice still
-no-op correctly, like `add_evidence` on an already-held item).
+no-op correctly, like `add_evidence` on an already-held item). This file is
+independent of `smoke_test.gd` — it's the one place a new effect type's test
+goes (see `docs/testing.md`).
 
 ## `DialogueManager` / `Investigation` — `_test_progression_flow`, `_test_interaction_guards`
 
@@ -120,6 +157,17 @@ or touch the fixed-point evaluation loop (`_evaluate_all()` /
 `MAX_EVALUATION_CYCLES`) — at minimum re-verify one existing chain still
 resolves in one pass and the cycle cap still logs instead of hanging.
 
+`events_test.gd` (independent, resets per `_test_*`) adds: negative trigger
+(has_evidence still missing → no fire), positive trigger, an isolated event
+chain proven to fire both events in one pass, a chapter-scoped topic
+confirmed absent from an unrelated flat case, and a "once" event's fire
+count checked against ten unrelated reevaluation passes.
+`duplicate_execution_test.gd` extends that last check to chapter/case
+completion specifically (a real completion, then redundant reevaluation,
+asserting `chapter_completed`/`case_completed`/`chapter_activated` signal
+counts stay put) — add a check there instead of here for a new "does this
+fire more than once" regression.
+
 ## `CaseManager` — `_test_case_system`, `_test_case_debug_tools`
 
 Deliberately calls `case_manager.start_case("test_case")` to reset state
@@ -161,6 +209,15 @@ Add a check here when: you add anything that needs new persisted state —
 first check whether it actually needs a new field (see SKILL.md's "Save/load"
 section) before assuming it does.
 
+`save_load_regression_test.gd` (independent, own throwaway save file) is the
+dedicated persistence suite: an exact round trip of every persisted field,
+the "once" event / no-refire guarantee above repeated in isolation, and a
+mid-chapter-2 save/load specifically checked to NOT re-emit
+`chapter_activated`/`chapter_completed` for anything the save already
+reflects (see `docs/case-system.md`'s "no `entry_effects` re-run" on load).
+Prefer adding a new persistence regression check there — it doesn't require
+replaying the rest of the narrative walkthrough first.
+
 ## `LocaleManager` — `_test_localization`
 
 Confirms the CSV actually loaded into real `Translation` objects (not just
@@ -175,7 +232,7 @@ reports a key missing from either locale.
 Add a check here when: you add a new translatable field type, a new locale,
 or a new screen that should react live to `locale_changed`.
 
-## `DebugPanel` / scene wiring — `_test_scene_instantiation`
+## `DebugPanel` (Case Debugger) / scene wiring — `_test_scene_instantiation`
 
 Not a simulated click (headless has no way to see a rendered click's
 result) — instantiates `Main.tscn`/`TitleScreen.tscn` and asserts the
@@ -185,8 +242,17 @@ re-rendering the action list while `set_interactive(false)` never leaves a
 button enabled. `DebugPanel` itself is instantiated and `open()`/`close()`
 toggled with `visible` asserted — never visually confirmed to render
 correctly (see `docs/architecture.md`'s "Known limitations" — a human should
-press F1 in a running build after any DebugPanel change).
+press F1 in a running build after any DebugPanel change). The Case
+Debugger's own underlying logic (Milestone 1.8) — `explain_tree()`, the
+`find_*_producers()` lookups, `debug_reset_trigger()` — is unit tested where
+it lives (`conditions_test.gd`, `dependency_analysis_test.gd`,
+`events_test.gd` respectively, per the rows above), not here; this test stays
+scoped to scene instantiation and click-routing plumbing, per
+`docs/case-debugger.md`'s own "no pixel-perfect UI tests" stance.
 
 Add a check here when: you change an overlay's `mouse_filter` chain, add a
-new overlay `Main.gd` wires up, or change what fields/buttons `DebugPanel`
-exposes for a system this catalog covers.
+new overlay `Main.gd` wires up, or change `DebugPanel`'s node structure in a
+way that could break instantiation (a renamed unique name, a removed
+`ConfirmationDialog`, etc.). A new tab's *data* (what it displays, what
+action it performs) belongs in the underlying system's own focused test file
+instead — see `docs/case-debugger.md`, "Automated test coverage".

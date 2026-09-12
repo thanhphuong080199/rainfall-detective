@@ -109,7 +109,8 @@ file, exactly like every other content category — see `docs/content-guide.md`
   "conditions": {
     "all": [
       { "interaction_complete": "character_a_ready_to_move" },
-      { "has_evidence": "test_key" }
+      { "has_evidence": "test_key" },
+      { "flag": "hallway_unlocked" }
     ]
   },
   "trigger_policy": "once",
@@ -118,6 +119,22 @@ file, exactly like every other content category — see `docs/content-guide.md`
   ]
 }
 ```
+
+**Why `hallway_unlocked` is in there**: the other two conditions
+(`character_a_ready_to_move` and `test_key`) are both reachable from the
+very start with no ordering dependency on presenting the key — a player who
+talks about "about_moving" and examines the desk, in either order, without
+ever presenting the key, would otherwise move Character A away before the
+key could ever be presented, permanently locking `hallway_unlocked` (and
+Test Hallway, where Character A now stands) — a real soft-lock a developer
+found via the Case Debugger while testing Milestone 1.8. This is exactly the
+class of bug `docs/testing.md`'s "Soft-lock safety philosophy" says
+`ContentValidator` cannot catch (individually-reachable conditions whose
+*order* matters) — see `scenes/test/negative_progression_test.gd`'s
+`_test_event_does_not_fire_before_hallway_is_unlocked()` for the regression
+test that pins this down, and `docs/testing.md`, "Soft-lock risk", for the
+general lesson: a condition being individually reachable doesn't mean every
+order of reaching it is safe.
 
 | Field | Meaning |
 |---|---|
@@ -217,9 +234,11 @@ demo end to end:
 1. Character A starts in Test Room (`data/locations/test_room.json`).
 2. Talking to Character A's `about_moving` topic marks
    `interaction_complete: character_a_ready_to_move`. The player already
-   holds `test_key` from earlier, so `character_a_moves_to_hallway`'s other
-   condition is already satisfied — the event fires mid-dialogue, from this
-   one action.
+   holds `test_key` and has already unlocked the hallway from earlier, so
+   `character_a_moves_to_hallway`'s other two conditions are already
+   satisfied — the event fires mid-dialogue, from this one action. (If the
+   player instead reached this state before presenting the key, the event
+   would correctly stay silent — see the `hallway_unlocked` condition above.)
 3. Its effect sets `character_a_moved = true`. That alone satisfies
    `mirror_note_ready`'s condition, which chain-fires in the same pass (see
    "Event chains").
@@ -241,17 +260,17 @@ see the test for exactly what it asserts) and the manual-trigger path (see
 
 ## Developer tools
 
-`DebugPanel`'s **EVENTS** section (F1) lists every event with its status —
+The Case Debugger's (F1) **Events** tab lists every event with its status —
 `NOT TRIGGERED`, `CONDITIONS MET` (satisfied but not yet evaluated/fired —
 transient, you'll rarely catch it, since evaluation runs synchronously off
 the same signal), or `TRIGGERED` — and, like locked topics/destinations, a
-per-condition `[x]`/`[ ]` breakdown for anything not yet satisfied. The
-**CHARACTERS (this location)** section (replacing the old "TALK TOPICS"
-section) now shows `PRESENT`/`ABSENT` per NPC entry with the same missing-
-condition breakdown, so a character who has moved away is visible as
-"ABSENT — missing: flag ... == ..." rather than silently gone.
+per-condition `[x]`/`[ ]` breakdown for anything not yet satisfied,
+filterable by event id. The **NPCs** tab shows `PRESENT`/`ABSENT` per NPC
+entry with the same missing-condition breakdown, so a character who has
+moved away is visible as "ABSENT — missing: flag ... == ..." rather than
+silently gone. See `docs/case-debugger.md` for the full tab layout.
 
-An **event id field + Trigger Event button** calls
+An **event id field + Trigger button** calls
 `EventManager.force_trigger(event_id)`, which runs `_fire()` directly —
 bypassing both `conditions` and `trigger_policy` — through the exact same
 pipeline (`GameState.mark_seen` + `EffectRunner.run` + `event_triggered`
@@ -260,7 +279,17 @@ duplicate the firing logic for a developer shortcut. This is a developer-only
 override: forcing a `"once"` event still marks it triggered (so automatic
 evaluation won't also fire it), and forcing a `"repeatable"` event doesn't
 touch its false→true edge tracking, so it doesn't interfere with the next
-real transition either.
+real transition either. Requires confirming in the debugger (it runs real
+effects immediately).
+
+A **Reset Trigger button** (Milestone 1.8) calls
+`EventManager.debug_reset_trigger(event_id)`: clears the "has triggered"
+marker (and, for a `"repeatable"` event, its in-memory false→true edge
+state) via a new `GameState.unmark_seen()`, then requests a normal
+reevaluation pass. It does **not** undo the event's own already-run effects —
+see `docs/case-debugger.md`, "Manual Event Trigger vs. Event Reset", for
+exactly what this does and doesn't simulate, and why it needs no
+confirmation dialog (it never re-runs effects by itself).
 
 ## Logging
 

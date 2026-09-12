@@ -369,15 +369,18 @@ call, now case-aware).
 
 ## Developer tools
 
-The F1 debug panel's new **CASE** section (above **LOCATION**) shows the
-current case (with `ACTIVE`/`COMPLETED` status), the current chapter, a
-per-condition `[x]`/`[ ]` breakdown of why the current chapter hasn't
-completed yet (via `CaseManager.explain_chapter_completion()`, which
-delegates entirely to `EventManager.explain_event()` — the same
-`ConditionEvaluator.explain()` grouping rules from `docs/architecture.md`,
-"Developer tools," apply unchanged), and the completed-chapters list. New
-actions, all reusing real progression APIs rather than duplicating them (per
-the milestone brief's explicit rule for developer shortcuts):
+The Case Debugger's (F1) **Case & Chapter** tab shows the current case (with
+`ACTIVE`/`COMPLETED` status), the current chapter, a per-condition `[x]`/`[ ]`
+breakdown of why the current chapter hasn't completed yet (via
+`CaseManager.explain_chapter_completion()`, which delegates entirely to
+`EventManager.explain_event()` — the same `ConditionEvaluator.explain()`
+grouping rules from `docs/architecture.md`, "Developer tools," apply
+unchanged), its `next_chapter`, and the completed-chapters list. A chapter's
+completion conditions can also be inspected as a nested tree (via its
+`completion_event`) from the Inspector tab — see `docs/case-debugger.md`,
+"Condition Inspector". Actions, all reusing real progression APIs rather than
+duplicating them (per the milestone brief's explicit rule for developer
+shortcuts):
 
 - **Start Case** (case id field) — `CaseManager.start_case(id)`, stopping
   any active dialogue first (same "yanking state out from under a running
@@ -386,14 +389,21 @@ the milestone brief's explicit rule for developer shortcuts):
   teleport, exactly like the existing location Jump — sets the chapter and
   runs its `entry_effects`, bypassing whatever the previous chapter's
   completion would normally require. Does not mark anything complete.
-- **Complete Current** — `CaseManager.force_complete_current_chapter()`:
-  forces the current chapter's `completion_event` through
-  `EventManager.force_trigger()`, the exact pipeline a real completion uses
-  and the exact bypass-conditions behavior `docs/event-system.md` already
-  documents for manually triggering any other event. `CaseManager`'s own
-  `_on_event_triggered` handler does the rest — there is no separate
-  "force-complete" transition code path.
-- **Reset Case** — see "Case reset" above.
+- **Force Complete Current** (requires confirmation) —
+  `CaseManager.force_complete_current_chapter()`: forces the current
+  chapter's `completion_event` through `EventManager.force_trigger()`, the
+  exact pipeline a real completion uses and the exact bypass-conditions
+  behavior `docs/event-system.md` already documents for manually triggering
+  any other event. `CaseManager`'s own `_on_event_triggered` handler does
+  the rest — there is no separate "force-complete" transition code path.
+- **Reset Case** (requires confirmation) — see "Case reset" above.
+
+Chapter reset (resetting only the current chapter's own state, leaving
+earlier chapters intact) is deliberately **not** offered — see
+`docs/case-debugger.md`, "Known limitations", for why: there is no
+structurally-enforced "this state belongs to chapter X" boundary to reset
+against, only the flag-naming convention "Event/content scope" above
+already describes.
 
 ## Content validation
 

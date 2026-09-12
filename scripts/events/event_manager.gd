@@ -82,6 +82,30 @@ func force_trigger(event_id: String) -> bool:
 	return true
 
 
+## Developer-only (Milestone 1.8 Case Debugger): clears event_id's "has
+## triggered" marker via GameState.unmark_seen(), and — for a "repeatable"
+## event — also clears its in-memory false->true edge state, so the next
+## reevaluation treats it as never having run rather than as still armed.
+## Deliberately does NOT undo any Effect the event already ran: this only
+## resets whether EventManager considers it triggered, not world state (see
+## docs/case-debugger.md, "Event reset", for why a true rollback isn't
+## attempted). Ends by requesting a normal reevaluation pass — the same thing
+## any real state change would do — so if the event's conditions are still
+## satisfied, it fires again immediately; if they're not, it simply becomes
+## eligible to fire again the next time relevant state changes. Returns false
+## for an unknown event id.
+func debug_reset_trigger(event_id: String) -> bool:
+	var event: Dictionary = ContentDB.get_event(event_id)
+	if event.is_empty():
+		push_warning("EventManager.debug_reset_trigger: unknown event '%s'" % event_id)
+		return false
+	GameState.unmark_seen(_event_key(event_id))
+	_repeatable_was_satisfied.erase(event_id)
+	print("[EventManager] Debug: reset trigger marker for '%s' (any effects it already ran are NOT undone)" % event_id)
+	_request_evaluation()
+	return true
+
+
 func _request_evaluation() -> void:
 	if ContentDB.get_all_event_ids().is_empty():
 		return

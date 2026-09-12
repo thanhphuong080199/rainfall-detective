@@ -376,7 +376,8 @@ an **array** of event objects:
     "conditions": {
       "all": [
         { "interaction_complete": "character_a_ready_to_move" },
-        { "has_evidence": "test_key" }
+        { "has_evidence": "test_key" },
+        { "flag": "hallway_unlocked" }
       ]
     },
     "trigger_policy": "once",
@@ -558,8 +559,12 @@ gaps: a `present_responses` list with no generic fallback entry, an NPC with
 no `present_responses` at all (presenting anything to them does nothing
 whatsoever — no dialogue, no feedback), an `examine_points` variant list with
 no unconditional fallback entry, a character missing its `normal`
-expression, or a dialogue node nothing can reach (usually a typo in another
-node's `next` — the dialogue still plays, it just skips the node you wrote). This same check also runs automatically every time
+expression, a dialogue node nothing can reach (usually a typo in another
+node's `next` — the dialogue still plays, it just skips the node you wrote),
+or (Milestone 1.7) a condition requiring a flag/evidence id/interaction-complete
+id that no Effect anywhere in loaded content is capable of ever producing —
+see `docs/testing.md`, "Progression dependency validation", for exactly what
+that check does and does not attempt to prove. This same check also runs automatically every time
 the game boots (look for `[ContentValidator]` in the console output) — the
 standalone script above just gives it a scriptable exit code without
 booting the full game. See `docs/architecture.md`, "Content validation",
@@ -571,24 +576,30 @@ nothing ever sets the flag it needs" or similar design-level gaps.
 
 ## Developer tools
 
-Press **F1** in a running debug build to open a developer overlay showing
-the current location, evidence held, every flag, visited locations, every
-NPC's presence (present/absent, per location) and topics, every destination,
-and every event's status — each with the specific missing condition(s)
-listed if it's locked/absent/not-yet-triggered. From there you can toggle
-any flag, add/remove any evidence id, jump straight to any location id
-(skipping that destination's `condition` — useful for reaching content deep
-in a case without replaying everything to unlock it), manually trigger any
-event by id (bypassing its `conditions`/`trigger_policy` — useful for
-testing an event's effects without replaying everything that would normally
-satisfy it), or reset the current case back to its starting state. **Esc**
-closes it. When a topic/event is locked behind an `any`, the panel shows the
-alternatives as one grouped line (`ANY of: (... OR ...)`) rather than listing
-each as separately missing — you only need one of them. It's gone entirely
-in an exported release build (`OS.is_debug_build()` is false there) —
-nothing to remember to strip out later. A **CASE** section additionally
+Press **F1** in a running debug build to open the **Case Debugger** — a
+tabbed overlay (State / Evidence / Location / NPCs / Events / Case & Chapter
+/ Inspector / Log) showing the current location, evidence held, every flag,
+visited locations, every NPC's presence (present/absent, per location) and
+topics, every destination, and every event's status — each with the
+specific missing condition(s) listed if it's locked/absent/not-yet-triggered,
+and filterable once a category has enough entries to matter. From there you
+can toggle any flag, add/remove any evidence id, jump straight to any
+location id (skipping that destination's `condition` — useful for reaching
+content deep in a case without replaying everything to unlock it), manually
+trigger any event by id (bypassing its `conditions`/`trigger_policy` —
+useful for testing an event's effects without replaying everything that
+would normally satisfy it), reset an event's trigger marker for repeated
+testing (without undoing its effects), or reset the current case back to its
+starting state. **Esc** closes it. When a topic/event is locked behind an
+`any`, the flat breakdowns show the alternatives as one grouped line (`ANY
+of: (... OR ...)`) rather than listing each as separately missing — you only
+need one of them; the Inspector tab's Condition Inspector additionally shows
+any condition (including an `any`'s branches) as a full nested tree, and can
+look up known producers for a missing flag/evidence/interaction id. It's
+gone entirely in an exported release build (`OS.is_debug_build()` is false
+there) — nothing to remember to strip out later. A **Case & Chapter** tab
 shows the current case/chapter and why the current chapter hasn't completed
 yet, with actions to start any case by id, jump to any chapter, or force the
-current chapter to complete. See `docs/architecture.md`, "Developer tools",
-`docs/event-system.md`, "Developer tools", and `docs/case-system.md`,
-"Developer tools".
+current chapter to complete. See `docs/case-debugger.md` for the full design,
+`docs/architecture.md`, "Developer tools", `docs/event-system.md`,
+"Developer tools", and `docs/case-system.md`, "Developer tools".

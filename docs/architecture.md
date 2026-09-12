@@ -481,10 +481,16 @@ It checks two severities:
   dialogue and no feedback whatsoever — a silent dead end), an
   `examine_points` variant list with no unconditional fallback entry, a
   character with no `normal` expression, a placeholder color string that
-  isn't valid hex, or a **dialogue node nothing can reach** (the validator
+  isn't valid hex, a **dialogue node nothing can reach** (the validator
   walks each tree from its `start` through every `next` and choice `next`;
   an orphan is nearly always a typo in some other node's `next`, and the
-  dialogue still "works" — it just silently skips content you wrote).
+  dialogue still "works" — it just silently skips content you wrote), or
+  (Milestone 1.7) a **dependency-reachability smell**: a condition requiring
+  a flag/evidence id/interaction-complete id that no Effect anywhere in
+  loaded content is capable of ever producing — see `docs/testing.md`,
+  "Progression dependency validation", for the full design and its
+  deliberate limits (it is not a reachability *proof*, the same stance as
+  everywhere else in this section).
 
 It runs automatically every boot (`ContentDB._ready()` calls
 `ContentValidator.validate()` then `.report()`, prefixing every line with
@@ -517,40 +523,30 @@ there.
 
 ## Developer tools
 
-`DebugPanel` (`scenes/debug/DebugPanel.tscn` + `scripts/debug/debug_panel.gd`)
-is an **F1-toggled** overlay, entirely self-contained — unlike `GameMenu`/
-`EvidenceInventory` it's never wired up by `Main.gd`, because nothing else
-needs to coordinate with it. It reads state through the exact same public
-APIs normal gameplay UI uses (`GameState`/`ContentDB`/`Investigation`/
-`EventManager` — no back-door access) and shows: current location, visited
-locations, evidence held, all flags, per-location NPC presence (`PRESENT`/
-`ABSENT`, with the missing condition(s) for an absent one) and their topics,
-per destination whether it's `AVAILABLE` or `LOCKED`, and every event's
-status (`TRIGGERED`/`CONDITIONS MET`/`NOT TRIGGERED` with a per-condition
-`[x]`/`[ ]` breakdown) — using `Investigation.explain_topic_lock()`/
-`explain_destination_lock()`/`explain_npc_presence()` and
-`EventManager.explain_event()` respectively, all built on the same
-`ConditionEvaluator.explain()` (Part E, "explain locked content") — an `any`
-is reported as a single grouped line rather than as several
-separately-"missing" alternatives, see "The condition mini-language" above.
-Actions: toggle any flag, add/remove any evidence id, jump to any location
-id (bypassing that destination's `condition` — it's a teleport for testing,
-not a move), manually trigger any event by id (bypassing its `condition` and
-`trigger_policy` — see `docs/event-system.md`, "Developer tools"), and reset
-the current case to its starting state. As of Milestone 1.6 it also shows a
-**CASE** section (current case/chapter, chapter status, and why the current
-chapter hasn't completed) and lets you start any case by id, jump straight
-to any chapter, or force the current chapter to complete — see
-`docs/case-system.md`, "Developer tools", for what each of those bypasses
-and why they're still safe (they reuse `CaseManager`'s real progression
-APIs, not a separate code path).
+`DebugPanel` (`scenes/debug/DebugPanel.tscn` + `scripts/debug/debug_panel.gd`),
+the **Case Debugger**, is an **F1-toggled** overlay, entirely self-contained —
+unlike `GameMenu`/`EvidenceInventory` it's never wired up by `Main.gd`,
+because nothing else needs to coordinate with it. As of Milestone 1.8 it's a
+tabbed panel (State / Evidence / Location / NPCs / Events / Case & Chapter /
+Inspector / Log) above a live-refreshing Case/Chapter/Location header — full
+design, the Condition Inspector, "known producers" lookup, and exactly which
+actions are normal-pipeline mutations vs. explicit debug overrides are in
+`docs/case-debugger.md`; only what's relevant elsewhere in this document is
+summarized here. It reads state through the exact same public APIs normal
+gameplay UI uses (`GameState`/`ContentDB`/`Investigation`/`EventManager`/
+`CaseManager` — no back-door access), built on the same
+`ConditionEvaluator.explain()`/`explain_tree()` (Part E, "explain locked
+content") every "why is this locked" panel uses — an `any` is reported as a
+single grouped line in the flat breakdowns (never as several
+separately-"missing" alternatives, see "The condition mini-language" above),
+while the Inspector tab's nested tree view shows an `any`'s branches in full.
 
-Jump and reset both call `DialogueManager.stop()` first. They are the only
-path in the game that can change location or reset the case while a dialogue
-is on screen — `Investigation` refuses to, and the Menu button is disabled
-mid-dialogue — and letting that dialogue keep running would fire the rest of
-its actions into state it was never written against. `stop()` exists for
-exactly this and has no gameplay caller.
+Jump (location) and Reset Case both call `DialogueManager.stop()` first. They
+are the only path in the game that can change location or reset the case
+while a dialogue is on screen — `Investigation` refuses to, and the Menu
+button is disabled mid-dialogue — and letting that dialogue keep running
+would fire the rest of its actions into state it was never written against.
+`stop()` exists for exactly this and has no gameplay caller.
 
 **Isolated from normal gameplay, and inert in a release build almost for
 free**: `_ready()` checks `OS.is_debug_build()` first and returns
@@ -787,7 +783,11 @@ mid-tree branch that isn't player-facing.
 
 ## Verification
 
-Four layers, in order of how much they actually prove:
+See `docs/testing.md` for the full test organization (Milestone 1.7 split
+`smoke_test.gd`'s condition-language checks and added several independent
+focused/regression test scripts alongside it — `scenes/test/*_test.gd`), the
+FAST/FULL commands, and CI. What follows describes the four raw verification
+layers those scripts are built on, in order of how much they actually prove:
 
 ```bash
 # 1. Force import, surface scene/resource reference errors.

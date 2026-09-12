@@ -155,6 +155,41 @@ static func describe(condition) -> String:
 	return "(unknown condition: %s)" % [condition]
 
 
+## Recursive, nested breakdown of a condition for the Case Debugger's
+## Condition Inspector (Milestone 1.8) — unlike explain() above (which
+## flattens a top-level "all" and keeps "any"/"not" as one grouped summary
+## line, because that's what "why is this locked" needs), this mirrors the
+## condition's own tree shape one level at a time, so ANY/NOT nesting stays
+## visible instead of being summarized away. Not a replacement for explain():
+## existing locked-content panels keep using that; this is additive, for the
+## one place (the Inspector tab) that specifically wants the nested shape.
+## Returns {"description": String, "passed": bool, "children": Array[Dictionary]}
+## — a leaf has an empty "children" array. Every "passed" value comes from
+## evaluate() itself (never re-derived here), so this can't drift from actual
+## gameplay evaluation.
+static func explain_tree(condition) -> Dictionary:
+	if condition == null:
+		return {"description": describe(condition), "passed": true, "children": []}
+	if typeof(condition) != TYPE_DICTIONARY:
+		return {"description": describe(condition), "passed": false, "children": []}
+
+	if condition.has("all") and typeof(condition.get("all")) == TYPE_ARRAY:
+		return _explain_tree_node("ALL", condition, condition.get("all"))
+	if condition.has("any") and typeof(condition.get("any")) == TYPE_ARRAY:
+		return _explain_tree_node("ANY", condition, condition.get("any"))
+	if condition.has("not"):
+		return _explain_tree_node("NOT", condition, [condition.get("not")])
+
+	return {"description": describe(condition), "passed": evaluate(condition), "children": []}
+
+
+static func _explain_tree_node(label: String, condition: Dictionary, sub_conditions: Array) -> Dictionary:
+	var children: Array[Dictionary] = []
+	for sub_condition in sub_conditions:
+		children.append(explain_tree(sub_condition))
+	return {"description": label, "passed": evaluate(condition), "children": children}
+
+
 static func _describe_list(sub_conditions, separator: String) -> String:
 	if typeof(sub_conditions) != TYPE_ARRAY:
 		return "(malformed list: %s)" % [sub_conditions]
