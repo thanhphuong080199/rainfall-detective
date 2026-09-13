@@ -39,6 +39,7 @@ static func validate() -> Dictionary:
 	_validate_chapters(errors, warnings)
 	_validate_cases(errors, warnings)
 	_validate_events(errors, warnings)
+	_validate_deduction_cases(errors, warnings)
 	_validate_dependency_reachability(warnings)
 
 	return {"errors": errors, "warnings": warnings}
@@ -54,11 +55,12 @@ static func report(result: Dictionary) -> void:
 		print("[ContentValidator] ERROR: %s" % message)
 	for message in warnings:
 		print("[ContentValidator] WARNING: %s" % message)
-	print("[ContentValidator] %d error(s), %d warning(s) across %d characters, %d evidence, %d locations, %d dialogue trees, %d chapters, %d cases, %d events" % [
+	print("[ContentValidator] %d error(s), %d warning(s) across %d characters, %d evidence, %d locations, %d dialogue trees, %d chapters, %d cases, %d events, %d deduction cases" % [
 		errors.size(), warnings.size(),
 		ContentDB.get_all_character_ids().size(), ContentDB.get_all_evidence_ids().size(),
 		ContentDB.get_all_location_ids().size(), ContentDB.get_all_dialogue_ids().size(),
 		ContentDB.get_all_chapter_ids().size(), ContentDB.get_all_case_ids().size(), ContentDB.get_all_event_ids().size(),
+		ContentDB.get_all_deduction_case_ids().size(),
 	])
 
 
@@ -618,6 +620,28 @@ static func _collect_flag_requirements(condition, out: Dictionary) -> void:
 		if typeof(sub_conditions) == TYPE_ARRAY:
 			for sub_condition in sub_conditions:
 				_collect_flag_requirements(sub_condition, out)
+
+
+# ---------------------------------------------------------------------------
+# Deduction cases (Milestone 1.9) — data/deductions/*.json. The rules live in
+# DeductionValidator (pure, so negative fixtures can be tested without
+# touching ContentDB — see scenes/test/deduction_validation_test.gd); this is
+# the one place they're run against loaded content, so their findings share
+# this validator's report, severities and exit code. See
+# docs/deduction-system.md, "Content validation".
+
+static func _validate_deduction_cases(errors: Array[String], warnings: Array[String]) -> void:
+	var cases: Dictionary = ContentDB.get_all_deduction_cases()
+	var case_ids: Array = cases.keys()
+	case_ids.sort()
+	var case_list: Array = []
+	for case_id in case_ids:
+		var data: Dictionary = cases[case_id]
+		DeductionValidator.validate_case(data, errors, warnings)
+		for entry in DeductionValidator.collect_text_keys(data):
+			_validate_translatable(entry[0], entry[1], errors)
+		case_list.append(data)
+	DeductionValidator.validate_structural_equivalence(case_list, errors)
 
 
 # ---------------------------------------------------------------------------

@@ -21,6 +21,15 @@ scenes/test/
 ├── save_load_regression_test.gd   persistence regression coverage, isolated save file
 ├── negative_progression_test.gd   locked/insufficient-state paths that must NOT progress
 ├── dependency_analysis_test.gd    ContentValidator's dependency-reachability warnings + known-producer lookup
+├── deduction_evaluator_test.gd    Milestone 1.9: DeductionEvaluator/DeductionSession proof-attempt contract
+├── timeline_evaluator_test.gd     Milestone 1.9: TimelineEvaluator constraint checks
+├── deduction_validation_test.gd   Milestone 1.9: DeductionValidator negative fixtures + real deduction content clean
+├── deduction_cases_test.gd        Milestone 1.9: the three prototype deduction cases end to end, by structural role
+├── deduction_fixtures.gd          hand-built deduction fixture case — not a runnable test
+├── deduction_lab_controller_test.gd  Milestone 1.10: DeductionLabController session ownership/switch/reset
+├── deduction_lab_presenter_test.gd   Milestone 1.10: Player Preview spoiler boundary + Author Inspector contract
+├── deduction_lab_recorder_test.gd    Milestone 1.10: local playtest recorder (start/stop/clear/export, schema)
+├── deduction_lab_scene_test.gd       Milestone 1.10: the Lab scene + DebugPanel integration (FULL only, see below)
 └── smoke_test.gd                  the critical-path / integration fixture (see below)
 ```
 
@@ -100,7 +109,14 @@ boot if `.godot/` is already built):
   --script res://scenes/test/validate_content.gd \
   --script res://scenes/test/conditions_test.gd \
   --script res://scenes/test/effects_test.gd \
-  --script res://scenes/test/dependency_analysis_test.gd
+  --script res://scenes/test/dependency_analysis_test.gd \
+  --script res://scenes/test/deduction_evaluator_test.gd \
+  --script res://scenes/test/timeline_evaluator_test.gd \
+  --script res://scenes/test/deduction_validation_test.gd \
+  --script res://scenes/test/deduction_cases_test.gd \
+  --script res://scenes/test/deduction_lab_controller_test.gd \
+  --script res://scenes/test/deduction_lab_presenter_test.gd \
+  --script res://scenes/test/deduction_lab_recorder_test.gd
 ```
 
 **FULL** — before finishing a milestone/refactor, and what CI runs on every
@@ -118,6 +134,14 @@ checks `verify.sh` always does unless skipped:
   --script res://scenes/test/save_load_regression_test.gd \
   --script res://scenes/test/negative_progression_test.gd \
   --script res://scenes/test/dependency_analysis_test.gd \
+  --script res://scenes/test/deduction_evaluator_test.gd \
+  --script res://scenes/test/timeline_evaluator_test.gd \
+  --script res://scenes/test/deduction_validation_test.gd \
+  --script res://scenes/test/deduction_cases_test.gd \
+  --script res://scenes/test/deduction_lab_controller_test.gd \
+  --script res://scenes/test/deduction_lab_presenter_test.gd \
+  --script res://scenes/test/deduction_lab_recorder_test.gd \
+  --script res://scenes/test/deduction_lab_scene_test.gd \
   --script res://scenes/test/smoke_test.gd
 ```
 
@@ -286,6 +310,72 @@ developer bypass that skips `trigger_policy` on purpose (see
 `docs/event-system.md`, "Developer tools"); double-firing when *deliberately
 told to* is that tool working as designed, not a regression in automatic
 progression.
+
+## Deduction tests (Milestone 1.9)
+
+The deduction foundation (`docs/deduction-system.md`) has four independent
+scripts of its own, all deterministic and headless, and all in **both** FAST
+and FULL — they touch only pure helpers and `ContentDB`-loaded JSON, never a
+scene tree, so they cost about a second together:
+
+- `deduction_evaluator_test.gd` / `timeline_evaluator_test.gd` — unit tests
+  against the hand-built case in `deduction_fixtures.gd`, never real content.
+- `deduction_validation_test.gd` — one negative fixture per
+  `DeductionValidator` rule (each is the clean fixture with exactly one thing
+  broken), plus zero deduction errors/warnings in real content. Milestone
+  1.9.1 adds the inference-depth definition, graph soundness that a claim's
+  kind can't bypass, and the deduction-gated-evidence warning.
+- `deduction_cases_test.gd` — the three real prototype cases, walked once in
+  structural-role terms so the same script proves X, Y and Z. Since 1.9.1 it
+  also checks that the final conclusion is logically sufficient:
+  - access, opportunity, staging or a proven lie never resolves it;
+  - removing the exclusive-control evidence makes it unprovable;
+  - every alternative actor's elimination rests on an authored fact;
+  - no evidence appears because of a deduction;
+  - the role topology and depth match across cases.
+  Since Milestone 1.10 it also asserts the "zone verified empty before the
+  monitored window" fact (`docs/deduction-prototype-cases.md`, "0.1") is
+  present, in both locales, for all three cases.
+
+### Deduction Lab tests (Milestone 1.10)
+
+`docs/deduction-lab.md` is the source of truth for what the Lab is and how
+it's built; three more scripts join the deduction tests above in **both**
+FAST and FULL (same reasoning — pure, autoload-free, no scene tree):
+
+- `deduction_lab_controller_test.gd` — `DeductionLabController`'s session
+  ownership, isolation between cases, the switch/reset confirmation flow, and
+  that a mode toggle never mutates the session.
+- `deduction_lab_presenter_test.gd` — the Player Preview contract's exact
+  allow-listed keys (structural) plus a content sweep proving no real domain
+  id/structural role/veracity value ever reaches it, against the real X/Y/Z
+  cases; claim-visibility gating (an unresolved deduction/conclusion is
+  absent, appears the instant it's proven); the fixture's one gated evidence
+  item to prove "locked evidence must be entirely absent" (X/Y/Z have none of
+  their own since 1.9.1); and that the Author Inspector view stays
+  unfiltered.
+- `deduction_lab_recorder_test.gd` — off-by-default, Start/Stop/Clear,
+  sequence/elapsed-time guarantees via an injected fake clock, session-signal
+  wiring and `author_debug` vs. `player_preview` source tagging, schema/export
+  correctness, safe filenames (including a path-traversal attempt), and
+  export-failure handling — using a throwaway `user://` directory cleaned up
+  before and after.
+
+`deduction_lab_scene_test.gd` is **FULL-only** (it instantiates `Main.tscn`,
+like `smoke_test.gd`'s own scene checks): DebugPanel integration, F1 hide/show
+session preservation, Player/Author mode instantiation (clicking every
+Author-only debug action and every recorder control once, through the real
+buttons), malformed/empty-selection safety, and bilingual coverage of the
+non-canon badge and the Overview tab's rendered text.
+
+Where new coverage goes: a new validation rule → a negative fixture in
+`deduction_validation_test.gd`; a new result category or constraint type →
+the evaluator/timeline test; a new case sharing `credential_misuse_v2` → add
+its id to `deduction_cases_test.gd`'s `CASE_IDS` (structural equivalence is
+then validated automatically). Deduction progress is not persisted yet, so
+`save_load_regression_test.gd` is unchanged; `DeductionSession`'s JSON round
+trip is covered in `deduction_evaluator_test.gd` instead — see
+`docs/deduction-system.md`, "Save/load (deferred)".
 
 ## Test isolation
 

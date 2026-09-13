@@ -128,6 +128,7 @@ namespacing):
 | `DLG_<dialogue_id>_<node_id>_CHOICE<n>_TEXT` | Choice `n`'s `text` on that node (1-indexed). |
 | `CASE_<id>_NAME` / `_DESC` | A case's `display_name` (or legacy `title`) / `description`. |
 | `CHAPTER_<id>_NAME` | A chapter's `display_name`. |
+| `DED_<CASE>_…` | A deduction case's text fields (Milestone 1.9), e.g. `DED_PROTO_X_E_DOOR_LOG_TEXT`, `DED_PROTO_X_HINT_MISUSED_2` — see `docs/deduction-system.md`. |
 
 Every key referenced from `data/` must have both an `en` and a `vi` entry —
 `ContentValidator` enforces this (see "Content validation" below).

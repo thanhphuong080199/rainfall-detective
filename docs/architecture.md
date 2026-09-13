@@ -67,7 +67,7 @@ for why order barely matters here.
 | `CaseManager` | `scripts/cases/case_manager.gd` | orchestrates Case/Chapter progression: starting a case, tracking the current chapter, and advancing to the next chapter once the current one's `completion_event` (an ordinary Event) fires. Holds no state of its own — reads/writes `GameState` only. See `docs/case-system.md`. |
 | `SaveManager` | `scripts/save/save_manager.gd` | reads/writes `user://save_game.json`. Owns the save-file format/version; `GameState` itself has no opinion on file format. |
 
-Plus three stateless static helpers (`class_name`, not autoloads):
+Plus these stateless static helpers (`class_name`, not autoloads):
 
 - **`ConditionEvaluator`** (`scripts/core/condition_evaluator.gd`) evaluates
   the small condition mini-language used throughout content JSON. Used by
@@ -84,6 +84,11 @@ Plus three stateless static helpers (`class_name`, not autoloads):
 - **`ContentValidator`** (`scripts/core/content_validator.gd`) cross-checks
   everything `ContentDB` loaded for broken references. See "Content
   validation" below.
+- **`DeductionEvaluator`**, **`TimelineEvaluator`**, **`DeductionValidator`**
+  (`scripts/deduction/`, Milestone 1.9), plus the `DeductionSession` state
+  object — the deduction-prototype foundation. They reference no autoload;
+  `ContentValidator` runs `DeductionValidator` over `data/deductions/`. See
+  "Deduction foundation" below and `docs/deduction-system.md`.
 
 ### Why Investigation is separate from DialogueManager
 
@@ -280,6 +285,38 @@ in this document are summarized here:
   chapter's own `entry_effects` sets a scope flag, and scoped content
   requires it.
 
+## Deduction foundation (Milestone 1.9)
+
+The shared, UI-independent layer future deduction prototypes (A statement
+contradiction, B claim/clue connection, C timeline reconstruction) will be
+built on. Full design in `docs/deduction-system.md`; summary:
+
+- Deduction cases are a `ContentDB` category (`data/deductions/`), one case
+  per file, with their own case-local id namespace. A claim is proven only
+  by matching one of its **authored proof sets** by id (order-independent) —
+  no text comparison, no inference engine.
+- `DeductionEvaluator` returns graded outcomes (valid support/refutation,
+  insufficient, irrelevant, compatible-but-not-proof, invalid input) and
+  never the answer; a derived deduction unlocks only through an explicit
+  `commit_attempt()` into a `DeductionSession`. `TimelineEvaluator` accepts
+  any placement satisfying the required constraints.
+- It does **not** reuse the condition/effect core — proofs grade a player's
+  selection, conditions test `GameState` — and adds **no** autoload and no
+  persisted state yet (both deferred to the first prototype screen).
+- `DeductionValidator`, run from `ContentValidator.validate()`, checks
+  references, cycles, intermediate deduction depth ≤ 2 (a conclusion on top
+  is an exempt synthesis layer), reachability of required claims and
+  questions, timeline/ground-truth consistency, hint ladders, and that cases
+  sharing a `structural_template` have identical proof-graph shape. It warns
+  when evidence gated behind a deduction is then required by a deduction or
+  conclusion.
+- The three `proto_*` cases are non-canon playtest material — see
+  `docs/deduction-prototype-cases.md` and `docs/deduction-playtest-plan.md`.
+- Milestone 1.10 adds a debug-only **Deduction Lab** (`docs/deduction-lab.md`)
+  for inspecting these cases and exercising the evaluator/validator/timeline
+  APIs above — still no UI for actual player interaction (no A/B/C screen),
+  and still no autoload or persisted state.
+
 ## Localization
 
 Every player-facing string — content (`data/*.json`) and static UI chrome —
@@ -428,6 +465,7 @@ see `docs/localization.md`.
 | `data/chapters/<case_id>/*.json` | one chapter per file: `id`, `display_name`, `entry_effects`, `completion_event`, `next_chapter` — see `docs/case-system.md` |
 | `data/cases/*.json` | one case per file: `start_location`, `initial_flags` — what "New Game" resets to; optionally `chapters` + `starting_chapter` — see `docs/case-system.md` |
 | `data/events/*.json` | **array** of events per file: `id`, `conditions`, `trigger_policy`, `effects` — see `docs/event-system.md` |
+| `data/deductions/**/*.json` | one deduction case per file (Milestone 1.9): `suspects`, `questions`, `evidence`, `claims` + `proof_sets`, `timeline`, `hints`, `ground_truth`, `metadata` — see `docs/deduction-system.md` |
 
 Dropping a new `*.json` file into any of these folders is enough to register
 it — nothing needs to be imported or listed elsewhere. **Subfolders are
@@ -555,6 +593,16 @@ which an exported release build already sets to false automatically, so
 there's nothing to strip by hand later. The node stays in `Main.tscn`'s tree
 either way; in a release build it's just a hidden `Control` that never does
 anything.
+
+**Deduction Lab (Milestone 1.10).** A second developer-only tool,
+`scenes/debug/DeductionLab.tscn` + `scripts/debug/deduction_lab.gd`, is
+instanced as a permanent child of `DebugPanel` itself and opened from its own
+"Deduction Lab" tab — a mechanic-neutral shell for inspecting the three
+non-canon prototype deduction cases (`docs/deduction-lab.md`). It reuses
+`ContentDB`/`DeductionEvaluator`/`TimelineEvaluator`/`DeductionValidator`/
+`DeductionSession` exactly as a future gameplay screen would, adds no
+autoload, and is gated behind `OS.is_debug_build()` the same way `DebugPanel`
+is.
 
 ## Key Architecture Decisions {#decisions}
 

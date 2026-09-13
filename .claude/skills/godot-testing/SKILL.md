@@ -120,6 +120,14 @@ minimum, because it's shared infrastructure. Match effort to blast radius.
        --script res://scenes/test/save_load_regression_test.gd \
        --script res://scenes/test/negative_progression_test.gd \
        --script res://scenes/test/dependency_analysis_test.gd \
+       --script res://scenes/test/deduction_evaluator_test.gd \
+       --script res://scenes/test/timeline_evaluator_test.gd \
+       --script res://scenes/test/deduction_validation_test.gd \
+       --script res://scenes/test/deduction_cases_test.gd \
+       --script res://scenes/test/deduction_lab_controller_test.gd \
+       --script res://scenes/test/deduction_lab_presenter_test.gd \
+       --script res://scenes/test/deduction_lab_recorder_test.gd \
+       --script res://scenes/test/deduction_lab_scene_test.gd \
        --script res://scenes/test/smoke_test.gd
      ```
    `validate_content.gd` is content-only and fast; every other script is
@@ -150,6 +158,8 @@ minimum, because it's shared infrastructure. Match effort to blast radius.
 | Content validation | `scripts/core/content_validator.gd` (`ContentValidator`) | `_test_content_loaded` (asserts zero unexpected errors/warnings in real content), `validate_content.gd`, `dependency_analysis_test.gd` |
 | Localization | `scripts/core/locale_manager.gd` (`LocaleManager`) | `_test_localization` |
 | Debug tools (Case Debugger) | `scripts/debug/debug_panel.gd` | `_test_scene_instantiation`, `_test_case_debug_tools`, plus `explain_tree`/`find_*_producers`/`debug_reset_trigger` in `conditions_test.gd`/`dependency_analysis_test.gd`/`events_test.gd` |
+| Deduction foundation (Milestone 1.9) | `scripts/deduction/*.gd` (`DeductionEvaluator`, `TimelineEvaluator`, `DeductionValidator`, `DeductionSession`) + `data/deductions/` | `deduction_evaluator_test.gd`, `timeline_evaluator_test.gd`, `deduction_validation_test.gd`, `deduction_cases_test.gd` — see `docs/deduction-system.md` |
+| Deduction Lab (Milestone 1.10, debug-only) | `scripts/deduction/deduction_lab_*.gd` + `scripts/debug/deduction_lab.gd` | `deduction_lab_controller_test.gd`, `deduction_lab_presenter_test.gd`, `deduction_lab_recorder_test.gd`, `deduction_lab_scene_test.gd` — see `docs/deduction-lab.md` |
 
 Full detail per system — exactly what each `_test_*` function proves, and
 what a change to that system should add — is in `references/test-catalog.md`.

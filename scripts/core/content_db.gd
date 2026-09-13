@@ -24,6 +24,8 @@ var _dialogues: Dictionary = {}
 var _chapters: Dictionary = {}
 var _cases: Dictionary = {}
 var _events: Dictionary = {}
+## Milestone 1.9 deduction cases (data/deductions/) — see docs/deduction-system.md.
+var _deductions: Dictionary = {}
 var _last_validation_result: Dictionary = {}
 
 ## Duplicate-id collisions noticed while loading, as ready-to-print messages.
@@ -42,8 +44,9 @@ func _ready() -> void:
 	_chapters = _load_json_dir(DATA_ROOT + "/chapters")
 	_cases = _load_json_dir(DATA_ROOT + "/cases")
 	_events = _load_json_dir(DATA_ROOT + "/events", true)
-	print("[ContentDB] loaded %d characters, %d evidence, %d locations, %d dialogue trees, %d chapters, %d cases, %d events" % [
-		_characters.size(), _evidence.size(), _locations.size(), _dialogues.size(), _chapters.size(), _cases.size(), _events.size(),
+	_deductions = _load_json_dir(DATA_ROOT + "/deductions")
+	print("[ContentDB] loaded %d characters, %d evidence, %d locations, %d dialogue trees, %d chapters, %d cases, %d events, %d deduction cases" % [
+		_characters.size(), _evidence.size(), _locations.size(), _dialogues.size(), _chapters.size(), _cases.size(), _events.size(), _deductions.size(),
 	])
 	_last_validation_result = ContentValidator.validate()
 	ContentValidator.report(_last_validation_result)
@@ -90,6 +93,12 @@ func get_event(event_id: String) -> Dictionary:
 	return _events.get(event_id, {})
 
 
+## A deduction case definition (data/deductions/*.json) — immutable content;
+## a player's progress lives in a DeductionSession, never in this Dictionary.
+func get_deduction_case(case_id: String) -> Dictionary:
+	return _deductions.get(case_id, {})
+
+
 func get_all_evidence_ids() -> Array:
 	return _evidence.keys()
 
@@ -116,6 +125,10 @@ func get_all_case_ids() -> Array:
 
 func get_all_event_ids() -> Array:
 	return _events.keys()
+
+
+func get_all_deduction_case_ids() -> Array:
+	return _deductions.keys()
 
 
 ## Raw id -> content dictionaries, for systems that need to iterate every
@@ -148,6 +161,10 @@ func get_all_cases() -> Dictionary:
 
 func get_all_events() -> Dictionary:
 	return _events
+
+
+func get_all_deduction_cases() -> Dictionary:
+	return _deductions
 
 
 ## Loads every *.json file inside `dir_path`, recursing into subfolders so a

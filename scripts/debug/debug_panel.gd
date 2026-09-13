@@ -89,6 +89,14 @@ var _last_producer_id: String = ""
 
 @onready var log_list: VBoxContainer = %LogList
 
+## Milestone 1.10: launched from here, never wired through Main.gd — same
+## isolation stance as this panel itself. A permanent child (never freed or
+## re-instantiated by open()/close() below), so hiding/showing this panel via
+## F1 changes nothing about the Lab's own state — see docs/deduction-lab.md,
+## "Session lifecycle".
+@onready var open_deduction_lab_button: Button = %OpenDeductionLabButton
+@onready var deduction_lab: Control = %DeductionLab
+
 
 func _ready() -> void:
 	visible = false
@@ -124,6 +132,7 @@ func _ready() -> void:
 	reset_button.pressed.connect(_on_reset_pressed)
 	inspector_show_button.pressed.connect(_on_inspector_show_pressed)
 	producer_lookup_button.pressed.connect(_on_producer_lookup_pressed)
+	open_deduction_lab_button.pressed.connect(deduction_lab.open)
 
 	state_filter_edit.text_changed.connect(func(_t): _refresh_if_visible())
 	evidence_filter_edit.text_changed.connect(func(_t): _refresh_if_visible())
@@ -153,6 +162,13 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 	if visible and event.is_action_pressed("ui_cancel"):
+		# The Deduction Lab (Milestone 1.10) is a child overlay of this panel
+		# and handles its own Esc first when open (see deduction_lab.gd's own
+		# _input()) — checked explicitly here rather than relied on via input
+		# dispatch order, so Esc closing the Lab can never also close this
+		# whole panel out from under it in the same keypress.
+		if deduction_lab.visible:
+			return
 		close()
 		get_viewport().set_input_as_handled()
 

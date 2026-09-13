@@ -16,6 +16,13 @@ There is no story, no protagonist, and no Case 01 yet — and deliberately so.
   future case would use the same structure.
 - `docs/localization.md` — how bilingual text (Vietnamese default, English
   supported) works, and how to add a translated string.
+- `docs/deduction-system.md` — the Milestone 1.9 deduction foundation (proof
+  sets, evaluation, timeline constraints, validation) future deduction
+  prototypes build on; `docs/deduction-prototype-cases.md` audits its three
+  non-canon dummy mysteries and `docs/deduction-playtest-plan.md` plans their
+  A/B/C playtest. `docs/deduction-lab.md` (Milestone 1.10) is a debug-only
+  shell (F1 → Deduction Lab tab) for inspecting those three cases before any
+  A/B/C gameplay UI exists.
 
 ## Requirements
 
@@ -52,7 +59,10 @@ Desktop only (mouse + keyboard). No controller or touch support yet.
 | Anywhere (debug builds only) | **F1** | Toggles the developer Case Debugger panel. **Esc** closes it. |
 
 The Case Debugger is inert in release exports — see
-`scripts/debug/debug_panel.gd` and `docs/case-debugger.md`.
+`scripts/debug/debug_panel.gd` and `docs/case-debugger.md`. Its **Deduction
+Lab** tab (Milestone 1.10, also debug-only) opens a mechanic-neutral viewer
+for the three non-canon prototype deduction cases — see
+`docs/deduction-lab.md`.
 
 The game is in Vietnamese by default. Open **Menu** and use the **VI / EN**
 buttons to switch languages — the choice is remembered between sessions.
