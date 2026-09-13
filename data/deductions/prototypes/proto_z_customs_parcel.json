@@ -108,9 +108,9 @@
       "veracity": "deceptive",
       "text": "DED_PROTO_Z_ST_FELIX_FENCE_ENTRY_TEXT",
       "structural_role": "candidate_staging_claim",
-      "compatible": ["e_cut_fence"],
       "proof_sets": [
-        { "id": "ps_felix_fence_wire", "relation": "refutes", "requires": ["e_fence_sheet", "e_wire_ends"] }
+        { "id": "ps_felix_fence_wire", "relation": "refutes", "requires": ["e_fence_sheet", "e_wire_ends"] },
+        { "id": "ps_felix_fence_clippings", "relation": "refutes", "requires": ["e_cut_fence"] }
       ]
     },
     {
@@ -295,5 +295,49 @@
     "conclusion": "concl_z",
     "summary": "DED_PROTO_Z_TRUTH_SUMMARY",
     "solution_timeline": { "tl_nadia_leaves": "06:02", "tl_scanner_taken": "06:20", "tl_ferry_boarding": "06:38", "tl_seal_applied": "06:42", "tl_fence_cut": "06:44", "tl_pallet_moved": "06:47", "tl_scanner_returned": "06:55" }
+  },
+  "prototype_a": {
+    "evidence_pool": ["e_locker_log", "e_cut_fence", "e_pallet_manifest", "e_cage_camera", "e_wire_ends", "e_ferry_gate"],
+    "rounds": [
+      {
+        "id": "round_1",
+        "statements": ["st_nadia_took_ferry", "st_nadia_scanner_on_dock", "st_felix_never_handled"],
+        "required_refutations": ["st_felix_never_handled"],
+        "optional_refutations": [],
+        "success_explanations": { "st_felix_never_handled": "DED_PROTO_Z_PROTOA_EXP_DENIAL" },
+        "witness_responses": { "st_felix_never_handled": "DED_PROTO_Z_PROTOA_RESP_DENIAL" },
+        "hint_ladders": {
+          "st_felix_never_handled": [
+            "DED_PROTO_Z_PROTOA_HINT_DENIAL_1",
+            "DED_PROTO_Z_PROTOA_HINT_DENIAL_2",
+            "DED_PROTO_Z_PROTOA_HINT_DENIAL_3",
+            "DED_PROTO_Z_PROTOA_HINT_DENIAL_4"
+          ]
+        }
+      },
+      {
+        "id": "round_2",
+        "statements": ["st_gus_not_in_yard", "st_felix_fence_entry"],
+        "required_refutations": ["st_felix_fence_entry"],
+        "optional_refutations": ["st_gus_not_in_yard"],
+        "success_explanations": {
+          "st_felix_fence_entry": "DED_PROTO_Z_PROTOA_EXP_FENCE",
+          "st_gus_not_in_yard": "DED_PROTO_Z_PROTOA_EXP_GUS"
+        },
+        "witness_responses": {
+          "st_felix_fence_entry": "DED_PROTO_Z_PROTOA_RESP_FENCE",
+          "st_gus_not_in_yard": "DED_PROTO_Z_PROTOA_RESP_GUS"
+        },
+        "hint_ladders": {
+          "st_felix_fence_entry": [
+            "DED_PROTO_Z_PROTOA_HINT_FENCE_1",
+            "DED_PROTO_Z_PROTOA_HINT_FENCE_2",
+            "DED_PROTO_Z_PROTOA_HINT_FENCE_3",
+            "DED_PROTO_Z_PROTOA_HINT_FENCE_4"
+          ]
+        }
+      }
+    ],
+    "completion_text": "DED_PROTO_Z_PROTOA_COMPLETION"
   }
 }

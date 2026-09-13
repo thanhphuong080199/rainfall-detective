@@ -108,9 +108,9 @@
       "veracity": "deceptive",
       "text": "DED_PROTO_Y_ST_PRIYA_VENT_ENTRY_TEXT",
       "structural_role": "candidate_staging_claim",
-      "compatible": ["e_open_hatch"],
       "proof_sets": [
-        { "id": "ps_priya_vent_tabs", "relation": "refutes", "requires": ["e_hatch_diagram", "e_hatch_tabs"] }
+        { "id": "ps_priya_vent_tabs", "relation": "refutes", "requires": ["e_hatch_diagram", "e_hatch_tabs"] },
+        { "id": "ps_priya_vent_scuffs", "relation": "refutes", "requires": ["e_open_hatch"] }
       ]
     },
     {
@@ -295,5 +295,49 @@
     "conclusion": "concl_y",
     "summary": "DED_PROTO_Y_TRUTH_SUMMARY",
     "solution_timeline": { "tl_teodor_leaves": "20:45", "tl_coat_borrowed": "20:55", "tl_gym_checkin": "21:09", "tl_card_used": "21:12", "tl_hatch_forced": "21:14", "tl_bin_out": "21:18", "tl_coat_returned": "21:25" }
+  },
+  "prototype_a": {
+    "evidence_pool": ["e_coat_rack_sheet", "e_open_hatch", "e_waste_manifest", "e_corridor_camera", "e_hatch_tabs", "e_gym_scan"],
+    "rounds": [
+      {
+        "id": "round_1",
+        "statements": ["st_teodor_went_to_gym", "st_teodor_card_in_coat", "st_priya_never_borrowed"],
+        "required_refutations": ["st_priya_never_borrowed"],
+        "optional_refutations": [],
+        "success_explanations": { "st_priya_never_borrowed": "DED_PROTO_Y_PROTOA_EXP_DENIAL" },
+        "witness_responses": { "st_priya_never_borrowed": "DED_PROTO_Y_PROTOA_RESP_DENIAL" },
+        "hint_ladders": {
+          "st_priya_never_borrowed": [
+            "DED_PROTO_Y_PROTOA_HINT_DENIAL_1",
+            "DED_PROTO_Y_PROTOA_HINT_DENIAL_2",
+            "DED_PROTO_Y_PROTOA_HINT_DENIAL_3",
+            "DED_PROTO_Y_PROTOA_HINT_DENIAL_4"
+          ]
+        }
+      },
+      {
+        "id": "round_2",
+        "statements": ["st_bruno_left_early", "st_priya_vent_entry"],
+        "required_refutations": ["st_priya_vent_entry"],
+        "optional_refutations": ["st_bruno_left_early"],
+        "success_explanations": {
+          "st_priya_vent_entry": "DED_PROTO_Y_PROTOA_EXP_VENT",
+          "st_bruno_left_early": "DED_PROTO_Y_PROTOA_EXP_BRUNO"
+        },
+        "witness_responses": {
+          "st_priya_vent_entry": "DED_PROTO_Y_PROTOA_RESP_VENT",
+          "st_bruno_left_early": "DED_PROTO_Y_PROTOA_RESP_BRUNO"
+        },
+        "hint_ladders": {
+          "st_priya_vent_entry": [
+            "DED_PROTO_Y_PROTOA_HINT_VENT_1",
+            "DED_PROTO_Y_PROTOA_HINT_VENT_2",
+            "DED_PROTO_Y_PROTOA_HINT_VENT_3",
+            "DED_PROTO_Y_PROTOA_HINT_VENT_4"
+          ]
+        }
+      }
+    ],
+    "completion_text": "DED_PROTO_Y_PROTOA_COMPLETION"
   }
 }

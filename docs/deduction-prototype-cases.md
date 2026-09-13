@@ -61,6 +61,30 @@ See `docs/deduction-lab.md` for the regression test
 that asserts, for all three cases and both locales, that this fact is
 present in the evidence text.
 
+## 0.2 What Milestone 1.11 (Prototype A) added
+
+`candidate_staging_claim` (`st_oren_break_in` / `st_priya_vent_entry` /
+`st_felix_fence_entry`) gained a second, **alternate**, single-evidence
+`refutes` proof set — `staging_sign` alone (`e_forced_window` /
+`e_open_hatch` / `e_cut_fence`) — added identically, by role, to all three
+cases. This does not touch D1/D2/D3 or the conclusion: `candidate_staging_
+claim` is a terminal statement, never an input to another proof. Its
+`compatible: [staging_sign]` entry was removed, since that evidence is now a
+full proof-set requirement rather than merely consistent-but-insufficient.
+
+The original two-evidence proof set (`physical_rule_or_reference` +
+`staging_contradiction`, the taught-rule + bent-direction pair) is
+unchanged and remains the primary path — Prototype A's UI can't reach it (it
+only ever submits one evidence item per attempt), so it stays a dormant,
+harmless alternate for Author Inspector or any future multi-clue prototype.
+The new alternate is independently sound: R4's own text already establishes
+that the forced-opening debris lies on top of prints that were already
+there, which alone proves the opening was forced from inside, after someone
+had already reached the target — without needing the physical bend-
+direction rule. See `docs/prototype-a.md` for the full Prototype A design
+and `deduction_cases_test.gd`'s existing `_test_staging_rule_is_taught()`
+for the older two-evidence path.
+
 ## 1. The shared proof graph (`structural_template: credential_misuse_v2`)
 
 ### Before (Milestone 1.9)
@@ -99,7 +123,8 @@ Terminal claims:
  D1 ─rules_out─► hypothesis_owner              red_herring_explanation + D2 ─rules_out─► hypothesis_bystander
  D3 ─rules_out─► hypothesis_outsider           red_herring + red_herring_explanation ─explains─► red_herring_explained
  credential_custody ─refutes─► candidate_custody_denial
- physical_rule_or_reference + staging_contradiction ─refutes─► candidate_staging_claim  (staging_sign: compatible only)
+ physical_rule_or_reference + staging_contradiction ─refutes─► candidate_staging_claim
+ staging_sign ─refutes─► candidate_staging_claim  (Milestone 1.11 alternate — single evidence, see "0.2" above)
  red_herring_explanation ─refutes─► bystander_innocent_lie
  owner_alibi_primary ─supports─► owner_alibi_statement
  credential_custody ─supports─► owner_incomplete_statement
@@ -320,7 +345,8 @@ spells out the role topology and depths claim by claim.
 | `owner_alibi_statement` | supports | `owner_alibi_primary` |
 | `owner_incomplete_statement` | supports | `credential_custody` |
 | `candidate_custody_denial` | refutes | `credential_custody` |
-| `candidate_staging_claim` | refutes | `physical_rule_or_reference` + `staging_contradiction` (compatible, not proof: `staging_sign`) |
+| `candidate_staging_claim` | refutes | `physical_rule_or_reference` + `staging_contradiction` **(primary)** |
+| `candidate_staging_claim` | refutes | `staging_sign` **(alternate, single-evidence — Milestone 1.11, see "0.2")** |
 | `bystander_innocent_lie` | refutes | `red_herring_explanation` |
 | `red_herring_explained` | explains | `red_herring` + `red_herring_explanation` |
 | `hypothesis_owner` | rules_out | D1 (compatible, not proof: `credential_use_record`) |
@@ -744,7 +770,7 @@ English word counts come from a whitespace split over
 | Observations required by the staging deduction | 3 | 3 | 3 |
 | Depth: D1 / staging / D2 / conclusion (synthesis) | 1 / 1 / 2 / 3 | same | same |
 | Visibility of the staging rule | own illustrated reference item; identical rule wording | same | same |
-| Distractors bearing on staging | 1 (the sign alone is compatible with the candidate's story) | same | same |
+| Distractors bearing on staging | 0 — since Milestone 1.11 the sign alone (`staging_sign`) is a valid alternate single-evidence refutation of `candidate_staging_claim`, not merely compatible with it (see "0.2") | same | same |
 | Distractors bearing on the conclusion | 2 compatible (D1, opportunity-only) | same | same |
 | Proof-set cardinality: D1 / opportunity / D2 / D3 / conclusion | 3 / 1 / 3 / 3 / 2 | same | same |
 

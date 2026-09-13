@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/debug/deduction_lab.gd" id="1"]
+[ext_resource type="PackedScene" path="res://scenes/debug/PrototypeA.tscn" id="2"]
 
 [node name="DeductionLab" type="Control"]
 visible = false
@@ -99,6 +100,11 @@ text = "Player Preview [ACTIVE]"
 unique_name_in_owner = true
 layout_mode = 2
 text = "Author Inspector"
+
+[node name="LaunchPrototypeAButton" type="Button" parent="CenterPanel/Margin/VBox/CaseRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Launch Prototype A — Statement Contradiction"
 
 [node name="StatusLabel" type="Label" parent="CenterPanel/Margin/VBox"]
 unique_name_in_owner = true
@@ -279,3 +285,6 @@ size_flags_horizontal = 3
 [node name="ConfirmDialog" type="ConfirmationDialog" parent="."]
 unique_name_in_owner = true
 title = "Confirm"
+
+[node name="PrototypeA" parent="." instance=ExtResource("2")]
+unique_name_in_owner = true
