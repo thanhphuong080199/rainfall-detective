@@ -2,9 +2,14 @@
 
 How the future comparison of the three deduction mechanics should be run so
 that the result reflects the **mechanic**, not the mystery or the order it
-was played in. Milestones 1.9 and 1.9.1 build only the foundation. The
-prototype screens, the recorder and the sessions themselves are future
-work. See `docs/deduction-system.md` for the system and
+was played in. Milestones 1.9 and 1.9.1 built the foundation; Milestone 1.10
+added the debug-only, mechanic-neutral Deduction Lab
+(`docs/deduction-lab.md`); Milestone 1.11 built the first actual mechanic,
+Prototype A (`docs/prototype-a.md`) — see section 7 below for its own
+facilitator script, which is a smaller, narrower pilot than the full A/B/C
+rotation this document otherwise describes. Prototypes B and C, and the
+full six-tester A/B/C rotation below, remain future work. See
+`docs/deduction-system.md` for the system and
 `docs/deduction-prototype-cases.md` for the three cases.
 
 | Prototype | Mechanic | Main evaluator calls |
@@ -191,3 +196,87 @@ After the first six testers, prefer the mechanic that:
 If two mechanics tie, run six more testers before deciding. Combining
 mechanics (for example, C feeding deductions into B) is a legitimate
 outcome, not a failure to choose.
+
+## 7. Prototype A pilot (Milestone 1.11)
+
+Prototype A (`docs/prototype-a.md`) is the first mechanic that actually
+exists to test. This is a **standalone pilot of Prototype A alone** — it
+does not substitute for the six-tester A/B/C rotation above, which needs all
+three mechanics built first. Its target is qualitative: is the core loop
+(read testimony → find the lie → present one piece of evidence → get a clear
+explanation → "caught you") enjoyable, fair, and completable in roughly
+5-10 minutes — not a statistically powered comparison.
+
+### Facilitator script
+
+1. Assign the tester one of X/Y/Z (rotate across testers so the same case
+   isn't overused; a later A/B/C rotation will re-use this same rotation
+   discipline once B and C exist — see "Assignment for the first six
+   testers" above and the note at the end of this section).
+2. Open the Deduction Lab (F1 → Deduction Lab tab), select the assigned
+   case, and press **Start Recording** *before* pressing **Launch Prototype
+   A** — this is what captures `prototype_started`/`round_started`
+   (`docs/prototype-a.md`, "Recorder events"). Get the tester's consent to
+   record first.
+3. Do **not** explain which statement is the lie, what the required
+   evidence is, or that the two cases share a proof graph with any other
+   session. A short neutral framing is fine: "This witness gave testimony
+   about an incident. Find the part that doesn't add up, and show the
+   evidence that proves it."
+4. Ask the tester to think aloud.
+5. Intervene only if the tester is completely blocked (not merely stuck) —
+   remind them the Hint button exists, but never state the answer yourself.
+6. After completion (or after a reasonable time limit if they abandon —
+   record which), ask:
+   - Which contradiction felt most satisfying, and why?
+   - Did any rejected attempt feel logically valid to you at the time?
+   - Did you reason from the specific facts, or match keywords/vibes?
+   - Was the feedback on a wrong attempt useful without giving away the
+     answer?
+   - Rate difficulty, 1-5.
+   - Rate satisfaction, 1-5.
+   - In your own words, explain why the evidence you presented contradicts
+     the statement.
+
+### What to record
+
+Export the recording (`docs/prototype-a.md`'s schema) and, alongside it,
+note:
+
+- completion time (from the export's `prototype_completed` payload);
+- submissions per required contradiction (filter `attempt_submitted` by
+  `statement_id`);
+- rejected evidence/statement combinations (every `attempt_submitted` whose
+  category wasn't a valid refutation);
+- whether the optional innocent lie was discovered (`outcome: "optional"` on
+  any `contradiction_resolved`), and whether the tester correctly treated it
+  as unrelated to the crime rather than as "the answer";
+- hint levels used per required contradiction (`hint_revealed` count/level);
+- abandonment (`prototype_abandoned`, if the session ends without
+  `prototype_completed`);
+- qualitative confusion moments, in the tester's own words;
+- the interview rubric from section 3 above, adapted: can they explain WHY
+  the presented evidence and the statement can't both be true, not just
+  WHAT the answer was.
+
+Treat the 5-10 minute target and any small number of pilot testers as
+qualitative design evidence, not statistical proof — the same stance section
+1's "Residual bias to analyse, not ignore" already takes for the full
+rotation. When Prototypes B and C exist, assign different testers to
+different case/mechanic pairings than this pilot used, to avoid the
+"structure learning" bias section 1 already names (a tester who solved one
+of X/Y/Z's proof graph once will recognize its shape faster the second
+time, regardless of mechanic).
+
+### Recommended gate before beginning Prototype B
+
+Do not start Prototype B until this pilot (or the team's own judgment from
+running it once or twice) confirms: the two required contradictions are
+findable through reasoning (not brute-forcing every evidence item against
+every statement), the innocent lie is genuinely felt as "valid but not what
+I needed" rather than "wrong", and wrong-attempt feedback is reported as
+useful rather than either too vague or too revealing. A pilot that instead
+surfaces basic UX confusion (can't find the Hint button, doesn't notice
+which statement is selected) should be fixed and re-piloted before
+proceeding, since that confusion would otherwise contaminate whichever
+mechanic comparison follows.

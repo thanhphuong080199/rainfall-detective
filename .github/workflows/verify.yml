@@ -53,4 +53,8 @@ jobs:
             --script res://scenes/test/deduction_lab_presenter_test.gd \
             --script res://scenes/test/deduction_lab_recorder_test.gd \
             --script res://scenes/test/deduction_lab_scene_test.gd \
+            --script res://scenes/test/prototype_a_controller_test.gd \
+            --script res://scenes/test/prototype_a_presenter_test.gd \
+            --script res://scenes/test/prototype_a_content_test.gd \
+            --script res://scenes/test/prototype_a_scene_test.gd \
             --script res://scenes/test/smoke_test.gd

@@ -119,6 +119,79 @@ static func alternate_valid_timeline() -> Dictionary:
 	return {"t_leaves": "09:00", "t_away": "10:05", "t_use": "10:00"}
 
 
+## Minimal, self-contained fixture for Milestone 1.11's Prototype A
+## (PrototypeAController/PrototypeAPresenter — see docs/prototype-a.md). NOT
+## a full DeductionValidator-clean case (no questions/timeline/hints/
+## ground_truth) — those classes never read those sections, so this only
+## carries what they actually touch: suspects, evidence, statement claims and
+## a prototype_a data layer. Two rounds, matching the real X/Y/Z shape:
+##   round_1: st_true (true, supported by e_a) + st_required1 (required lie,
+##            refuted by e_b alone)
+##   round_2: st_optional (innocent lie, refuted by e_d alone) + st_required2
+##            (required lie, refuted by e_c alone)
+## e_noise bears on nothing (an irrelevant-evidence distractor).
+static func prototype_a_case() -> Dictionary:
+	return {
+		"id": "fx_pa_case",
+		"display_name": "FX",
+		"description": "FX",
+		"metadata": {"canon": false},
+		"suspects": [
+			{"id": "sus_a", "name": "FX"},
+			{"id": "sus_b", "name": "FX"},
+		],
+		"evidence": [
+			{"id": "e_a", "name": "FX", "text": "FX", "source": "fixture", "certainty": "fixed", "tags": ["scene"]},
+			{"id": "e_b", "name": "FX", "text": "FX", "source": "fixture", "certainty": "fixed", "tags": ["scene"]},
+			{"id": "e_c", "name": "FX", "text": "FX", "source": "fixture", "certainty": "fixed", "tags": ["scene"]},
+			{"id": "e_d", "name": "FX", "text": "FX", "source": "fixture", "certainty": "fixed", "tags": ["scene"]},
+			{"id": "e_noise", "name": "FX", "text": "FX", "source": "fixture", "certainty": "fixed", "tags": ["scene"]},
+		],
+		"claims": [
+			{
+				"id": "st_true", "kind": "statement", "speaker": "sus_a", "veracity": "true", "text": "FX",
+				"proof_sets": [{"id": "ps_true", "relation": "supports", "requires": ["e_a"]}],
+			},
+			{
+				"id": "st_required1", "kind": "statement", "speaker": "sus_b", "veracity": "deceptive", "text": "FX",
+				"proof_sets": [{"id": "ps_required1", "relation": "refutes", "requires": ["e_b"]}],
+			},
+			{
+				"id": "st_optional", "kind": "statement", "speaker": "sus_a", "veracity": "deceptive", "lie_motive": "unrelated_to_crime", "text": "FX",
+				"proof_sets": [{"id": "ps_optional", "relation": "refutes", "requires": ["e_d"]}],
+			},
+			{
+				"id": "st_required2", "kind": "statement", "speaker": "sus_b", "veracity": "deceptive", "text": "FX",
+				"proof_sets": [{"id": "ps_required2", "relation": "refutes", "requires": ["e_c"]}],
+			},
+		],
+		"prototype_a": {
+			"evidence_pool": ["e_a", "e_b", "e_c", "e_d", "e_noise"],
+			"rounds": [
+				{
+					"id": "round_1",
+					"statements": ["st_true", "st_required1"],
+					"required_refutations": ["st_required1"],
+					"optional_refutations": [],
+					"success_explanations": {"st_required1": "FX"},
+					"witness_responses": {"st_required1": "FX"},
+					"hint_ladders": {"st_required1": ["FX", "FX", "FX", "FX"]},
+				},
+				{
+					"id": "round_2",
+					"statements": ["st_optional", "st_required2"],
+					"required_refutations": ["st_required2"],
+					"optional_refutations": ["st_optional"],
+					"success_explanations": {"st_required2": "FX", "st_optional": "FX"},
+					"witness_responses": {"st_required2": "FX", "st_optional": "FX"},
+					"hint_ladders": {"st_required2": ["FX", "FX", "FX", "FX"]},
+				},
+			],
+			"completion_text": "FX",
+		},
+	}
+
+
 ## Finds an entry by id anywhere a test needs to mutate a fixture in place.
 static func find(case_def: Dictionary, section: String, entry_id: String) -> Dictionary:
 	for entry in case_def.get(section, []):

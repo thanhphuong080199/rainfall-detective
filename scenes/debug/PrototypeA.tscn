@@ -1,0 +1,334 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/debug/prototype_a.gd" id="1"]
+
+[node name="PrototypeA" type="Control"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+script = ExtResource("1")
+
+[node name="DimBackground" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+color = Color(0, 0, 0, 0.85)
+
+[node name="CenterPanel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+offset_left = 20.0
+offset_top = 20.0
+offset_right = -20.0
+offset_bottom = -20.0
+
+[node name="Margin" type="MarginContainer" parent="CenterPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="VBox" type="VBoxContainer" parent="CenterPanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Header" type="HBoxContainer" parent="CenterPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="TitleLabel" type="Label" parent="CenterPanel/Margin/VBox/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 20
+text = "Prototype A — Statement Contradiction"
+
+[node name="NonCanonBadge" type="Label" parent="CenterPanel/Margin/VBox/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "NON-CANON PROTOTYPE"
+
+[node name="ReturnButton" type="Button" parent="CenterPanel/Margin/VBox/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Return to Lab"
+
+[node name="CaseRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CaseLabel" type="Label" parent="CenterPanel/Margin/VBox/CaseRow"]
+layout_mode = 2
+text = "Case:"
+
+[node name="CaseOptionButton" type="OptionButton" parent="CenterPanel/Margin/VBox/CaseRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="StartButton" type="Button" parent="CenterPanel/Margin/VBox/CaseRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Start"
+
+[node name="RestartButton" type="Button" parent="CenterPanel/Margin/VBox/CaseRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Restart"
+
+[node name="ObjectiveLabel" type="Label" parent="CenterPanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 2
+text = "Objective: find the contradiction in the testimony, then present the one piece of evidence that exposes it."
+
+[node name="ProgressLabel" type="Label" parent="CenterPanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 2
+text = ""
+
+[node name="StatusLabel" type="Label" parent="CenterPanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 2
+text = "No case selected yet."
+
+[node name="HSeparator" type="HSeparator" parent="CenterPanel/Margin/VBox"]
+layout_mode = 2
+
+[node name="PlayArea" type="HBoxContainer" parent="CenterPanel/Margin/VBox"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="LeftColumn" type="VBoxContainer" parent="CenterPanel/Margin/VBox/PlayArea"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 2.0
+theme_override_constants/separation = 6
+
+[node name="StatementScroll" type="ScrollContainer" parent="CenterPanel/Margin/VBox/PlayArea/LeftColumn"]
+custom_minimum_size = Vector2(0, 180)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="StatementList" type="VBoxContainer" parent="CenterPanel/Margin/VBox/PlayArea/LeftColumn/StatementScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="NavRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox/PlayArea/LeftColumn"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="PreviousButton" type="Button" parent="CenterPanel/Margin/VBox/PlayArea/LeftColumn/NavRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Previous"
+
+[node name="NextButton" type="Button" parent="CenterPanel/Margin/VBox/PlayArea/LeftColumn/NavRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Next"
+
+[node name="SelectionLabel" type="Label" parent="CenterPanel/Margin/VBox/PlayArea/LeftColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 2
+text = ""
+
+[node name="HintScroll" type="ScrollContainer" parent="CenterPanel/Margin/VBox/PlayArea/LeftColumn"]
+custom_minimum_size = Vector2(0, 70)
+layout_mode = 2
+
+[node name="HintList" type="VBoxContainer" parent="CenterPanel/Margin/VBox/PlayArea/LeftColumn/HintScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ActionRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox/PlayArea/LeftColumn"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="HintButton" type="Button" parent="CenterPanel/Margin/VBox/PlayArea/LeftColumn/ActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Hint"
+
+[node name="PresentButton" type="Button" parent="CenterPanel/Margin/VBox/PlayArea/LeftColumn/ActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Present Evidence"
+
+[node name="VSeparator" type="VSeparator" parent="CenterPanel/Margin/VBox/PlayArea"]
+layout_mode = 2
+
+[node name="RightColumn" type="VBoxContainer" parent="CenterPanel/Margin/VBox/PlayArea"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.0
+theme_override_constants/separation = 6
+
+[node name="CaseFileLabel" type="Label" parent="CenterPanel/Margin/VBox/PlayArea/RightColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Case File"
+
+[node name="EvidenceScroll" type="ScrollContainer" parent="CenterPanel/Margin/VBox/PlayArea/RightColumn"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="EvidenceList" type="VBoxContainer" parent="CenterPanel/Margin/VBox/PlayArea/RightColumn/EvidenceScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="FeedbackPanel" type="PanelContainer" parent="CenterPanel/Margin/VBox"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="FeedbackMargin" type="MarginContainer" parent="CenterPanel/Margin/VBox/FeedbackPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="FeedbackVBox" type="VBoxContainer" parent="CenterPanel/Margin/VBox/FeedbackPanel/FeedbackMargin"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="FeedbackHeadline" type="Label" parent="CenterPanel/Margin/VBox/FeedbackPanel/FeedbackMargin/FeedbackVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+autowrap_mode = 2
+text = ""
+
+[node name="FeedbackExplanation" type="Label" parent="CenterPanel/Margin/VBox/FeedbackPanel/FeedbackMargin/FeedbackVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 2
+text = ""
+
+[node name="FeedbackWitnessResponse" type="Label" parent="CenterPanel/Margin/VBox/FeedbackPanel/FeedbackMargin/FeedbackVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 2
+text = ""
+
+[node name="ContinueButton" type="Button" parent="CenterPanel/Margin/VBox/FeedbackPanel/FeedbackMargin/FeedbackVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Continue"
+
+[node name="CompletionPanel" type="PanelContainer" parent="CenterPanel/Margin/VBox"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="CompletionMargin" type="MarginContainer" parent="CenterPanel/Margin/VBox/CompletionPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="CompletionVBox" type="VBoxContainer" parent="CenterPanel/Margin/VBox/CompletionPanel/CompletionMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CompletionTitleLabel" type="Label" parent="CenterPanel/Margin/VBox/CompletionPanel/CompletionMargin/CompletionVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Testimony Broken"
+
+[node name="CompletionTextLabel" type="Label" parent="CenterPanel/Margin/VBox/CompletionPanel/CompletionMargin/CompletionVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 2
+text = ""
+
+[node name="StatsList" type="VBoxContainer" parent="CenterPanel/Margin/VBox/CompletionPanel/CompletionMargin/CompletionVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="CompletionButtonsRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox/CompletionPanel/CompletionMargin/CompletionVBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CompletionRestartButton" type="Button" parent="CenterPanel/Margin/VBox/CompletionPanel/CompletionMargin/CompletionVBox/CompletionButtonsRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Restart"
+
+[node name="CompletionExportButton" type="Button" parent="CenterPanel/Margin/VBox/CompletionPanel/CompletionMargin/CompletionVBox/CompletionButtonsRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Export Recording"
+
+[node name="CompletionReturnButton" type="Button" parent="CenterPanel/Margin/VBox/CompletionPanel/CompletionMargin/CompletionVBox/CompletionButtonsRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Return to Lab"
+
+[node name="RecorderRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="RecorderStartButton" type="Button" parent="CenterPanel/Margin/VBox/RecorderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Start Recording"
+
+[node name="RecorderStopButton" type="Button" parent="CenterPanel/Margin/VBox/RecorderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Stop"
+
+[node name="RecorderClearButton" type="Button" parent="CenterPanel/Margin/VBox/RecorderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Clear"
+
+[node name="RecorderExportButton" type="Button" parent="CenterPanel/Margin/VBox/RecorderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Export Recording"
+
+[node name="RecorderStatusLabel" type="Label" parent="CenterPanel/Margin/VBox/RecorderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+autowrap_mode = 2
+text = "Recording: OFF — 0 events captured."
+
+[node name="ConfirmDialog" type="ConfirmationDialog" parent="."]
+unique_name_in_owner = true
+title = "Confirm"

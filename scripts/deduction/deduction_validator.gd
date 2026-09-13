@@ -54,6 +54,7 @@ static func validate_case(case_def: Dictionary, errors: Array[String], warnings:
 	_validate_hints(case_def, ctx, errors)
 	_validate_ground_truth(case_def, ctx, errors)
 	_validate_dependency_graph(case_def, ctx, errors, warnings)
+	_validate_prototype_a(case_def, ctx, errors, warnings)
 
 
 # ---------------------------------------------------------------------------
@@ -669,6 +670,239 @@ static func compute_reachability(case_def: Dictionary) -> Dictionary:
 
 
 # ---------------------------------------------------------------------------
+# Prototype A (Milestone 1.11) — optional per-case data layer under
+# case_def["prototype_a"]: {evidence_pool, rounds: [{id, statements,
+# required_refutations, optional_refutations, success_explanations,
+# witness_responses, hint_ladders, ...}], completion_text}. See
+# docs/prototype-a.md. Absent entirely on a case with no Prototype A content
+# (e.g. the hand-built fixtures) — this whole section is then a no-op.
+##
+## Deliberately does NOT reuse case_def["hints"] (those ladders may only
+## target a "deduction"/"conclusion" claim — see _validate_hints/
+## _validate_hint_level above) — a Prototype A round's required refutation is
+## always a "statement", so its hint ladder is Prototype-A-owned data
+## (round.hint_ladders), validated here instead.
+##
+## Local variables below are named "entry"/"pa_round" rather than "round" to
+## avoid shadowing GDScript's builtin round() function.
+
+const PROTOTYPE_A_HINT_LEVELS := 4
+
+static func _validate_prototype_a(case_def: Dictionary, ctx: String, errors: Array[String], warnings: Array[String]) -> void:
+	var proto: Variant = case_def.get("prototype_a")
+	if proto == null:
+		return
+	if typeof(proto) != TYPE_DICTIONARY:
+		errors.append('%s prototype_a must be an object' % ctx)
+		return
+	var pa_ctx: String = "%s prototype_a" % ctx
+
+	var pool_ids: Dictionary = {}
+	var raw_pool: Variant = proto.get("evidence_pool")
+	if not _is_string_array(raw_pool):
+		errors.append('%s evidence_pool must be an array of evidence ids' % pa_ctx)
+		raw_pool = []
+	for evidence_id in DeductionEvaluator.string_array(raw_pool):
+		var evidence: Dictionary = DeductionEvaluator.find_evidence(case_def, evidence_id)
+		if evidence.is_empty():
+			errors.append('%s evidence_pool references undefined evidence "%s"' % [pa_ctx, evidence_id])
+		elif not (evidence.get("unlock_requires", []) as Array).is_empty():
+			errors.append('%s evidence_pool item "%s" has unlock_requires — every Prototype A evidence item must be available from the start' % [pa_ctx, evidence_id])
+		pool_ids[evidence_id] = true
+
+	_require_text(proto.get("completion_text"), "%s completion_text" % pa_ctx, errors)
+
+	var raw_rounds: Variant = proto.get("rounds")
+	if typeof(raw_rounds) != TYPE_ARRAY or (raw_rounds as Array).is_empty():
+		errors.append('%s must declare a non-empty "rounds" array' % pa_ctx)
+		return
+
+	var seen_round_ids: Dictionary = {}
+	var seen_targets: Dictionary = {}  # claim id -> round context, across ALL rounds (a claim may be a target in only one round)
+	var total_required := 0
+	for i in (raw_rounds as Array).size():
+		var pa_round: Variant = (raw_rounds as Array)[i]
+		var round_ctx: String = "%s round %d" % [pa_ctx, i + 1]
+		if typeof(pa_round) != TYPE_DICTIONARY:
+			errors.append('%s is not an object' % round_ctx)
+			continue
+
+		var round_id: String = str(pa_round.get("id", ""))
+		if round_id == "":
+			errors.append('%s has no "id"' % round_ctx)
+		elif seen_round_ids.has(round_id):
+			errors.append('%s duplicates round id "%s" (already used by round %d)' % [round_ctx, round_id, seen_round_ids[round_id]])
+		else:
+			seen_round_ids[round_id] = i + 1
+
+		var statement_ids: Dictionary = {}
+		var raw_statements: Variant = pa_round.get("statements")
+		if not _is_string_array(raw_statements) or (raw_statements as Array).is_empty():
+			errors.append('%s must declare a non-empty "statements" array of claim ids' % round_ctx)
+			raw_statements = []
+		for claim_id in DeductionEvaluator.string_array(raw_statements):
+			var claim: Dictionary = DeductionEvaluator.find_claim(case_def, claim_id)
+			if claim.is_empty():
+				errors.append('%s references undefined claim "%s"' % [round_ctx, claim_id])
+			elif str(claim.get("kind", "")) != "statement":
+				errors.append('%s statement "%s" is not a statement claim (kind=%s) — Prototype A only cross-examines statements' % [round_ctx, claim_id, claim.get("kind", "")])
+			statement_ids[claim_id] = true
+
+		var required: Array[String] = DeductionEvaluator.string_array(pa_round.get("required_refutations"))
+		if not _is_string_array(pa_round.get("required_refutations")) or required.is_empty():
+			errors.append('%s must declare a non-empty "required_refutations" array' % round_ctx)
+		var optional: Array[String] = DeductionEvaluator.string_array(pa_round.get("optional_refutations", []))
+		if pa_round.has("optional_refutations") and not _is_string_array(pa_round.get("optional_refutations")):
+			errors.append('%s optional_refutations must be an array of claim ids' % round_ctx)
+
+		for claim_id in required + optional:
+			if not statement_ids.has(claim_id):
+				errors.append('%s targets "%s", which is not one of this round\'s statements' % [round_ctx, claim_id])
+			if seen_targets.has(claim_id):
+				errors.append('%s targets "%s" a second time (already targeted in %s) — a claim may only be a refutation target in one round' % [round_ctx, claim_id, seen_targets[claim_id]])
+			else:
+				seen_targets[claim_id] = round_ctx
+
+		for claim_id in required:
+			total_required += 1
+			_validate_prototype_a_target(case_def, claim_id, pool_ids, round_ctx, errors)
+		for claim_id in optional:
+			_validate_prototype_a_target(case_def, claim_id, pool_ids, round_ctx, errors)
+
+		# Every displayed statement that is actually false must have a fair,
+		# authored outcome (required or optional); every targeted statement
+		# must actually BE false — a true/incomplete statement structurally
+		# can't have a refutes proof set (_relation_allowed above), but a
+		# content author could still mis-list one as a target by id.
+		for claim_id in statement_ids:
+			var claim: Dictionary = DeductionEvaluator.find_claim(case_def, claim_id)
+			var veracity: String = str(claim.get("veracity", ""))
+			var is_false_statement: bool = veracity == "deceptive" or veracity == "mistaken"
+			var is_targeted: bool = required.has(claim_id) or optional.has(claim_id)
+			if is_false_statement and not is_targeted:
+				errors.append('%s statement "%s" is false (veracity=%s) but has no accepted outcome — list it in required_refutations or optional_refutations' % [round_ctx, claim_id, veracity])
+			elif is_targeted and not is_false_statement:
+				errors.append('%s statement "%s" is configured as a refutation target but its veracity is "%s" — only a mistaken/deceptive statement may be refuted' % [round_ctx, claim_id, veracity])
+
+		var explanations: Variant = pa_round.get("success_explanations")
+		if typeof(explanations) != TYPE_DICTIONARY:
+			errors.append('%s success_explanations must be an object mapping claim id -> translation key' % round_ctx)
+			explanations = {}
+		var responses: Variant = pa_round.get("witness_responses")
+		if typeof(responses) != TYPE_DICTIONARY:
+			errors.append('%s witness_responses must be an object mapping claim id -> translation key' % round_ctx)
+			responses = {}
+		var ladders: Variant = pa_round.get("hint_ladders", {})
+		if typeof(ladders) != TYPE_DICTIONARY:
+			errors.append('%s hint_ladders must be an object mapping claim id -> an array of %d translation keys' % [round_ctx, PROTOTYPE_A_HINT_LEVELS])
+			ladders = {}
+
+		for claim_id in required + optional:
+			if not (explanations as Dictionary).has(claim_id):
+				errors.append('%s is missing a success_explanations entry for "%s"' % [round_ctx, claim_id])
+			else:
+				_require_text((explanations as Dictionary).get(claim_id), '%s success_explanations["%s"]' % [round_ctx, claim_id], errors)
+			if not (responses as Dictionary).has(claim_id):
+				errors.append('%s is missing a witness_responses entry for "%s"' % [round_ctx, claim_id])
+			else:
+				_require_text((responses as Dictionary).get(claim_id), '%s witness_responses["%s"]' % [round_ctx, claim_id], errors)
+		for claim_id in required:
+			var ladder: Variant = (ladders as Dictionary).get(claim_id)
+			if typeof(ladder) != TYPE_ARRAY or (ladder as Array).size() != PROTOTYPE_A_HINT_LEVELS:
+				errors.append('%s required refutation "%s" needs a hint_ladders entry with exactly %d levels' % [round_ctx, claim_id, PROTOTYPE_A_HINT_LEVELS])
+				continue
+			for level_index in (ladder as Array).size():
+				_require_text((ladder as Array)[level_index], '%s hint_ladders["%s"] level %d' % [round_ctx, claim_id, level_index + 1], errors)
+
+	if total_required != 2:
+		warnings.append('%s has %d required contradiction(s) across all rounds; the milestone target is exactly 2 for a 5-10 minute session' % [pa_ctx, total_required])
+
+
+## A required or optional refutation target must be solvable with EXACTLY one
+## evidence item (Prototype A never submits more than one), and that item
+## must be listed in evidence_pool so the player can actually reach it.
+static func _validate_prototype_a_target(case_def: Dictionary, claim_id: String, pool_ids: Dictionary, round_ctx: String, errors: Array[String]) -> void:
+	var claim: Dictionary = DeductionEvaluator.find_claim(case_def, claim_id)
+	if claim.is_empty():
+		return  # Already reported as an undefined reference.
+	var single_evidence_ids: Dictionary = {}
+	for proof_set in _dicts(claim.get("proof_sets", [])):
+		if str(proof_set.get("relation", "")) != "refutes":
+			continue
+		var requires: Array[String] = DeductionEvaluator.string_array(proof_set.get("requires", []))
+		if requires.size() == 1 and not DeductionEvaluator.find_evidence(case_def, requires[0]).is_empty():
+			single_evidence_ids[requires[0]] = true
+	if single_evidence_ids.is_empty():
+		errors.append('%s required refutation "%s" has no single-evidence refutes proof set — Prototype A can only submit exactly one evidence item per attempt' % [round_ctx, claim_id])
+		return
+	for evidence_id in single_evidence_ids:
+		if not pool_ids.has(evidence_id):
+			errors.append('%s "%s" is solvable with evidence "%s", which is missing from prototype_a.evidence_pool' % [round_ctx, claim_id, evidence_id])
+
+
+## [[key, context], ...] additional translation keys Prototype A's optional
+## data layer introduces — success_explanations, witness_responses,
+## hint_ladders and completion_text. Called from ContentValidator alongside
+## collect_text_keys() (see docs/deduction-system.md, "Content validation").
+static func collect_prototype_a_text_keys(case_def: Dictionary) -> Array[Array]:
+	var keys: Array[Array] = []
+	var proto: Variant = case_def.get("prototype_a")
+	if typeof(proto) != TYPE_DICTIONARY:
+		return keys
+	var ctx: String = 'Deduction case "%s" prototype_a' % str(case_def.get("id", ""))
+	keys.append([proto.get("completion_text", ""), "%s completion_text" % ctx])
+	for pa_round in _dicts(proto.get("rounds", [])):
+		var round_id: String = str(pa_round.get("id", ""))
+		var round_ctx: String = '%s round "%s"' % [ctx, round_id]
+		var explanations: Variant = pa_round.get("success_explanations", {})
+		if typeof(explanations) == TYPE_DICTIONARY:
+			for claim_id in (explanations as Dictionary):
+				keys.append([(explanations as Dictionary)[claim_id], '%s success_explanations["%s"]' % [round_ctx, claim_id]])
+		var responses: Variant = pa_round.get("witness_responses", {})
+		if typeof(responses) == TYPE_DICTIONARY:
+			for claim_id in (responses as Dictionary):
+				keys.append([(responses as Dictionary)[claim_id], '%s witness_responses["%s"]' % [round_ctx, claim_id]])
+		var ladders: Variant = pa_round.get("hint_ladders", {})
+		if typeof(ladders) == TYPE_DICTIONARY:
+			for claim_id in (ladders as Dictionary):
+				var levels: Variant = (ladders as Dictionary)[claim_id]
+				if typeof(levels) == TYPE_ARRAY:
+					for level_index in (levels as Array).size():
+						keys.append([(levels as Array)[level_index], '%s hint_ladders["%s"] level %d' % [round_ctx, claim_id, level_index + 1]])
+	return keys
+
+
+## Appended to structural_signature() (see below) when a case declares
+## prototype_a, so validate_structural_equivalence() enforces the same
+## round/target/evidence-pool SHAPE across X/Y/Z automatically — no separate
+## comparison entry point. Roles only, never ids or translation keys: a round
+## is compared by index (round ids are case-specific strings, e.g. "round_1",
+## and are not assumed to match across cases).
+static func _prototype_a_signature_lines(case_def: Dictionary, role_of: Dictionary) -> Array[String]:
+	var lines: Array[String] = []
+	var proto: Variant = case_def.get("prototype_a")
+	if typeof(proto) != TYPE_DICTIONARY:
+		return lines
+	lines.append("prototype_a:evidence_pool=%s" % _roles(proto.get("evidence_pool", []), role_of))
+	var rounds: Array[Dictionary] = _dicts(proto.get("rounds", []))
+	lines.append("prototype_a:round_count=%d" % rounds.size())
+	for i in rounds.size():
+		var pa_round: Dictionary = rounds[i]
+		var explanations: Variant = pa_round.get("success_explanations", {})
+		var responses: Variant = pa_round.get("witness_responses", {})
+		var ladders: Variant = pa_round.get("hint_ladders", {})
+		var explanation_targets: Array = (explanations as Dictionary).keys() if typeof(explanations) == TYPE_DICTIONARY else []
+		var response_targets: Array = (responses as Dictionary).keys() if typeof(responses) == TYPE_DICTIONARY else []
+		var hint_targets: Array = (ladders as Dictionary).keys() if typeof(ladders) == TYPE_DICTIONARY else []
+		lines.append("prototype_a:round=%d:statements=%s:required=%s:optional=%s:explanation_targets=%s:response_targets=%s:hint_targets=%s" % [
+			i, _roles(pa_round.get("statements", []), role_of), _roles(pa_round.get("required_refutations", []), role_of),
+			_roles(pa_round.get("optional_refutations", []), role_of), _roles(explanation_targets, role_of),
+			_roles(response_targets, role_of), _roles(hint_targets, role_of),
+		])
+	return lines
+
+
+# ---------------------------------------------------------------------------
 # Structural equivalence
 
 ## A case's proof-graph shape in role terms only — no ids, no text — as a
@@ -742,6 +976,7 @@ static func structural_signature(case_def: Dictionary) -> Array[String]:
 			role_of.get(str(truth.get("culprit", "")), ""), role_of.get(str(truth.get("credential_owner", "")), ""),
 			role_of.get(str(truth.get("conclusion", "")), ""),
 		])
+	signature.append_array(_prototype_a_signature_lines(case_def, role_of))
 	signature.sort()
 	return signature
 

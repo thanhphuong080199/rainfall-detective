@@ -31,6 +31,15 @@ isolation `DebugPanel` already uses (`docs/case-debugger.md`). There is no
 other path to it: it is never wired through `Main.gd`, and no production
 scene references it.
 
+Since Milestone 1.11, the case row also has a **"Launch Prototype A —
+Statement Contradiction"** button, opening `scenes/debug/PrototypeA.tscn` (a
+further child scene of the Lab, with the same `OS.is_debug_build()`/Esc-
+stacking isolation) defaulted to whichever case the Lab currently has
+active. This does not make the Lab itself mechanic-specific — Player
+Preview/Author Inspector are unchanged, and Prototype A always starts a
+**fresh** session of its own, never reusing or mutating the Lab's. See
+`docs/prototype-a.md` for the mechanic itself.
+
 ## Architecture — reuse, not a parallel system
 
 ```
@@ -350,14 +359,17 @@ Both are already part of the repository's canonical FAST/FULL commands — see
 
 ## Explicitly deferred / out of scope
 
-Prototype A/B/C's actual player interaction (evidence multi-selection,
-"present evidence," a relation picker, proof submission, a clue graph/
-caseboard, timeline drag-and-drop, a final accusation/theory input), NPC
-reactions/consequences, production save/load integration for deductions,
-production or canon case content, art/audio/polish, external analytics or
-network telemetry, a generic graph/content editor, and choosing a core
-mechanic. See `docs/deduction-playtest-plan.md` for how that comparison is
-meant to be run once one of A/B/C actually exists.
+Prototype B/C's actual player interaction (a relation picker, a clue graph/
+caseboard, timeline drag-and-drop, a final accusation/theory input) — the
+Lab itself still stays mechanic-neutral and does not grow evidence
+multi-selection or a proof-submission UI of its own; that lives only in
+Prototype A's own scene (`docs/prototype-a.md`, launched from the button
+above) and, later, B/C's. Also still deferred here: NPC reactions/
+consequences, production save/load integration for deductions, production
+or canon case content, art/audio/polish, external analytics or network
+telemetry, a generic graph/content editor, and choosing a core mechanic. See
+`docs/deduction-playtest-plan.md` for how that comparison is meant to be run
+once all of A/B/C exist.
 
 ## Content-comprehension pilot (procedure)
 

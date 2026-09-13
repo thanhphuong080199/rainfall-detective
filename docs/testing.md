@@ -30,6 +30,10 @@ scenes/test/
 ├── deduction_lab_presenter_test.gd   Milestone 1.10: Player Preview spoiler boundary + Author Inspector contract
 ├── deduction_lab_recorder_test.gd    Milestone 1.10: local playtest recorder (start/stop/clear/export, schema)
 ├── deduction_lab_scene_test.gd       Milestone 1.10: the Lab scene + DebugPanel integration (FULL only, see below)
+├── prototype_a_controller_test.gd    Milestone 1.11: PrototypeAController interaction state + real-evaluator classification
+├── prototype_a_presenter_test.gd     Milestone 1.11: player-view spoiler boundary + feedback-category mapping
+├── prototype_a_content_test.gd       Milestone 1.11: the prototype_a data layer on the three prototype cases, by structural role
+├── prototype_a_scene_test.gd         Milestone 1.11: the Prototype A scene + Deduction Lab launch wiring (FULL only, see below)
 └── smoke_test.gd                  the critical-path / integration fixture (see below)
 ```
 
@@ -116,7 +120,10 @@ boot if `.godot/` is already built):
   --script res://scenes/test/deduction_cases_test.gd \
   --script res://scenes/test/deduction_lab_controller_test.gd \
   --script res://scenes/test/deduction_lab_presenter_test.gd \
-  --script res://scenes/test/deduction_lab_recorder_test.gd
+  --script res://scenes/test/deduction_lab_recorder_test.gd \
+  --script res://scenes/test/prototype_a_controller_test.gd \
+  --script res://scenes/test/prototype_a_presenter_test.gd \
+  --script res://scenes/test/prototype_a_content_test.gd
 ```
 
 **FULL** — before finishing a milestone/refactor, and what CI runs on every
@@ -142,6 +149,10 @@ checks `verify.sh` always does unless skipped:
   --script res://scenes/test/deduction_lab_presenter_test.gd \
   --script res://scenes/test/deduction_lab_recorder_test.gd \
   --script res://scenes/test/deduction_lab_scene_test.gd \
+  --script res://scenes/test/prototype_a_controller_test.gd \
+  --script res://scenes/test/prototype_a_presenter_test.gd \
+  --script res://scenes/test/prototype_a_content_test.gd \
+  --script res://scenes/test/prototype_a_scene_test.gd \
   --script res://scenes/test/smoke_test.gd
 ```
 
@@ -367,6 +378,41 @@ session preservation, Player/Author mode instantiation (clicking every
 Author-only debug action and every recorder control once, through the real
 buttons), malformed/empty-selection safety, and bilingual coverage of the
 non-canon badge and the Overview tab's rendered text.
+
+### Prototype A tests (Milestone 1.11)
+
+`docs/prototype-a.md` is the source of truth for the mechanic itself; three
+more scripts join the deduction tests above in **both** FAST and FULL (same
+reasoning — pure, autoload-free, no scene tree):
+
+- `prototype_a_controller_test.gd` — `PrototypeAController`'s fresh-session-
+  per-run guarantee, isolation from a `DeductionLabController`'s own session,
+  navigation, one-evidence-only enforcement, required/optional/wrong-attempt
+  classification through the real `DeductionEvaluator`, idempotent
+  resubmission, round/prototype completion, hints, stats/abandonment, and a
+  structural check that `DeductionSession`'s evaluator-only mutators are
+  never called directly. Uses its own fixture,
+  `deduction_fixtures.gd`'s `prototype_a_case()` (independent of `base_case()`).
+- `prototype_a_presenter_test.gd` — the player view's exact allow-listed
+  keys; a content sweep proving no domain id/structural role/veracity/
+  pre-resolution required-optional classification ever reaches it, against
+  real X/Y/Z content; round-scoping (a future round's text is absent); and
+  the evaluator-category → feedback mapping for every outcome.
+- `prototype_a_content_test.gd` — X/Y/Z walked once in structural-role
+  terms: true/incomplete/required×2/optional role coverage, each target
+  solvable with one evidence item that's actually in the pool, every pool
+  item available from the start, true/incomplete statements never
+  refutable, translations resolve, and the Prototype A structural-signature
+  shape (evidence pool + per-round target roles) matches across all three
+  cases.
+
+`prototype_a_scene_test.gd` is **FULL-only**, same reasoning as
+`deduction_lab_scene_test.gd`: launching from the Lab (with/without an
+active Lab case), reading/selecting evidence and presenting it through real
+buttons, wrong/correct/optional feedback, hint reveal, round transition and
+completion, restart/return confirmation (cancelling preserves the run
+exactly), recorder controls and the exported event vocabulary/schema, F1
+hide/show session preservation, and bilingual coverage.
 
 Where new coverage goes: a new validation rule → a negative fixture in
 `deduction_validation_test.gd`; a new result category or constraint type →

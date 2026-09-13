@@ -108,9 +108,9 @@
       "veracity": "deceptive",
       "text": "DED_PROTO_X_ST_OREN_BREAK_IN_TEXT",
       "structural_role": "candidate_staging_claim",
-      "compatible": ["e_forced_window"],
       "proof_sets": [
-        { "id": "ps_oren_break_in_latch", "relation": "refutes", "requires": ["e_latch_guide", "e_window_latch"] }
+        { "id": "ps_oren_break_in_latch", "relation": "refutes", "requires": ["e_latch_guide", "e_window_latch"] },
+        { "id": "ps_oren_break_in_footprints", "relation": "refutes", "requires": ["e_forced_window"] }
       ]
     },
     {
@@ -295,5 +295,49 @@
     "conclusion": "concl_x",
     "summary": "DED_PROTO_X_TRUTH_SUMMARY",
     "solution_timeline": { "tl_mara_leaves": "19:35", "tl_cardigan_taken": "19:48", "tl_mara_tram_tap": "20:04", "tl_badge_used": "20:06", "tl_window_forced": "20:08", "tl_shredding_pickup": "20:10", "tl_cardigan_returned": "20:14" }
+  },
+  "prototype_a": {
+    "evidence_pool": ["e_lost_property_sheet", "e_forced_window", "e_shredding_log", "e_wing_camera", "e_window_latch", "e_tram_tap"],
+    "rounds": [
+      {
+        "id": "round_1",
+        "statements": ["st_mara_went_to_harbor", "st_mara_badge_on_cardigan", "st_oren_never_touched"],
+        "required_refutations": ["st_oren_never_touched"],
+        "optional_refutations": [],
+        "success_explanations": { "st_oren_never_touched": "DED_PROTO_X_PROTOA_EXP_DENIAL" },
+        "witness_responses": { "st_oren_never_touched": "DED_PROTO_X_PROTOA_RESP_DENIAL" },
+        "hint_ladders": {
+          "st_oren_never_touched": [
+            "DED_PROTO_X_PROTOA_HINT_DENIAL_1",
+            "DED_PROTO_X_PROTOA_HINT_DENIAL_2",
+            "DED_PROTO_X_PROTOA_HINT_DENIAL_3",
+            "DED_PROTO_X_PROTOA_HINT_DENIAL_4"
+          ]
+        }
+      },
+      {
+        "id": "round_2",
+        "statements": ["st_ilse_left_early", "st_oren_break_in"],
+        "required_refutations": ["st_oren_break_in"],
+        "optional_refutations": ["st_ilse_left_early"],
+        "success_explanations": {
+          "st_oren_break_in": "DED_PROTO_X_PROTOA_EXP_BREAKIN",
+          "st_ilse_left_early": "DED_PROTO_X_PROTOA_EXP_ILSE"
+        },
+        "witness_responses": {
+          "st_oren_break_in": "DED_PROTO_X_PROTOA_RESP_BREAKIN",
+          "st_ilse_left_early": "DED_PROTO_X_PROTOA_RESP_ILSE"
+        },
+        "hint_ladders": {
+          "st_oren_break_in": [
+            "DED_PROTO_X_PROTOA_HINT_BREAKIN_1",
+            "DED_PROTO_X_PROTOA_HINT_BREAKIN_2",
+            "DED_PROTO_X_PROTOA_HINT_BREAKIN_3",
+            "DED_PROTO_X_PROTOA_HINT_BREAKIN_4"
+          ]
+        }
+      }
+    ],
+    "completion_text": "DED_PROTO_X_PROTOA_COMPLETION"
   }
 }

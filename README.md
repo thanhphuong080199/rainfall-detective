@@ -21,8 +21,11 @@ There is no story, no protagonist, and no Case 01 yet — and deliberately so.
   prototypes build on; `docs/deduction-prototype-cases.md` audits its three
   non-canon dummy mysteries and `docs/deduction-playtest-plan.md` plans their
   A/B/C playtest. `docs/deduction-lab.md` (Milestone 1.10) is a debug-only
-  shell (F1 → Deduction Lab tab) for inspecting those three cases before any
-  A/B/C gameplay UI exists.
+  shell (F1 → Deduction Lab tab) for inspecting those three cases.
+  `docs/prototype-a.md` (Milestone 1.11) is the first actual mechanic on top
+  of it — a debug-only, non-canon "statement contradiction" cross-examination
+  (find the lie, present the one piece of evidence that disproves it),
+  launched from the Deduction Lab.
 
 ## Requirements
 

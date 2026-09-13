@@ -38,6 +38,8 @@ var _pending_confirmed_action: Callable = Callable()
 @onready var reset_button: Button = %ResetButton
 @onready var mode_player_button: Button = %ModePlayerButton
 @onready var mode_author_button: Button = %ModeAuthorButton
+@onready var launch_prototype_a_button: Button = %LaunchPrototypeAButton
+@onready var prototype_a: Control = %PrototypeA
 @onready var status_label: Label = %StatusLabel
 @onready var tabs: TabContainer = %Tabs
 @onready var author_tab: Control = %AuthorTab
@@ -83,6 +85,8 @@ func _ready() -> void:
 	reset_button.pressed.connect(_on_reset_pressed)
 	mode_player_button.pressed.connect(func(): _on_mode_pressed(MODE_PLAYER))
 	mode_author_button.pressed.connect(func(): _on_mode_pressed(MODE_AUTHOR))
+	launch_prototype_a_button.pressed.connect(_on_launch_prototype_a_pressed)
+	launch_prototype_a_button.text = tr("UI_PROTOTYPE_A_LAUNCH_BUTTON")
 	confirm_dialog.confirmed.connect(_on_confirm_dialog_confirmed)
 
 	evidence_search_edit.text_changed.connect(func(_text): _render_evidence())
@@ -203,6 +207,16 @@ func _do_reset() -> void:
 	refresh()
 
 
+## Launches Prototype A (Milestone 1.11) using the Lab's currently active
+## case as a convenience default — the facilitator can still change it before
+## pressing Start there. Uses a FRESH PrototypeAController/DeductionSession,
+## never this Lab's own _controller/session: Prototype A must never reuse an
+## Author Inspector session that may already be auto-solved, and playing it
+## must never mutate this Lab's own session. See scripts/debug/prototype_a.gd.
+func _on_launch_prototype_a_pressed() -> void:
+	prototype_a.open(_controller.get_case_def() if _controller.get_session() != null else {})
+
+
 func _on_mode_pressed(mode: String) -> void:
 	_controller.set_mode(mode)
 	if _recorder.is_recording():
@@ -237,6 +251,7 @@ func _on_confirm_dialog_confirmed() -> void:
 
 func refresh() -> void:
 	non_canon_badge.text = tr("UI_DEDUCTION_LAB_NON_CANON_BADGE")
+	launch_prototype_a_button.text = tr("UI_PROTOTYPE_A_LAUNCH_BUTTON")
 	if _controller.get_session() != null:
 		var case_def: Dictionary = _controller.get_case_def()
 		var session: DeductionSession = _controller.get_session()
