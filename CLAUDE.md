@@ -23,7 +23,14 @@ Verify changes headlessly — do this (at least the content-validation step) bef
   --script res://scenes/test/validate_content.gd \
   --script res://scenes/test/conditions_test.gd \
   --script res://scenes/test/effects_test.gd \
-  --script res://scenes/test/dependency_analysis_test.gd
+  --script res://scenes/test/dependency_analysis_test.gd \
+  --script res://scenes/test/deduction_evaluator_test.gd \
+  --script res://scenes/test/timeline_evaluator_test.gd \
+  --script res://scenes/test/deduction_validation_test.gd \
+  --script res://scenes/test/deduction_cases_test.gd \
+  --script res://scenes/test/deduction_lab_controller_test.gd \
+  --script res://scenes/test/deduction_lab_presenter_test.gd \
+  --script res://scenes/test/deduction_lab_recorder_test.gd
 
 # FULL — before finishing a milestone/refactor; also what CI runs on every push/PR:
 .claude/skills/godot-development/scripts/verify.sh \
@@ -35,15 +42,23 @@ Verify changes headlessly — do this (at least the content-validation step) bef
   --script res://scenes/test/save_load_regression_test.gd \
   --script res://scenes/test/negative_progression_test.gd \
   --script res://scenes/test/dependency_analysis_test.gd \
+  --script res://scenes/test/deduction_evaluator_test.gd \
+  --script res://scenes/test/timeline_evaluator_test.gd \
+  --script res://scenes/test/deduction_validation_test.gd \
+  --script res://scenes/test/deduction_cases_test.gd \
+  --script res://scenes/test/deduction_lab_controller_test.gd \
+  --script res://scenes/test/deduction_lab_presenter_test.gd \
+  --script res://scenes/test/deduction_lab_recorder_test.gd \
+  --script res://scenes/test/deduction_lab_scene_test.gd \
   --script res://scenes/test/smoke_test.gd
 ```
 Raw equivalents exist (`godot --headless --path . -s res://scenes/test/<name>.gd`) but **Godot's exit codes lie** — a `SCRIPT ERROR`, `push_error()`, or parse failure still exits 0, and a `-s` script that errors before calling `quit()` can hang indefinitely. `verify.sh` handles both (output-based pass/fail, per-step timeouts); prefer it over raw invocations. There is no separate lint/build step — import + boot + these test scripts are the whole pipeline, and `.github/workflows/verify.yml` runs the FULL command above in CI, reusing `verify.sh` rather than duplicating any check.
 
-`validate_content.gd` is fast, content-only (checks broken references *and* dependency-reachability smells in `data/`, exits 1 on any error). `conditions_test.gd`/`effects_test.gd`/`events_test.gd`/`duplicate_execution_test.gd`/`save_load_regression_test.gd`/`negative_progression_test.gd`/`dependency_analysis_test.gd` are small, independent focused tests — see `docs/testing.md` for what each covers and how to add a new one. `smoke_test.gd` is the critical-path/integration fixture: drives every autoload through the full demo flow (examine/talk/present/move, conditions, events, event chains, the two-chapter Test Case, save/load) and asserts zero *unexpected* `ContentValidator` errors/warnings; it prints `ALL TESTS PASSED` and exits 0 on success. A new Condition/Effect check goes in `conditions_test.gd`/`effects_test.gd`, never into `smoke_test.gd`.
+`validate_content.gd` is fast, content-only (checks broken references *and* dependency-reachability smells in `data/`, exits 1 on any error). `conditions_test.gd`/`effects_test.gd`/`events_test.gd`/`duplicate_execution_test.gd`/`save_load_regression_test.gd`/`negative_progression_test.gd`/`dependency_analysis_test.gd` are small, independent focused tests — see `docs/testing.md` for what each covers and how to add a new one. `smoke_test.gd` is the critical-path/integration fixture: drives every autoload through the full demo flow (examine/talk/present/move, conditions, events, event chains, the two-chapter Test Case, save/load) and asserts zero *unexpected* `ContentValidator` errors/warnings; it prints `ALL TESTS PASSED` and exits 0 on success. A new Condition/Effect check goes in `conditions_test.gd`/`effects_test.gd`, never into `smoke_test.gd`. The Milestone 1.9 deduction tests (`deduction_evaluator_test.gd`, `timeline_evaluator_test.gd`, `deduction_validation_test.gd`, `deduction_cases_test.gd`) are deterministic and belong to both FAST and FULL — see `docs/deduction-system.md`, "Testing". The Milestone 1.10 Deduction Lab's pure/autoload-free helpers (`deduction_lab_controller_test.gd`, `deduction_lab_presenter_test.gd`, `deduction_lab_recorder_test.gd`) are likewise deterministic and belong to both FAST and FULL; `deduction_lab_scene_test.gd` needs a real scene tree (DebugPanel/F1 integration) and is FULL-only, like `smoke_test.gd` — see `docs/deduction-lab.md`, "Test commands".
 
 ## Architecture
 
-`docs/architecture.md`, `docs/content-guide.md`, `docs/event-system.md`, `docs/case-system.md`, `docs/localization.md`, and `docs/testing.md` are the source of truth — read the relevant one before non-trivial work; what follows is only a map. Where they and generic conventions disagree, the docs win.
+`docs/architecture.md`, `docs/content-guide.md`, `docs/event-system.md`, `docs/case-system.md`, `docs/localization.md`, `docs/deduction-system.md`, and `docs/testing.md` are the source of truth — read the relevant one before non-trivial work; what follows is only a map. Where they and generic conventions disagree, the docs win.
 
 **The `.claude/skills/godot-development` project skill** (tracked in git, shared by everyone working on this repo) encodes this repo's Godot 4/GDScript conventions in full — typed GDScript, composition/signals/Resources, node lifecycle, scene ownership, when to add an autoload, avoiding NodePath coupling, resource loading, naming — plus the CLI verification workflow in detail. It auto-loads for any `.gd`/`.tscn`/`.tres`/`project.godot` work; read it and its `references/*.md` rather than re-deriving those rules.
 
@@ -60,11 +75,11 @@ Raw equivalents exist (`godot --headless --path . -s res://scenes/test/<name>.gd
 | `CaseManager` (`scripts/cases/case_manager.gd`) | orchestrates Case/Chapter progression (which chapter is current, when it completes and the next one activates, case completion). Holds no state of its own — reads/writes `GameState` only, and detects chapter completion by listening for a chapter's designated `completion_event` (an ordinary Event) to fire, not by re-evaluating conditions itself. |
 | `SaveManager` (`scripts/save/save_manager.gd`) | reads/writes `user://save_game.json`; owns the save format/version. |
 
-Plus stateless `class_name` static helpers (not autoloads): `ConditionEvaluator` (the condition mini-language), `EffectRunner` (the effect vocabulary), `ContentValidator` (cross-checks everything `ContentDB` loaded for broken references).
+Plus stateless `class_name` static helpers (not autoloads): `ConditionEvaluator` (the condition mini-language), `EffectRunner` (the effect vocabulary), `ContentValidator` (cross-checks everything `ContentDB` loaded for broken references). Milestone 1.9 adds `DeductionEvaluator`, `TimelineEvaluator`, `DeductionValidator` and the `DeductionSession` state object under `scripts/deduction/` — see "Deduction foundation" below.
 
 ### Content is data, not code
 
-Everything under `data/` (`characters/`, `evidence/`, `locations/`, `dialogue/`, `chapters/`, `cases/`, `events/`) is plain JSON, loaded once by `ContentDB`; runtime lookups return plain `Dictionary`, never typed wrapper classes. IDs are unique **within their own category** regardless of which file/subfolder they live in (subfolders are scanned automatically and exist purely for human organization); a duplicate id is a `ContentValidator` error, since load order across files isn't guaranteed. Adding real content should never require touching `scripts/` — `docs/content-guide.md` has the recipe for each content type.
+Everything under `data/` (`characters/`, `evidence/`, `locations/`, `dialogue/`, `chapters/`, `cases/`, `events/`, `deductions/`) is plain JSON, loaded once by `ContentDB`; runtime lookups return plain `Dictionary`, never typed wrapper classes. IDs are unique **within their own category** regardless of which file/subfolder they live in (subfolders are scanned automatically and exist purely for human organization); a duplicate id is a `ContentValidator` error, since load order across files isn't guaranteed. Adding real content should never require touching `scripts/` — `docs/content-guide.md` has the recipe for each content type.
 
 ### The condition/effect core, reused everywhere
 
@@ -75,6 +90,10 @@ Everything under `data/` (`characters/`, `evidence/`, `locations/`, `dialogue/`,
 - Events (`data/events/*.json`) add zero new condition/effect vocabulary; they're `ConditionEvaluator` + `EffectRunner` evaluated automatically off `GameState` signals instead of a player click, with a bounded fixed-point loop for event chains. See `docs/event-system.md`.
 - Cases (`data/cases/*.json`) may organize themselves into Chapters (`data/chapters/<case_id>/*.json`). A Chapter adds zero new condition/effect vocabulary either: its `completion_event` is the id of an ordinary Event, so `CaseManager` never evaluates a condition itself — it only reacts to `EventManager.event_triggered`. A case with no chapters (`case_00_sandbox`) is unaffected. See `docs/case-system.md`.
 - Every `name`/`label`/`text`/`display_name`/`description` field in `data/` is a **translation key** resolved through Godot's `TranslationServer`/`tr()` (`vi` default, `en` supported), not literal text — see `docs/localization.md`. `ContentDB`/`Investigation`/`DialogueManager`/`EventManager`/`CaseManager` are all unaware this exists; only the UI layer calls `tr()`.
+
+### Deduction foundation (Milestone 1.9)
+
+`data/deductions/**/*.json` (a `ContentDB` category) holds deduction cases — suspects, questions, evidence observations, claims (`statement`/`hypothesis`/`deduction`/`explanation`/`conclusion`) with authored, order-independent proof sets, timeline constraints, four-level hint ladders and ground truth. `DeductionEvaluator.commit_attempt()` returns graded outcomes (valid support/refutation, insufficient, irrelevant, compatible-but-not-proof, invalid input) and unlocks a derived deduction in a `DeductionSession` only on an explicit commit; `TimelineEvaluator` accepts any placement satisfying the required constraints. `DeductionValidator` (run by `ContentValidator`) checks references, cycles, intermediate deduction depth ≤ 2 (a `conclusion` on top is an exempt synthesis layer), reachability, timeline/ground-truth consistency and structural equivalence of cases sharing a `structural_template`, and warns on deduction-gated evidence that a deduction then requires (Milestone 1.9.1). It deliberately does not use the Condition/Effect core, adds no autoload, and is not persisted yet — read `docs/deduction-system.md` first. The three `proto_*` cases are **non-canon** playtest material (`docs/deduction-prototype-cases.md`, `docs/deduction-playtest-plan.md`); no A/B/C gameplay UI exists yet.
 
 ### UI wiring
 

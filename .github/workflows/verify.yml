@@ -45,4 +45,12 @@ jobs:
             --script res://scenes/test/save_load_regression_test.gd \
             --script res://scenes/test/negative_progression_test.gd \
             --script res://scenes/test/dependency_analysis_test.gd \
+            --script res://scenes/test/deduction_evaluator_test.gd \
+            --script res://scenes/test/timeline_evaluator_test.gd \
+            --script res://scenes/test/deduction_validation_test.gd \
+            --script res://scenes/test/deduction_cases_test.gd \
+            --script res://scenes/test/deduction_lab_controller_test.gd \
+            --script res://scenes/test/deduction_lab_presenter_test.gd \
+            --script res://scenes/test/deduction_lab_recorder_test.gd \
+            --script res://scenes/test/deduction_lab_scene_test.gd \
             --script res://scenes/test/smoke_test.gd

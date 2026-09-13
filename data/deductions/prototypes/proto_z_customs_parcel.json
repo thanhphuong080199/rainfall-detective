@@ -1,0 +1,299 @@
+{
+  "id": "proto_z_customs_parcel",
+  "display_name": "DED_PROTO_Z_NAME",
+  "description": "DED_PROTO_Z_DESC",
+  "version": 2,
+  "metadata": {
+    "canon": false,
+    "prototype": true,
+    "milestone": "1.9.1",
+    "structural_template": "credential_misuse_v2",
+    "note": "NON-CANON dummy mystery for Prototype A/B/C playtests only. Not part of the story or world; do not reuse its names, places or events. Audit: docs/deduction-prototype-cases.md."
+  },
+  "suspects": [
+    { "id": "sus_nadia", "name": "DED_PROTO_Z_SUS_NADIA_NAME", "structural_role": "apparent_suspect" },
+    { "id": "sus_felix", "name": "DED_PROTO_Z_SUS_FELIX_NAME", "structural_role": "actual_culprit" },
+    { "id": "sus_gus", "name": "DED_PROTO_Z_SUS_GUS_NAME", "structural_role": "bystander" }
+  ],
+  "questions": [
+    {
+      "id": "q_owner",
+      "text": "DED_PROTO_Z_Q_OWNER_TEXT",
+      "required": true,
+      "structural_role": "owner_involvement",
+      "resolved_by": [
+        { "claim": "ded_scanner_misused", "status": "supported" },
+        { "claim": "hyp_nadia", "status": "refuted" }
+      ]
+    },
+    {
+      "id": "q_access",
+      "text": "DED_PROTO_Z_Q_ACCESS_TEXT",
+      "required": true,
+      "structural_role": "exclusive_control",
+      "resolved_by": [
+        { "claim": "ded_only_felix_had_scanner", "status": "supported" }
+      ]
+    },
+    {
+      "id": "q_staging",
+      "text": "DED_PROTO_Z_Q_STAGING_TEXT",
+      "required": true,
+      "structural_role": "staging",
+      "resolved_by": [
+        { "claim": "ded_fence_staged", "status": "supported" }
+      ]
+    },
+    {
+      "id": "q_culprit",
+      "text": "DED_PROTO_Z_Q_CULPRIT_TEXT",
+      "required": true,
+      "structural_role": "culprit",
+      "resolved_by": [
+        { "claim": "concl_z", "status": "supported" }
+      ]
+    }
+  ],
+  "evidence": [
+    { "id": "e_seal_registry", "name": "DED_PROTO_Z_E_SEAL_REGISTRY_NAME", "text": "DED_PROTO_Z_E_SEAL_REGISTRY_TEXT", "source": "customs_seal_registry", "certainty": "fixed", "time": "06:42", "tags": ["access", "time"], "structural_role": "credential_use_record" },
+    { "id": "e_ferry_gate", "name": "DED_PROTO_Z_E_FERRY_GATE_NAME", "text": "DED_PROTO_Z_E_FERRY_GATE_TEXT", "source": "ferry_ticket_gate_id_check", "certainty": "fixed", "time": "06:38", "tags": ["location", "time"], "structural_role": "owner_alibi_primary" },
+    { "id": "e_ferry_photo", "name": "DED_PROTO_Z_E_FERRY_PHOTO_NAME", "text": "DED_PROTO_Z_E_FERRY_PHOTO_TEXT", "source": "message_to_sister", "certainty": "fixed", "time": "06:41", "tags": ["location", "time"], "structural_role": "owner_alibi_alternate" },
+    { "id": "e_port_map_note", "name": "DED_PROTO_Z_E_PORT_MAP_NOTE_NAME", "text": "DED_PROTO_Z_E_PORT_MAP_NOTE_TEXT", "source": "port_map", "certainty": "fixed", "tags": ["distance"], "structural_role": "travel_fact" },
+    { "id": "e_locker_log", "name": "DED_PROTO_Z_E_LOCKER_LOG_NAME", "text": "DED_PROTO_Z_E_LOCKER_LOG_TEXT", "source": "equipment_locker_log_kept_by_gus", "certainty": "estimated", "tags": ["possession", "time"], "structural_role": "credential_custody" },
+    { "id": "e_cage_camera", "name": "DED_PROTO_Z_E_CAGE_CAMERA_NAME", "text": "DED_PROTO_Z_E_CAGE_CAMERA_TEXT", "source": "cage_area_gate_camera", "certainty": "fixed", "tags": ["possession", "location", "time"], "structural_role": "custody_continuity" },
+    { "id": "e_cut_fence", "name": "DED_PROTO_Z_E_CUT_FENCE_NAME", "text": "DED_PROTO_Z_E_CUT_FENCE_TEXT", "source": "scene_inspection", "certainty": "fixed", "tags": ["scene"], "structural_role": "staging_sign" },
+    { "id": "e_fence_sheet", "name": "DED_PROTO_Z_E_FENCE_SHEET_NAME", "text": "DED_PROTO_Z_E_FENCE_SHEET_TEXT", "source": "fence_contractor_safety_sheet", "certainty": "fixed", "tags": ["physics"], "structural_role": "physical_rule_or_reference" },
+    { "id": "e_wire_ends", "name": "DED_PROTO_Z_E_WIRE_ENDS_NAME", "text": "DED_PROTO_Z_E_WIRE_ENDS_TEXT", "source": "scene_inspection", "certainty": "fixed", "tags": ["scene", "physics"], "structural_role": "staging_contradiction" },
+    { "id": "e_yard_sighting", "name": "DED_PROTO_Z_E_YARD_SIGHTING_NAME", "text": "DED_PROTO_Z_E_YARD_SIGHTING_TEXT", "source": "yard_guard_log", "certainty": "estimated", "time": "06:47", "tags": ["location", "time"], "misleading": true, "structural_role": "red_herring" },
+    { "id": "e_pallet_manifest", "name": "DED_PROTO_Z_E_PALLET_MANIFEST_NAME", "text": "DED_PROTO_Z_E_PALLET_MANIFEST_TEXT", "source": "dispatch_manifest", "certainty": "estimated", "time": "06:47", "tags": ["errand", "time"], "structural_role": "red_herring_explanation" }
+  ],
+  "claims": [
+    {
+      "id": "st_nadia_took_ferry",
+      "kind": "statement",
+      "speaker": "sus_nadia",
+      "veracity": "true",
+      "text": "DED_PROTO_Z_ST_NADIA_TOOK_FERRY_TEXT",
+      "structural_role": "owner_alibi_statement",
+      "proof_sets": [
+        { "id": "ps_nadia_ferry_gate", "relation": "supports", "requires": ["e_ferry_gate"] }
+      ]
+    },
+    {
+      "id": "st_nadia_scanner_on_dock",
+      "kind": "statement",
+      "speaker": "sus_nadia",
+      "veracity": "incomplete",
+      "text": "DED_PROTO_Z_ST_NADIA_SCANNER_ON_DOCK_TEXT",
+      "structural_role": "owner_incomplete_statement",
+      "proof_sets": [
+        { "id": "ps_nadia_scanner_log", "relation": "supports", "requires": ["e_locker_log"] }
+      ]
+    },
+    {
+      "id": "st_felix_never_handled",
+      "kind": "statement",
+      "speaker": "sus_felix",
+      "veracity": "deceptive",
+      "text": "DED_PROTO_Z_ST_FELIX_NEVER_HANDLED_TEXT",
+      "structural_role": "candidate_custody_denial",
+      "proof_sets": [
+        { "id": "ps_felix_denial_log", "relation": "refutes", "requires": ["e_locker_log"] }
+      ]
+    },
+    {
+      "id": "st_felix_fence_entry",
+      "kind": "statement",
+      "speaker": "sus_felix",
+      "veracity": "deceptive",
+      "text": "DED_PROTO_Z_ST_FELIX_FENCE_ENTRY_TEXT",
+      "structural_role": "candidate_staging_claim",
+      "compatible": ["e_cut_fence"],
+      "proof_sets": [
+        { "id": "ps_felix_fence_wire", "relation": "refutes", "requires": ["e_fence_sheet", "e_wire_ends"] }
+      ]
+    },
+    {
+      "id": "st_gus_not_in_yard",
+      "kind": "statement",
+      "speaker": "sus_gus",
+      "veracity": "deceptive",
+      "lie_motive": "unrelated_to_crime",
+      "text": "DED_PROTO_Z_ST_GUS_NOT_IN_YARD_TEXT",
+      "structural_role": "bystander_innocent_lie",
+      "proof_sets": [
+        { "id": "ps_gus_yard_manifest", "relation": "refutes", "requires": ["e_pallet_manifest"] }
+      ]
+    },
+    {
+      "id": "hyp_nadia",
+      "kind": "hypothesis",
+      "veracity": "false",
+      "text": "DED_PROTO_Z_HYP_NADIA_TEXT",
+      "structural_role": "hypothesis_owner",
+      "compatible": ["e_seal_registry"],
+      "proof_sets": [
+        { "id": "ps_rule_out_nadia", "relation": "rules_out", "requires": ["ded_scanner_misused"] }
+      ]
+    },
+    {
+      "id": "hyp_gus",
+      "kind": "hypothesis",
+      "veracity": "false",
+      "text": "DED_PROTO_Z_HYP_GUS_TEXT",
+      "structural_role": "hypothesis_bystander",
+      "compatible": ["e_yard_sighting"],
+      "proof_sets": [
+        { "id": "ps_rule_out_gus", "relation": "rules_out", "requires": ["e_pallet_manifest", "ded_only_felix_had_scanner"] }
+      ]
+    },
+    {
+      "id": "hyp_outsider",
+      "kind": "hypothesis",
+      "veracity": "false",
+      "text": "DED_PROTO_Z_HYP_OUTSIDER_TEXT",
+      "structural_role": "hypothesis_outsider",
+      "compatible": ["e_cut_fence"],
+      "proof_sets": [
+        { "id": "ps_rule_out_outsider", "relation": "rules_out", "requires": ["ded_fence_staged"] }
+      ]
+    },
+    {
+      "id": "exp_empty_crates",
+      "kind": "explanation",
+      "veracity": "true",
+      "text": "DED_PROTO_Z_EXP_EMPTY_CRATES_TEXT",
+      "structural_role": "red_herring_explained",
+      "proof_sets": [
+        { "id": "ps_explain_pallet", "relation": "explains", "requires": ["e_yard_sighting", "e_pallet_manifest"] }
+      ]
+    },
+    {
+      "id": "ded_scanner_misused",
+      "kind": "deduction",
+      "veracity": "true",
+      "required": true,
+      "text": "DED_PROTO_Z_DED_SCANNER_MISUSED_TEXT",
+      "structural_role": "credential_misused",
+      "proof_sets": [
+        { "id": "ps_misused_ferry_gate", "relation": "supports", "requires": ["e_seal_registry", "e_ferry_gate", "e_port_map_note"] },
+        { "id": "ps_misused_ferry_photo", "relation": "supports", "requires": ["e_seal_registry", "e_ferry_photo", "e_port_map_note"] }
+      ]
+    },
+    {
+      "id": "ded_felix_took_scanner",
+      "kind": "deduction",
+      "veracity": "true",
+      "required": false,
+      "text": "DED_PROTO_Z_DED_FELIX_TOOK_SCANNER_TEXT",
+      "structural_role": "candidate_had_opportunity",
+      "proof_sets": [
+        { "id": "ps_felix_took_scanner", "relation": "supports", "requires": ["e_locker_log"] }
+      ]
+    },
+    {
+      "id": "ded_only_felix_had_scanner",
+      "kind": "deduction",
+      "veracity": "true",
+      "required": true,
+      "text": "DED_PROTO_Z_DED_ONLY_FELIX_HAD_SCANNER_TEXT",
+      "structural_role": "candidate_exclusive_control",
+      "compatible": ["e_seal_registry", "ded_felix_took_scanner"],
+      "proof_sets": [
+        { "id": "ps_only_felix_had_scanner", "relation": "supports", "requires": ["ded_scanner_misused", "e_locker_log", "e_cage_camera"] }
+      ]
+    },
+    {
+      "id": "ded_fence_staged",
+      "kind": "deduction",
+      "veracity": "true",
+      "required": true,
+      "text": "DED_PROTO_Z_DED_FENCE_STAGED_TEXT",
+      "structural_role": "staging_deduction",
+      "proof_sets": [
+        { "id": "ps_fence_staged", "relation": "supports", "requires": ["e_cut_fence", "e_fence_sheet", "e_wire_ends"] }
+      ]
+    },
+    {
+      "id": "concl_z",
+      "kind": "conclusion",
+      "veracity": "true",
+      "required": true,
+      "text": "DED_PROTO_Z_CONCL_TEXT",
+      "structural_role": "final_conclusion",
+      "compatible": ["ded_scanner_misused", "ded_felix_took_scanner"],
+      "proof_sets": [
+        { "id": "ps_conclusion_z", "relation": "supports", "requires": ["ded_only_felix_had_scanner", "ded_fence_staged"] }
+      ]
+    }
+  ],
+  "timeline": {
+    "events": [
+      { "id": "tl_nadia_leaves", "label": "DED_PROTO_Z_TL_NADIA_LEAVES_LABEL", "actor": "sus_nadia", "location": "customs_depot", "certainty": "claimed", "structural_role": "owner_departure" },
+      { "id": "tl_scanner_taken", "label": "DED_PROTO_Z_TL_SCANNER_TAKEN_LABEL", "actor": "sus_felix", "location": "equipment_locker", "certainty": "estimated", "structural_role": "custody_start" },
+      { "id": "tl_ferry_boarding", "label": "DED_PROTO_Z_TL_FERRY_BOARDING_LABEL", "actor": "sus_nadia", "location": "north_pier", "certainty": "fixed", "structural_role": "owner_alibi_anchor" },
+      { "id": "tl_seal_applied", "label": "DED_PROTO_Z_TL_SEAL_APPLIED_LABEL", "actor": "", "location": "parcel_cage", "certainty": "fixed", "structural_role": "credential_use_anchor" },
+      { "id": "tl_fence_cut", "label": "DED_PROTO_Z_TL_FENCE_CUT_LABEL", "actor": "", "location": "rear_fence", "certainty": "estimated", "structural_role": "staging_act" },
+      { "id": "tl_pallet_moved", "label": "DED_PROTO_Z_TL_PALLET_MOVED_LABEL", "actor": "sus_gus", "location": "yard", "certainty": "estimated", "duration_minutes": 3, "structural_role": "bystander_errand" },
+      { "id": "tl_scanner_returned", "label": "DED_PROTO_Z_TL_SCANNER_RETURNED_LABEL", "actor": "sus_felix", "location": "equipment_locker", "certainty": "estimated", "structural_role": "custody_end" }
+    ],
+    "constraints": [
+      { "id": "c_seal_time", "type": "fixed_time", "event": "tl_seal_applied", "time": "06:42", "source": "e_seal_registry" },
+      { "id": "c_ferry_time", "type": "fixed_time", "event": "tl_ferry_boarding", "time": "06:38", "source": "e_ferry_gate" },
+      { "id": "c_nadia_leaves_claimed", "type": "window", "event": "tl_nadia_leaves", "earliest": "05:55", "latest": "06:10", "source": "st_nadia_took_ferry" },
+      { "id": "c_nadia_travel", "type": "travel_time", "events": ["tl_nadia_leaves", "tl_ferry_boarding"], "minutes": 30, "source": "e_port_map_note" },
+      { "id": "c_scanner_taken_window", "type": "window", "event": "tl_scanner_taken", "earliest": "06:18", "latest": "06:22", "source": "e_locker_log" },
+      { "id": "c_scanner_returned_window", "type": "window", "event": "tl_scanner_returned", "earliest": "06:52", "latest": "06:58", "source": "e_locker_log" },
+      { "id": "c_fence_after_sealing", "type": "before", "events": ["tl_seal_applied", "tl_fence_cut"], "min_gap_minutes": 1, "source": "e_cut_fence" },
+      { "id": "c_fence_heard", "type": "window", "event": "tl_fence_cut", "earliest": "06:43", "latest": "06:49", "source": "e_yard_sighting" },
+      { "id": "c_fence_not_during_errand", "type": "no_overlap", "events": ["tl_fence_cut", "tl_pallet_moved"], "source": "e_yard_sighting" },
+      { "id": "c_pallet_window", "type": "window", "event": "tl_pallet_moved", "earliest": "06:45", "latest": "06:49", "source": "e_pallet_manifest" },
+      { "id": "c_gus_claimed_absence", "type": "window", "event": "tl_pallet_moved", "earliest": "06:00", "latest": "06:30", "required": false, "source": "st_gus_not_in_yard" }
+    ]
+  },
+  "hints": [
+    {
+      "target": "ded_scanner_misused",
+      "levels": [
+        { "level": 1, "kind": "restate_question", "question": "q_owner", "text": "DED_PROTO_Z_HINT_MISUSED_1" },
+        { "level": 2, "kind": "compare_categories", "categories": ["time", "location", "distance"], "text": "DED_PROTO_Z_HINT_MISUSED_2" },
+        { "level": 3, "kind": "evidence_group", "evidence": ["e_seal_registry", "e_ferry_gate", "e_port_map_note"], "text": "DED_PROTO_Z_HINT_MISUSED_3" },
+        { "level": 4, "kind": "reveal_deduction", "deduction": "ded_scanner_misused", "text": "DED_PROTO_Z_HINT_MISUSED_4" }
+      ]
+    },
+    {
+      "target": "ded_only_felix_had_scanner",
+      "levels": [
+        { "level": 1, "kind": "restate_question", "question": "q_access", "text": "DED_PROTO_Z_HINT_ACCESS_1" },
+        { "level": 2, "kind": "compare_categories", "categories": ["possession", "location", "time"], "text": "DED_PROTO_Z_HINT_ACCESS_2" },
+        { "level": 3, "kind": "evidence_group", "evidence": ["e_locker_log", "e_cage_camera"], "text": "DED_PROTO_Z_HINT_ACCESS_3" },
+        { "level": 4, "kind": "reveal_deduction", "deduction": "ded_scanner_misused", "text": "DED_PROTO_Z_HINT_ACCESS_4" }
+      ]
+    },
+    {
+      "target": "ded_fence_staged",
+      "levels": [
+        { "level": 1, "kind": "restate_question", "question": "q_staging", "text": "DED_PROTO_Z_HINT_STAGED_1" },
+        { "level": 2, "kind": "compare_categories", "categories": ["scene", "physics"], "text": "DED_PROTO_Z_HINT_STAGED_2" },
+        { "level": 3, "kind": "evidence_group", "evidence": ["e_cut_fence", "e_fence_sheet", "e_wire_ends"], "text": "DED_PROTO_Z_HINT_STAGED_3" },
+        { "level": 4, "kind": "reveal_deduction", "deduction": "ded_fence_staged", "text": "DED_PROTO_Z_HINT_STAGED_4" }
+      ]
+    },
+    {
+      "target": "concl_z",
+      "levels": [
+        { "level": 1, "kind": "restate_question", "question": "q_culprit", "text": "DED_PROTO_Z_HINT_CULPRIT_1" },
+        { "level": 2, "kind": "compare_categories", "categories": ["possession", "scene"], "text": "DED_PROTO_Z_HINT_CULPRIT_2" },
+        { "level": 3, "kind": "evidence_group", "evidence": ["e_cage_camera", "e_wire_ends"], "text": "DED_PROTO_Z_HINT_CULPRIT_3" },
+        { "level": 4, "kind": "reveal_deduction", "deduction": "ded_only_felix_had_scanner", "text": "DED_PROTO_Z_HINT_CULPRIT_4" }
+      ]
+    }
+  ],
+  "ground_truth": {
+    "culprit": "sus_felix",
+    "credential_owner": "sus_nadia",
+    "conclusion": "concl_z",
+    "summary": "DED_PROTO_Z_TRUTH_SUMMARY",
+    "solution_timeline": { "tl_nadia_leaves": "06:02", "tl_scanner_taken": "06:20", "tl_ferry_boarding": "06:38", "tl_seal_applied": "06:42", "tl_fence_cut": "06:44", "tl_pallet_moved": "06:47", "tl_scanner_returned": "06:55" }
+  }
+}

@@ -1,0 +1,299 @@
+{
+  "id": "proto_x_archive_ledger",
+  "display_name": "DED_PROTO_X_NAME",
+  "description": "DED_PROTO_X_DESC",
+  "version": 2,
+  "metadata": {
+    "canon": false,
+    "prototype": true,
+    "milestone": "1.9.1",
+    "structural_template": "credential_misuse_v2",
+    "note": "NON-CANON dummy mystery for Prototype A/B/C playtests only. Not part of the story or world; do not reuse its names, places or events. Audit: docs/deduction-prototype-cases.md."
+  },
+  "suspects": [
+    { "id": "sus_mara", "name": "DED_PROTO_X_SUS_MARA_NAME", "structural_role": "apparent_suspect" },
+    { "id": "sus_oren", "name": "DED_PROTO_X_SUS_OREN_NAME", "structural_role": "actual_culprit" },
+    { "id": "sus_ilse", "name": "DED_PROTO_X_SUS_ILSE_NAME", "structural_role": "bystander" }
+  ],
+  "questions": [
+    {
+      "id": "q_owner",
+      "text": "DED_PROTO_X_Q_OWNER_TEXT",
+      "required": true,
+      "structural_role": "owner_involvement",
+      "resolved_by": [
+        { "claim": "ded_badge_misused", "status": "supported" },
+        { "claim": "hyp_mara", "status": "refuted" }
+      ]
+    },
+    {
+      "id": "q_access",
+      "text": "DED_PROTO_X_Q_ACCESS_TEXT",
+      "required": true,
+      "structural_role": "exclusive_control",
+      "resolved_by": [
+        { "claim": "ded_only_oren_had_badge", "status": "supported" }
+      ]
+    },
+    {
+      "id": "q_staging",
+      "text": "DED_PROTO_X_Q_STAGING_TEXT",
+      "required": true,
+      "structural_role": "staging",
+      "resolved_by": [
+        { "claim": "ded_break_in_staged", "status": "supported" }
+      ]
+    },
+    {
+      "id": "q_culprit",
+      "text": "DED_PROTO_X_Q_CULPRIT_TEXT",
+      "required": true,
+      "structural_role": "culprit",
+      "resolved_by": [
+        { "claim": "concl_x", "status": "supported" }
+      ]
+    }
+  ],
+  "evidence": [
+    { "id": "e_door_log", "name": "DED_PROTO_X_E_DOOR_LOG_NAME", "text": "DED_PROTO_X_E_DOOR_LOG_TEXT", "source": "archive_security_system", "certainty": "fixed", "time": "20:06", "tags": ["access", "time"], "structural_role": "credential_use_record" },
+    { "id": "e_tram_tap", "name": "DED_PROTO_X_E_TRAM_TAP_NAME", "text": "DED_PROTO_X_E_TRAM_TAP_TEXT", "source": "city_transit_records_and_gate_camera", "certainty": "fixed", "time": "20:04", "tags": ["location", "time"], "structural_role": "owner_alibi_primary" },
+    { "id": "e_harbor_photo", "name": "DED_PROTO_X_E_HARBOR_PHOTO_NAME", "text": "DED_PROTO_X_E_HARBOR_PHOTO_TEXT", "source": "friend_social_post", "certainty": "fixed", "time": "20:05", "tags": ["location", "time"], "structural_role": "owner_alibi_alternate" },
+    { "id": "e_route_note", "name": "DED_PROTO_X_E_ROUTE_NOTE_NAME", "text": "DED_PROTO_X_E_ROUTE_NOTE_TEXT", "source": "transit_map", "certainty": "fixed", "tags": ["distance"], "structural_role": "travel_fact" },
+    { "id": "e_lost_property_sheet", "name": "DED_PROTO_X_E_LOST_PROPERTY_SHEET_NAME", "text": "DED_PROTO_X_E_LOST_PROPERTY_SHEET_TEXT", "source": "front_desk_log_written_by_ilse", "certainty": "estimated", "tags": ["possession", "time"], "structural_role": "credential_custody" },
+    { "id": "e_wing_camera", "name": "DED_PROTO_X_E_WING_CAMERA_NAME", "text": "DED_PROTO_X_E_WING_CAMERA_TEXT", "source": "stacks_wing_entrance_camera", "certainty": "fixed", "tags": ["possession", "location", "time"], "structural_role": "custody_continuity" },
+    { "id": "e_forced_window", "name": "DED_PROTO_X_E_FORCED_WINDOW_NAME", "text": "DED_PROTO_X_E_FORCED_WINDOW_TEXT", "source": "scene_inspection", "certainty": "fixed", "tags": ["scene"], "structural_role": "staging_sign" },
+    { "id": "e_latch_guide", "name": "DED_PROTO_X_E_LATCH_GUIDE_NAME", "text": "DED_PROTO_X_E_LATCH_GUIDE_TEXT", "source": "window_repair_guide", "certainty": "fixed", "tags": ["physics"], "structural_role": "physical_rule_or_reference" },
+    { "id": "e_window_latch", "name": "DED_PROTO_X_E_WINDOW_LATCH_NAME", "text": "DED_PROTO_X_E_WINDOW_LATCH_TEXT", "source": "scene_inspection", "certainty": "fixed", "tags": ["scene", "physics"], "structural_role": "staging_contradiction" },
+    { "id": "e_back_door_sighting", "name": "DED_PROTO_X_E_BACK_DOOR_SIGHTING_NAME", "text": "DED_PROTO_X_E_BACK_DOOR_SIGHTING_TEXT", "source": "night_guard_statement", "certainty": "estimated", "time": "20:10", "tags": ["location", "time"], "misleading": true, "structural_role": "red_herring" },
+    { "id": "e_shredding_log", "name": "DED_PROTO_X_E_SHREDDING_LOG_NAME", "text": "DED_PROTO_X_E_SHREDDING_LOG_TEXT", "source": "shredding_contractor_log", "certainty": "estimated", "time": "20:10", "tags": ["errand", "time"], "structural_role": "red_herring_explanation" }
+  ],
+  "claims": [
+    {
+      "id": "st_mara_went_to_harbor",
+      "kind": "statement",
+      "speaker": "sus_mara",
+      "veracity": "true",
+      "text": "DED_PROTO_X_ST_MARA_WENT_TO_HARBOR_TEXT",
+      "structural_role": "owner_alibi_statement",
+      "proof_sets": [
+        { "id": "ps_mara_harbor_tram", "relation": "supports", "requires": ["e_tram_tap"] }
+      ]
+    },
+    {
+      "id": "st_mara_badge_on_cardigan",
+      "kind": "statement",
+      "speaker": "sus_mara",
+      "veracity": "incomplete",
+      "text": "DED_PROTO_X_ST_MARA_BADGE_ON_CARDIGAN_TEXT",
+      "structural_role": "owner_incomplete_statement",
+      "proof_sets": [
+        { "id": "ps_mara_badge_sheet", "relation": "supports", "requires": ["e_lost_property_sheet"] }
+      ]
+    },
+    {
+      "id": "st_oren_never_touched",
+      "kind": "statement",
+      "speaker": "sus_oren",
+      "veracity": "deceptive",
+      "text": "DED_PROTO_X_ST_OREN_NEVER_TOUCHED_TEXT",
+      "structural_role": "candidate_custody_denial",
+      "proof_sets": [
+        { "id": "ps_oren_denial_sheet", "relation": "refutes", "requires": ["e_lost_property_sheet"] }
+      ]
+    },
+    {
+      "id": "st_oren_break_in",
+      "kind": "statement",
+      "speaker": "sus_oren",
+      "veracity": "deceptive",
+      "text": "DED_PROTO_X_ST_OREN_BREAK_IN_TEXT",
+      "structural_role": "candidate_staging_claim",
+      "compatible": ["e_forced_window"],
+      "proof_sets": [
+        { "id": "ps_oren_break_in_latch", "relation": "refutes", "requires": ["e_latch_guide", "e_window_latch"] }
+      ]
+    },
+    {
+      "id": "st_ilse_left_early",
+      "kind": "statement",
+      "speaker": "sus_ilse",
+      "veracity": "deceptive",
+      "lie_motive": "unrelated_to_crime",
+      "text": "DED_PROTO_X_ST_ILSE_LEFT_EARLY_TEXT",
+      "structural_role": "bystander_innocent_lie",
+      "proof_sets": [
+        { "id": "ps_ilse_left_shredding", "relation": "refutes", "requires": ["e_shredding_log"] }
+      ]
+    },
+    {
+      "id": "hyp_mara",
+      "kind": "hypothesis",
+      "veracity": "false",
+      "text": "DED_PROTO_X_HYP_MARA_TEXT",
+      "structural_role": "hypothesis_owner",
+      "compatible": ["e_door_log"],
+      "proof_sets": [
+        { "id": "ps_rule_out_mara", "relation": "rules_out", "requires": ["ded_badge_misused"] }
+      ]
+    },
+    {
+      "id": "hyp_ilse",
+      "kind": "hypothesis",
+      "veracity": "false",
+      "text": "DED_PROTO_X_HYP_ILSE_TEXT",
+      "structural_role": "hypothesis_bystander",
+      "compatible": ["e_back_door_sighting"],
+      "proof_sets": [
+        { "id": "ps_rule_out_ilse", "relation": "rules_out", "requires": ["e_shredding_log", "ded_only_oren_had_badge"] }
+      ]
+    },
+    {
+      "id": "hyp_outsider",
+      "kind": "hypothesis",
+      "veracity": "false",
+      "text": "DED_PROTO_X_HYP_OUTSIDER_TEXT",
+      "structural_role": "hypothesis_outsider",
+      "compatible": ["e_forced_window"],
+      "proof_sets": [
+        { "id": "ps_rule_out_outsider", "relation": "rules_out", "requires": ["ded_break_in_staged"] }
+      ]
+    },
+    {
+      "id": "exp_shredding_box",
+      "kind": "explanation",
+      "veracity": "true",
+      "text": "DED_PROTO_X_EXP_SHREDDING_BOX_TEXT",
+      "structural_role": "red_herring_explained",
+      "proof_sets": [
+        { "id": "ps_explain_box", "relation": "explains", "requires": ["e_back_door_sighting", "e_shredding_log"] }
+      ]
+    },
+    {
+      "id": "ded_badge_misused",
+      "kind": "deduction",
+      "veracity": "true",
+      "required": true,
+      "text": "DED_PROTO_X_DED_BADGE_MISUSED_TEXT",
+      "structural_role": "credential_misused",
+      "proof_sets": [
+        { "id": "ps_misused_tram", "relation": "supports", "requires": ["e_door_log", "e_tram_tap", "e_route_note"] },
+        { "id": "ps_misused_photo", "relation": "supports", "requires": ["e_door_log", "e_harbor_photo", "e_route_note"] }
+      ]
+    },
+    {
+      "id": "ded_oren_signed_out_badge",
+      "kind": "deduction",
+      "veracity": "true",
+      "required": false,
+      "text": "DED_PROTO_X_DED_OREN_SIGNED_OUT_BADGE_TEXT",
+      "structural_role": "candidate_had_opportunity",
+      "proof_sets": [
+        { "id": "ps_oren_signed_out_badge", "relation": "supports", "requires": ["e_lost_property_sheet"] }
+      ]
+    },
+    {
+      "id": "ded_only_oren_had_badge",
+      "kind": "deduction",
+      "veracity": "true",
+      "required": true,
+      "text": "DED_PROTO_X_DED_ONLY_OREN_HAD_BADGE_TEXT",
+      "structural_role": "candidate_exclusive_control",
+      "compatible": ["e_door_log", "ded_oren_signed_out_badge"],
+      "proof_sets": [
+        { "id": "ps_only_oren_had_badge", "relation": "supports", "requires": ["ded_badge_misused", "e_lost_property_sheet", "e_wing_camera"] }
+      ]
+    },
+    {
+      "id": "ded_break_in_staged",
+      "kind": "deduction",
+      "veracity": "true",
+      "required": true,
+      "text": "DED_PROTO_X_DED_BREAK_IN_STAGED_TEXT",
+      "structural_role": "staging_deduction",
+      "proof_sets": [
+        { "id": "ps_break_in_staged", "relation": "supports", "requires": ["e_forced_window", "e_latch_guide", "e_window_latch"] }
+      ]
+    },
+    {
+      "id": "concl_x",
+      "kind": "conclusion",
+      "veracity": "true",
+      "required": true,
+      "text": "DED_PROTO_X_CONCL_TEXT",
+      "structural_role": "final_conclusion",
+      "compatible": ["ded_badge_misused", "ded_oren_signed_out_badge"],
+      "proof_sets": [
+        { "id": "ps_conclusion_x", "relation": "supports", "requires": ["ded_only_oren_had_badge", "ded_break_in_staged"] }
+      ]
+    }
+  ],
+  "timeline": {
+    "events": [
+      { "id": "tl_mara_leaves", "label": "DED_PROTO_X_TL_MARA_LEAVES_LABEL", "actor": "sus_mara", "location": "archive", "certainty": "claimed", "structural_role": "owner_departure" },
+      { "id": "tl_cardigan_taken", "label": "DED_PROTO_X_TL_CARDIGAN_TAKEN_LABEL", "actor": "sus_oren", "location": "front_desk", "certainty": "estimated", "structural_role": "custody_start" },
+      { "id": "tl_mara_tram_tap", "label": "DED_PROTO_X_TL_MARA_TRAM_TAP_LABEL", "actor": "sus_mara", "location": "harbor_station", "certainty": "fixed", "structural_role": "owner_alibi_anchor" },
+      { "id": "tl_badge_used", "label": "DED_PROTO_X_TL_BADGE_USED_LABEL", "actor": "", "location": "stack_room_3", "certainty": "fixed", "structural_role": "credential_use_anchor" },
+      { "id": "tl_window_forced", "label": "DED_PROTO_X_TL_WINDOW_FORCED_LABEL", "actor": "", "location": "stack_room_3", "certainty": "estimated", "structural_role": "staging_act" },
+      { "id": "tl_shredding_pickup", "label": "DED_PROTO_X_TL_SHREDDING_PICKUP_LABEL", "actor": "sus_ilse", "location": "back_door", "certainty": "estimated", "duration_minutes": 3, "structural_role": "bystander_errand" },
+      { "id": "tl_cardigan_returned", "label": "DED_PROTO_X_TL_CARDIGAN_RETURNED_LABEL", "actor": "sus_oren", "location": "front_desk", "certainty": "estimated", "structural_role": "custody_end" }
+    ],
+    "constraints": [
+      { "id": "c_badge_time", "type": "fixed_time", "event": "tl_badge_used", "time": "20:06", "source": "e_door_log" },
+      { "id": "c_tram_time", "type": "fixed_time", "event": "tl_mara_tram_tap", "time": "20:04", "source": "e_tram_tap" },
+      { "id": "c_mara_leaves_claimed", "type": "window", "event": "tl_mara_leaves", "earliest": "19:25", "latest": "19:45", "source": "st_mara_went_to_harbor" },
+      { "id": "c_mara_travel", "type": "travel_time", "events": ["tl_mara_leaves", "tl_mara_tram_tap"], "minutes": 25, "source": "e_route_note" },
+      { "id": "c_cardigan_taken_window", "type": "window", "event": "tl_cardigan_taken", "earliest": "19:45", "latest": "19:50", "source": "e_lost_property_sheet" },
+      { "id": "c_cardigan_returned_window", "type": "window", "event": "tl_cardigan_returned", "earliest": "20:13", "latest": "20:16", "source": "e_lost_property_sheet" },
+      { "id": "c_window_after_entry", "type": "before", "events": ["tl_badge_used", "tl_window_forced"], "min_gap_minutes": 1, "source": "e_forced_window" },
+      { "id": "c_window_heard", "type": "window", "event": "tl_window_forced", "earliest": "20:07", "latest": "20:13", "source": "e_back_door_sighting" },
+      { "id": "c_window_not_during_errand", "type": "no_overlap", "events": ["tl_window_forced", "tl_shredding_pickup"], "source": "e_back_door_sighting" },
+      { "id": "c_shredding_window", "type": "window", "event": "tl_shredding_pickup", "earliest": "20:08", "latest": "20:12", "source": "e_shredding_log" },
+      { "id": "c_ilse_claimed_departure", "type": "window", "event": "tl_shredding_pickup", "earliest": "19:30", "latest": "19:45", "required": false, "source": "st_ilse_left_early" }
+    ]
+  },
+  "hints": [
+    {
+      "target": "ded_badge_misused",
+      "levels": [
+        { "level": 1, "kind": "restate_question", "question": "q_owner", "text": "DED_PROTO_X_HINT_MISUSED_1" },
+        { "level": 2, "kind": "compare_categories", "categories": ["time", "location", "distance"], "text": "DED_PROTO_X_HINT_MISUSED_2" },
+        { "level": 3, "kind": "evidence_group", "evidence": ["e_door_log", "e_tram_tap", "e_route_note"], "text": "DED_PROTO_X_HINT_MISUSED_3" },
+        { "level": 4, "kind": "reveal_deduction", "deduction": "ded_badge_misused", "text": "DED_PROTO_X_HINT_MISUSED_4" }
+      ]
+    },
+    {
+      "target": "ded_only_oren_had_badge",
+      "levels": [
+        { "level": 1, "kind": "restate_question", "question": "q_access", "text": "DED_PROTO_X_HINT_ACCESS_1" },
+        { "level": 2, "kind": "compare_categories", "categories": ["possession", "location", "time"], "text": "DED_PROTO_X_HINT_ACCESS_2" },
+        { "level": 3, "kind": "evidence_group", "evidence": ["e_lost_property_sheet", "e_wing_camera"], "text": "DED_PROTO_X_HINT_ACCESS_3" },
+        { "level": 4, "kind": "reveal_deduction", "deduction": "ded_badge_misused", "text": "DED_PROTO_X_HINT_ACCESS_4" }
+      ]
+    },
+    {
+      "target": "ded_break_in_staged",
+      "levels": [
+        { "level": 1, "kind": "restate_question", "question": "q_staging", "text": "DED_PROTO_X_HINT_STAGED_1" },
+        { "level": 2, "kind": "compare_categories", "categories": ["scene", "physics"], "text": "DED_PROTO_X_HINT_STAGED_2" },
+        { "level": 3, "kind": "evidence_group", "evidence": ["e_forced_window", "e_latch_guide", "e_window_latch"], "text": "DED_PROTO_X_HINT_STAGED_3" },
+        { "level": 4, "kind": "reveal_deduction", "deduction": "ded_break_in_staged", "text": "DED_PROTO_X_HINT_STAGED_4" }
+      ]
+    },
+    {
+      "target": "concl_x",
+      "levels": [
+        { "level": 1, "kind": "restate_question", "question": "q_culprit", "text": "DED_PROTO_X_HINT_CULPRIT_1" },
+        { "level": 2, "kind": "compare_categories", "categories": ["possession", "scene"], "text": "DED_PROTO_X_HINT_CULPRIT_2" },
+        { "level": 3, "kind": "evidence_group", "evidence": ["e_wing_camera", "e_window_latch"], "text": "DED_PROTO_X_HINT_CULPRIT_3" },
+        { "level": 4, "kind": "reveal_deduction", "deduction": "ded_only_oren_had_badge", "text": "DED_PROTO_X_HINT_CULPRIT_4" }
+      ]
+    }
+  ],
+  "ground_truth": {
+    "culprit": "sus_oren",
+    "credential_owner": "sus_mara",
+    "conclusion": "concl_x",
+    "summary": "DED_PROTO_X_TRUTH_SUMMARY",
+    "solution_timeline": { "tl_mara_leaves": "19:35", "tl_cardigan_taken": "19:48", "tl_mara_tram_tap": "20:04", "tl_badge_used": "20:06", "tl_window_forced": "20:08", "tl_shredding_pickup": "20:10", "tl_cardigan_returned": "20:14" }
+  }
+}

@@ -165,6 +165,10 @@ $V --script res://scenes/test/validate_content.gd --script res://scenes/test/con
    --script res://scenes/test/effects_test.gd --script res://scenes/test/events_test.gd \
    --script res://scenes/test/duplicate_execution_test.gd --script res://scenes/test/save_load_regression_test.gd \
    --script res://scenes/test/negative_progression_test.gd --script res://scenes/test/dependency_analysis_test.gd \
+   --script res://scenes/test/deduction_evaluator_test.gd \
+   --script res://scenes/test/timeline_evaluator_test.gd \
+   --script res://scenes/test/deduction_validation_test.gd \
+   --script res://scenes/test/deduction_cases_test.gd \
    --script res://scenes/test/smoke_test.gd   # FULL check (~10 s)
 $V --skip-import --skip-load-all --skip-boot --script res://scenes/test/validate_content.gd   # after editing only data/*.json
 ```

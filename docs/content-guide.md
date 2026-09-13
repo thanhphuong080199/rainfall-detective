@@ -458,6 +458,34 @@ case's `starting_chapter`/`chapters` pointing at something that doesn't
 exist are all reported the same way section 8's validator errors already
 are. See `docs/case-system.md`, "Content validation".
 
+## 11. Add a deduction case
+
+Deduction cases (Milestone 1.9) live in `data/deductions/**/*.json`, one case
+per file, and use their own proof-set vocabulary rather than the conditions/
+effects below. The full field reference and an authoring recipe are in
+`docs/deduction-system.md` ("Data contract", "Adding a deduction case");
+the three existing prototype cases are audited in
+`docs/deduction-prototype-cases.md`. Like everything else here, adding one
+needs no script change — `ContentValidator` picks it up and validates it.
+
+Three authoring rules that trip people up (Milestone 1.9.1):
+
+- **Depth.** Evidence is depth 0, and a deduction is 1 + its deepest
+  deduction input. Intermediate deductions may be at most depth 2. A
+  conclusion on top is a synthesis layer and exempt, so
+  `evidence → D1 → D2 → conclusion` is valid, while a third deduction on top
+  of D2 is a validation error. See `docs/deduction-system.md`, "Inference
+  depth".
+- **No evidence from thoughts.** Don't put `unlock_requires` on evidence a
+  deduction or conclusion needs. A private realization must not make a
+  record appear; make it available from the start (the validator warns
+  otherwise). See `docs/deduction-system.md`, "Evidence availability".
+- **Sufficient conclusions.** A culprit conclusion must follow from the
+  authored facts: access, opportunity, motive, a lie or staging alone is
+  never enough. Document each alternative actor's elimination, and teach
+  every physical rule in its own evidence item (see
+  `docs/deduction-prototype-cases.md`, "Human audit checklist").
+
 ## Conditions reference
 
 Used identically for choice `condition`, topic `condition`, destination

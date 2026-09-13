@@ -80,6 +80,7 @@ above a `TabContainer`:
 | **Case & Chapter** | Current case/chapter status, the current chapter's completion breakdown, its `next_chapter`, completed chapters | Start any case by id; jump to any chapter; force-complete the current chapter (confirmation required); reset the case (confirmation required) |
 | **Inspector** | The Condition Inspector (a nested tree for any condition in loaded content) and Known Producers lookup | — |
 | **Log** | The last 50 debug actions this session took, most recent first | — |
+| **Deduction Lab** | A short description and one button | **Open Deduction Lab** — launches the separate Deduction Lab overlay (Milestone 1.10); see `docs/deduction-lab.md` for its own architecture, spoiler boundary, session lifecycle and author debug actions. It's a dedicated scene rather than more tab content because of how much it needs to show (case selector, suspects, questions, evidence, claims, timeline, hints, validation, recorder) |
 
 Every list supports a plain case-insensitive substring filter where the tab
 has enough entries for one to matter (State, Evidence, NPCs, Events) — no
@@ -263,3 +264,8 @@ inspecting a condition) never logs — only Section "Actions" below.
   instantiates `DebugPanel` and asserts `open()`/`close()`/`visible` — see
   `docs/testing.md`'s "Known testing limitations" for what that does and does
   not prove.
+- `scenes/test/deduction_lab_scene_test.gd` (Milestone 1.10) covers the
+  Deduction Lab tab/overlay specifically: instantiation as a `DebugPanel`
+  child, the new tab's button, F1 hide/show session preservation, and that
+  DebugPanel's own Esc handling correctly defers to the Lab's when it's open
+  — see `docs/deduction-lab.md`.

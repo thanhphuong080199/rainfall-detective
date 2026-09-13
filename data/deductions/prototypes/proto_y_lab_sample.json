@@ -1,0 +1,299 @@
+{
+  "id": "proto_y_lab_sample",
+  "display_name": "DED_PROTO_Y_NAME",
+  "description": "DED_PROTO_Y_DESC",
+  "version": 2,
+  "metadata": {
+    "canon": false,
+    "prototype": true,
+    "milestone": "1.9.1",
+    "structural_template": "credential_misuse_v2",
+    "note": "NON-CANON dummy mystery for Prototype A/B/C playtests only. Not part of the story or world; do not reuse its names, places or events. Audit: docs/deduction-prototype-cases.md."
+  },
+  "suspects": [
+    { "id": "sus_teodor", "name": "DED_PROTO_Y_SUS_TEODOR_NAME", "structural_role": "apparent_suspect" },
+    { "id": "sus_priya", "name": "DED_PROTO_Y_SUS_PRIYA_NAME", "structural_role": "actual_culprit" },
+    { "id": "sus_bruno", "name": "DED_PROTO_Y_SUS_BRUNO_NAME", "structural_role": "bystander" }
+  ],
+  "questions": [
+    {
+      "id": "q_owner",
+      "text": "DED_PROTO_Y_Q_OWNER_TEXT",
+      "required": true,
+      "structural_role": "owner_involvement",
+      "resolved_by": [
+        { "claim": "ded_card_misused", "status": "supported" },
+        { "claim": "hyp_teodor", "status": "refuted" }
+      ]
+    },
+    {
+      "id": "q_access",
+      "text": "DED_PROTO_Y_Q_ACCESS_TEXT",
+      "required": true,
+      "structural_role": "exclusive_control",
+      "resolved_by": [
+        { "claim": "ded_only_priya_had_card", "status": "supported" }
+      ]
+    },
+    {
+      "id": "q_staging",
+      "text": "DED_PROTO_Y_Q_STAGING_TEXT",
+      "required": true,
+      "structural_role": "staging",
+      "resolved_by": [
+        { "claim": "ded_hatch_staged", "status": "supported" }
+      ]
+    },
+    {
+      "id": "q_culprit",
+      "text": "DED_PROTO_Y_Q_CULPRIT_TEXT",
+      "required": true,
+      "structural_role": "culprit",
+      "resolved_by": [
+        { "claim": "concl_y", "status": "supported" }
+      ]
+    }
+  ],
+  "evidence": [
+    { "id": "e_cold_room_log", "name": "DED_PROTO_Y_E_COLD_ROOM_LOG_NAME", "text": "DED_PROTO_Y_E_COLD_ROOM_LOG_TEXT", "source": "lab_access_control_system", "certainty": "fixed", "time": "21:12", "tags": ["access", "time"], "structural_role": "credential_use_record" },
+    { "id": "e_gym_scan", "name": "DED_PROTO_Y_E_GYM_SCAN_NAME", "text": "DED_PROTO_Y_E_GYM_SCAN_TEXT", "source": "gym_entry_system_and_desk_camera", "certainty": "fixed", "time": "21:09", "tags": ["location", "time"], "structural_role": "owner_alibi_primary" },
+    { "id": "e_class_photo", "name": "DED_PROTO_Y_E_CLASS_PHOTO_NAME", "text": "DED_PROTO_Y_E_CLASS_PHOTO_TEXT", "source": "gym_instructor_photo", "certainty": "fixed", "time": "21:10", "tags": ["location", "time"], "structural_role": "owner_alibi_alternate" },
+    { "id": "e_shuttle_note", "name": "DED_PROTO_Y_E_SHUTTLE_NOTE_NAME", "text": "DED_PROTO_Y_E_SHUTTLE_NOTE_TEXT", "source": "campus_shuttle_timetable", "certainty": "fixed", "tags": ["distance"], "structural_role": "travel_fact" },
+    { "id": "e_coat_rack_sheet", "name": "DED_PROTO_Y_E_COAT_RACK_SHEET_NAME", "text": "DED_PROTO_Y_E_COAT_RACK_SHEET_TEXT", "source": "laundry_sheet_written_by_bruno", "certainty": "estimated", "tags": ["possession", "time"], "structural_role": "credential_custody" },
+    { "id": "e_corridor_camera", "name": "DED_PROTO_Y_E_CORRIDOR_CAMERA_NAME", "text": "DED_PROTO_Y_E_CORRIDOR_CAMERA_TEXT", "source": "cold_store_corridor_camera", "certainty": "fixed", "tags": ["possession", "location", "time"], "structural_role": "custody_continuity" },
+    { "id": "e_open_hatch", "name": "DED_PROTO_Y_E_OPEN_HATCH_NAME", "text": "DED_PROTO_Y_E_OPEN_HATCH_TEXT", "source": "scene_inspection", "certainty": "fixed", "tags": ["scene"], "structural_role": "staging_sign" },
+    { "id": "e_hatch_diagram", "name": "DED_PROTO_Y_E_HATCH_DIAGRAM_NAME", "text": "DED_PROTO_Y_E_HATCH_DIAGRAM_TEXT", "source": "vent_hatch_maintenance_diagram", "certainty": "fixed", "tags": ["physics"], "structural_role": "physical_rule_or_reference" },
+    { "id": "e_hatch_tabs", "name": "DED_PROTO_Y_E_HATCH_TABS_NAME", "text": "DED_PROTO_Y_E_HATCH_TABS_TEXT", "source": "scene_inspection", "certainty": "fixed", "tags": ["scene", "physics"], "structural_role": "staging_contradiction" },
+    { "id": "e_loading_bay_footage", "name": "DED_PROTO_Y_E_LOADING_BAY_FOOTAGE_NAME", "text": "DED_PROTO_Y_E_LOADING_BAY_FOOTAGE_TEXT", "source": "loading_bay_camera", "certainty": "estimated", "time": "21:18", "tags": ["location", "time"], "misleading": true, "structural_role": "red_herring" },
+    { "id": "e_waste_manifest", "name": "DED_PROTO_Y_E_WASTE_MANIFEST_NAME", "text": "DED_PROTO_Y_E_WASTE_MANIFEST_TEXT", "source": "waste_contractor_manifest", "certainty": "estimated", "time": "21:18", "tags": ["errand", "time"], "structural_role": "red_herring_explanation" }
+  ],
+  "claims": [
+    {
+      "id": "st_teodor_went_to_gym",
+      "kind": "statement",
+      "speaker": "sus_teodor",
+      "veracity": "true",
+      "text": "DED_PROTO_Y_ST_TEODOR_WENT_TO_GYM_TEXT",
+      "structural_role": "owner_alibi_statement",
+      "proof_sets": [
+        { "id": "ps_teodor_gym_scan", "relation": "supports", "requires": ["e_gym_scan"] }
+      ]
+    },
+    {
+      "id": "st_teodor_card_in_coat",
+      "kind": "statement",
+      "speaker": "sus_teodor",
+      "veracity": "incomplete",
+      "text": "DED_PROTO_Y_ST_TEODOR_CARD_IN_COAT_TEXT",
+      "structural_role": "owner_incomplete_statement",
+      "proof_sets": [
+        { "id": "ps_teodor_card_sheet", "relation": "supports", "requires": ["e_coat_rack_sheet"] }
+      ]
+    },
+    {
+      "id": "st_priya_never_borrowed",
+      "kind": "statement",
+      "speaker": "sus_priya",
+      "veracity": "deceptive",
+      "text": "DED_PROTO_Y_ST_PRIYA_NEVER_BORROWED_TEXT",
+      "structural_role": "candidate_custody_denial",
+      "proof_sets": [
+        { "id": "ps_priya_denial_sheet", "relation": "refutes", "requires": ["e_coat_rack_sheet"] }
+      ]
+    },
+    {
+      "id": "st_priya_vent_entry",
+      "kind": "statement",
+      "speaker": "sus_priya",
+      "veracity": "deceptive",
+      "text": "DED_PROTO_Y_ST_PRIYA_VENT_ENTRY_TEXT",
+      "structural_role": "candidate_staging_claim",
+      "compatible": ["e_open_hatch"],
+      "proof_sets": [
+        { "id": "ps_priya_vent_tabs", "relation": "refutes", "requires": ["e_hatch_diagram", "e_hatch_tabs"] }
+      ]
+    },
+    {
+      "id": "st_bruno_left_early",
+      "kind": "statement",
+      "speaker": "sus_bruno",
+      "veracity": "deceptive",
+      "lie_motive": "unrelated_to_crime",
+      "text": "DED_PROTO_Y_ST_BRUNO_LEFT_EARLY_TEXT",
+      "structural_role": "bystander_innocent_lie",
+      "proof_sets": [
+        { "id": "ps_bruno_left_manifest", "relation": "refutes", "requires": ["e_waste_manifest"] }
+      ]
+    },
+    {
+      "id": "hyp_teodor",
+      "kind": "hypothesis",
+      "veracity": "false",
+      "text": "DED_PROTO_Y_HYP_TEODOR_TEXT",
+      "structural_role": "hypothesis_owner",
+      "compatible": ["e_cold_room_log"],
+      "proof_sets": [
+        { "id": "ps_rule_out_teodor", "relation": "rules_out", "requires": ["ded_card_misused"] }
+      ]
+    },
+    {
+      "id": "hyp_bruno",
+      "kind": "hypothesis",
+      "veracity": "false",
+      "text": "DED_PROTO_Y_HYP_BRUNO_TEXT",
+      "structural_role": "hypothesis_bystander",
+      "compatible": ["e_loading_bay_footage"],
+      "proof_sets": [
+        { "id": "ps_rule_out_bruno", "relation": "rules_out", "requires": ["e_waste_manifest", "ded_only_priya_had_card"] }
+      ]
+    },
+    {
+      "id": "hyp_outsider",
+      "kind": "hypothesis",
+      "veracity": "false",
+      "text": "DED_PROTO_Y_HYP_OUTSIDER_TEXT",
+      "structural_role": "hypothesis_outsider",
+      "compatible": ["e_open_hatch"],
+      "proof_sets": [
+        { "id": "ps_rule_out_outsider", "relation": "rules_out", "requires": ["ded_hatch_staged"] }
+      ]
+    },
+    {
+      "id": "exp_waste_bin",
+      "kind": "explanation",
+      "veracity": "true",
+      "text": "DED_PROTO_Y_EXP_WASTE_BIN_TEXT",
+      "structural_role": "red_herring_explained",
+      "proof_sets": [
+        { "id": "ps_explain_bin", "relation": "explains", "requires": ["e_loading_bay_footage", "e_waste_manifest"] }
+      ]
+    },
+    {
+      "id": "ded_card_misused",
+      "kind": "deduction",
+      "veracity": "true",
+      "required": true,
+      "text": "DED_PROTO_Y_DED_CARD_MISUSED_TEXT",
+      "structural_role": "credential_misused",
+      "proof_sets": [
+        { "id": "ps_misused_gym_scan", "relation": "supports", "requires": ["e_cold_room_log", "e_gym_scan", "e_shuttle_note"] },
+        { "id": "ps_misused_class_photo", "relation": "supports", "requires": ["e_cold_room_log", "e_class_photo", "e_shuttle_note"] }
+      ]
+    },
+    {
+      "id": "ded_priya_borrowed_card",
+      "kind": "deduction",
+      "veracity": "true",
+      "required": false,
+      "text": "DED_PROTO_Y_DED_PRIYA_BORROWED_CARD_TEXT",
+      "structural_role": "candidate_had_opportunity",
+      "proof_sets": [
+        { "id": "ps_priya_borrowed_card", "relation": "supports", "requires": ["e_coat_rack_sheet"] }
+      ]
+    },
+    {
+      "id": "ded_only_priya_had_card",
+      "kind": "deduction",
+      "veracity": "true",
+      "required": true,
+      "text": "DED_PROTO_Y_DED_ONLY_PRIYA_HAD_CARD_TEXT",
+      "structural_role": "candidate_exclusive_control",
+      "compatible": ["e_cold_room_log", "ded_priya_borrowed_card"],
+      "proof_sets": [
+        { "id": "ps_only_priya_had_card", "relation": "supports", "requires": ["ded_card_misused", "e_coat_rack_sheet", "e_corridor_camera"] }
+      ]
+    },
+    {
+      "id": "ded_hatch_staged",
+      "kind": "deduction",
+      "veracity": "true",
+      "required": true,
+      "text": "DED_PROTO_Y_DED_HATCH_STAGED_TEXT",
+      "structural_role": "staging_deduction",
+      "proof_sets": [
+        { "id": "ps_hatch_staged", "relation": "supports", "requires": ["e_open_hatch", "e_hatch_diagram", "e_hatch_tabs"] }
+      ]
+    },
+    {
+      "id": "concl_y",
+      "kind": "conclusion",
+      "veracity": "true",
+      "required": true,
+      "text": "DED_PROTO_Y_CONCL_TEXT",
+      "structural_role": "final_conclusion",
+      "compatible": ["ded_card_misused", "ded_priya_borrowed_card"],
+      "proof_sets": [
+        { "id": "ps_conclusion_y", "relation": "supports", "requires": ["ded_only_priya_had_card", "ded_hatch_staged"] }
+      ]
+    }
+  ],
+  "timeline": {
+    "events": [
+      { "id": "tl_teodor_leaves", "label": "DED_PROTO_Y_TL_TEODOR_LEAVES_LABEL", "actor": "sus_teodor", "location": "lab_building", "certainty": "claimed", "structural_role": "owner_departure" },
+      { "id": "tl_coat_borrowed", "label": "DED_PROTO_Y_TL_COAT_BORROWED_LABEL", "actor": "sus_priya", "location": "coat_rack", "certainty": "estimated", "structural_role": "custody_start" },
+      { "id": "tl_gym_checkin", "label": "DED_PROTO_Y_TL_GYM_CHECKIN_LABEL", "actor": "sus_teodor", "location": "riverside_gym", "certainty": "fixed", "structural_role": "owner_alibi_anchor" },
+      { "id": "tl_card_used", "label": "DED_PROTO_Y_TL_CARD_USED_LABEL", "actor": "", "location": "cold_room", "certainty": "fixed", "structural_role": "credential_use_anchor" },
+      { "id": "tl_hatch_forced", "label": "DED_PROTO_Y_TL_HATCH_FORCED_LABEL", "actor": "", "location": "cold_room", "certainty": "estimated", "structural_role": "staging_act" },
+      { "id": "tl_bin_out", "label": "DED_PROTO_Y_TL_BIN_OUT_LABEL", "actor": "sus_bruno", "location": "loading_bay", "certainty": "estimated", "duration_minutes": 3, "structural_role": "bystander_errand" },
+      { "id": "tl_coat_returned", "label": "DED_PROTO_Y_TL_COAT_RETURNED_LABEL", "actor": "sus_priya", "location": "coat_rack", "certainty": "estimated", "structural_role": "custody_end" }
+    ],
+    "constraints": [
+      { "id": "c_card_time", "type": "fixed_time", "event": "tl_card_used", "time": "21:12", "source": "e_cold_room_log" },
+      { "id": "c_gym_time", "type": "fixed_time", "event": "tl_gym_checkin", "time": "21:09", "source": "e_gym_scan" },
+      { "id": "c_teodor_leaves_claimed", "type": "window", "event": "tl_teodor_leaves", "earliest": "20:40", "latest": "20:55", "source": "st_teodor_went_to_gym" },
+      { "id": "c_teodor_travel", "type": "travel_time", "events": ["tl_teodor_leaves", "tl_gym_checkin"], "minutes": 20, "source": "e_shuttle_note" },
+      { "id": "c_coat_borrowed_window", "type": "window", "event": "tl_coat_borrowed", "earliest": "20:52", "latest": "20:58", "source": "e_coat_rack_sheet" },
+      { "id": "c_coat_returned_window", "type": "window", "event": "tl_coat_returned", "earliest": "21:22", "latest": "21:28", "source": "e_coat_rack_sheet" },
+      { "id": "c_hatch_after_entry", "type": "before", "events": ["tl_card_used", "tl_hatch_forced"], "min_gap_minutes": 1, "source": "e_open_hatch" },
+      { "id": "c_hatch_heard", "type": "window", "event": "tl_hatch_forced", "earliest": "21:13", "latest": "21:19", "source": "e_loading_bay_footage" },
+      { "id": "c_hatch_not_during_errand", "type": "no_overlap", "events": ["tl_hatch_forced", "tl_bin_out"], "source": "e_loading_bay_footage" },
+      { "id": "c_bin_window", "type": "window", "event": "tl_bin_out", "earliest": "21:16", "latest": "21:20", "source": "e_waste_manifest" },
+      { "id": "c_bruno_claimed_departure", "type": "window", "event": "tl_bin_out", "earliest": "20:35", "latest": "20:45", "required": false, "source": "st_bruno_left_early" }
+    ]
+  },
+  "hints": [
+    {
+      "target": "ded_card_misused",
+      "levels": [
+        { "level": 1, "kind": "restate_question", "question": "q_owner", "text": "DED_PROTO_Y_HINT_MISUSED_1" },
+        { "level": 2, "kind": "compare_categories", "categories": ["time", "location", "distance"], "text": "DED_PROTO_Y_HINT_MISUSED_2" },
+        { "level": 3, "kind": "evidence_group", "evidence": ["e_cold_room_log", "e_gym_scan", "e_shuttle_note"], "text": "DED_PROTO_Y_HINT_MISUSED_3" },
+        { "level": 4, "kind": "reveal_deduction", "deduction": "ded_card_misused", "text": "DED_PROTO_Y_HINT_MISUSED_4" }
+      ]
+    },
+    {
+      "target": "ded_only_priya_had_card",
+      "levels": [
+        { "level": 1, "kind": "restate_question", "question": "q_access", "text": "DED_PROTO_Y_HINT_ACCESS_1" },
+        { "level": 2, "kind": "compare_categories", "categories": ["possession", "location", "time"], "text": "DED_PROTO_Y_HINT_ACCESS_2" },
+        { "level": 3, "kind": "evidence_group", "evidence": ["e_coat_rack_sheet", "e_corridor_camera"], "text": "DED_PROTO_Y_HINT_ACCESS_3" },
+        { "level": 4, "kind": "reveal_deduction", "deduction": "ded_card_misused", "text": "DED_PROTO_Y_HINT_ACCESS_4" }
+      ]
+    },
+    {
+      "target": "ded_hatch_staged",
+      "levels": [
+        { "level": 1, "kind": "restate_question", "question": "q_staging", "text": "DED_PROTO_Y_HINT_STAGED_1" },
+        { "level": 2, "kind": "compare_categories", "categories": ["scene", "physics"], "text": "DED_PROTO_Y_HINT_STAGED_2" },
+        { "level": 3, "kind": "evidence_group", "evidence": ["e_open_hatch", "e_hatch_diagram", "e_hatch_tabs"], "text": "DED_PROTO_Y_HINT_STAGED_3" },
+        { "level": 4, "kind": "reveal_deduction", "deduction": "ded_hatch_staged", "text": "DED_PROTO_Y_HINT_STAGED_4" }
+      ]
+    },
+    {
+      "target": "concl_y",
+      "levels": [
+        { "level": 1, "kind": "restate_question", "question": "q_culprit", "text": "DED_PROTO_Y_HINT_CULPRIT_1" },
+        { "level": 2, "kind": "compare_categories", "categories": ["possession", "scene"], "text": "DED_PROTO_Y_HINT_CULPRIT_2" },
+        { "level": 3, "kind": "evidence_group", "evidence": ["e_corridor_camera", "e_hatch_tabs"], "text": "DED_PROTO_Y_HINT_CULPRIT_3" },
+        { "level": 4, "kind": "reveal_deduction", "deduction": "ded_only_priya_had_card", "text": "DED_PROTO_Y_HINT_CULPRIT_4" }
+      ]
+    }
+  ],
+  "ground_truth": {
+    "culprit": "sus_priya",
+    "credential_owner": "sus_teodor",
+    "conclusion": "concl_y",
+    "summary": "DED_PROTO_Y_TRUTH_SUMMARY",
+    "solution_timeline": { "tl_teodor_leaves": "20:45", "tl_coat_borrowed": "20:55", "tl_gym_checkin": "21:09", "tl_card_used": "21:12", "tl_hatch_forced": "21:14", "tl_bin_out": "21:18", "tl_coat_returned": "21:25" }
+  }
+}
