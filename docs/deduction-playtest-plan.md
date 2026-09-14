@@ -7,10 +7,13 @@ added the debug-only, mechanic-neutral Deduction Lab
 (`docs/deduction-lab.md`); Milestone 1.11 built the first actual mechanic,
 Prototype A (`docs/prototype-a.md`) — see section 7 below for its own
 facilitator script; Milestone 1.12 built the second, Prototype B
-(`docs/prototype-b.md`) — see section 8 for its own facilitator script. Both
-are smaller, narrower pilots than the full A/B/C rotation this document
-otherwise describes. Prototype C, and the full six-tester A/B/C rotation
-below, remain future work. See `docs/deduction-system.md` for the system and
+(`docs/prototype-b.md`) — see section 8 for its own facilitator script;
+Milestone 1.13 built the third, Prototype C (`docs/prototype-c.md`) — see
+section 9 for its own facilitator script. All three are smaller, narrower
+pilots than the full A/B/C rotation this document otherwise describes — that
+six-tester rotation, now that all three mechanics actually exist, remains
+future work (no core-mechanic decision has been made from any single pilot
+alone). See `docs/deduction-system.md` for the system and
 `docs/deduction-prototype-cases.md` for the three cases.
 
 | Prototype | Mechanic | Main evaluator calls |
@@ -378,3 +381,116 @@ or too revealing. A pilot that instead surfaces basic UX confusion (can't
 find the Connect button, doesn't notice a slot is still empty) should be
 fixed and re-piloted before proceeding, for the same contamination reason
 section 7's own gate gives.
+
+## 9. Prototype C pilot (Milestone 1.13)
+
+Prototype C (`docs/prototype-c.md`) is the third and last mechanic that now
+exists to test. Like sections 7 and 8, this is a **standalone pilot of
+Prototype C alone** — it does not substitute for the six-tester A/B/C
+rotation above (section 1), which can now finally run with all three
+mechanics built. Its target is qualitative: does arranging events on a
+timeline feel like reasoning from facts rather than trial-and-error
+scheduling, and is the core loop (read the objective facts → place events at
+candidate times → check the timeline → revise on rejection → produce any
+valid timeline → use it to expose an impossible claim) enjoyable, fair, and
+completable in roughly 5–10 minutes — not a statistically powered
+comparison.
+
+**Reducing answer-memory transfer.** A tester who already played Prototype A
+and/or B (sections 7–8) solved one of X/Y/Z's proof graph once or twice
+already and will recognize its shape faster the third time, regardless of
+mechanic — exactly the "structure learning" bias section 1 names. So:
+**assign a tester who has already played A and/or B a case for Prototype C
+they have not yet seen**, where possible (rotate X/Y/Z across the pool of
+testers the same way section 1's Latin-mapping table does for the full
+rotation). A tester who has not yet played anything may take any case.
+
+### Facilitator script
+
+1. Assign the tester one of X/Y/Z, per the rule above. If this tester
+   already ran the Prototype A and/or B pilot, confirm from your own notes
+   which case(s) they used there and pick a case they haven't seen for this
+   session if at all possible.
+2. Open the Deduction Lab (F1 → Deduction Lab tab), select the assigned
+   case, and press **Start Recording** *before* pressing **Launch Prototype
+   C** — this is what captures `prototype_started`
+   (`docs/prototype-c.md`, "Recorder events"). Get the tester's consent to
+   record first.
+3. Do **not** explain which events go where, what the correct times are, or
+   that the cases share a proof graph with any other session. A short
+   neutral framing is fine: "Here's what's confirmed to be true about that
+   evening. Work out where everything happened, check your answer, and use
+   it to catch someone in a lie."
+4. Ask the tester to think aloud, especially: how they decided where to
+   place the FIRST event, and whether they're reasoning from a specific fact
+   or just trying combinations.
+5. Intervene only if the tester is completely blocked (not merely stuck) —
+   remind them the Hint button exists, but never state a correct placement
+   yourself.
+6. After completion (or after a reasonable time limit if they abandon —
+   record which), ask:
+   - How did you decide where to place the first event?
+   - Which fact constrained the timeline most?
+   - Did you reason before submitting, or use rejection feedback to search
+     through possibilities?
+   - Did any rejected timeline seem valid to you at the time?
+   - Were the candidate time slots helpful, or did they feel artificial or
+     arbitrary?
+   - Once you saw the finished, confirmed timeline, did it make the
+     disputed claim obviously impossible — or did you have to think about
+     it?
+   - Was this more or less satisfying than Prototype A and/or Prototype B
+     (skip whichever this tester hasn't played)?
+   - Rate difficulty, 1–5.
+   - Rate satisfaction, 1–5.
+   - In your own words, explain why the timeline you built makes that claim
+     impossible.
+
+### What to record
+
+Export the recording (`docs/prototype-c.md`'s schema, `"prototype":
+"timeline_reconstruction"`) and, alongside it, note:
+
+- completion time (from the export's `prototype_completed` payload);
+- moves made before the FIRST submission (filter `event_placed`/
+  `event_moved`/`event_removed` before the first `timeline_submitted`) — a
+  proxy for "reasoned first, then checked" vs. "checked immediately to see
+  what sticks";
+- total `timeline_submitted` count and how many were rejected
+  (`timeline_rejected`);
+- which required facts were most often violated (`violation_shown`
+  payloads, aggregated) — the fact that trips people up most is worth a
+  wording review even if the puzzle is otherwise working;
+- facts opened (`timeline_fact_opened` count) — low relative to the number
+  of required facts may mean the tester solved by trial-and-error rather
+  than by reading;
+- hint levels used (`hint_revealed` count/level);
+- final-claim attempts (`claim_answered` count, and whether the first
+  answer was already "Impossible" or needed a wrong "Fits" first);
+- abandonment (`prototype_abandoned`, if the session ends without
+  `prototype_completed`);
+- qualitative confusion moments, in the tester's own words;
+- whether the tester can explain, unprompted, why the accepted timeline
+  makes the claim impossible — the interview rubric from section 3 above,
+  adapted: can they name the specific fact (a window, a travel time, an
+  overlap) that rules the claim out, not just assert that it's false.
+
+Treat the 5–10 minute target and any small number of pilot testers as
+qualitative design evidence, not statistical proof — the same stance section
+1's "Residual bias to analyse, not ignore" already takes for the full
+rotation, and the same stance sections 7 and 8 already take for their own
+pilots.
+
+### Now that A, B and C all exist
+
+With all three mechanics pilotable, the natural next step is the full
+six-tester A/B/C rotation described in section 1 — assigning each tester all
+three mechanics across three different cases, per the Latin-mapping table,
+so the eventual comparison isolates the mechanic rather than the case or
+session position. Run each of sections 7, 8 and 9's standalone pilots (or
+rely on the team's own judgment from running each once or twice) before
+committing to the full rotation, for the same contamination-avoidance reason
+each section's own gate already gives. Do not choose or combine a core
+mechanic from any single pilot, or even from one full six-tester rotation in
+isolation — section 6's decision rule and section 1's guidance on residual
+bias both apply to whatever rotation follows this milestone.

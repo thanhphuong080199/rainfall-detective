@@ -250,6 +250,61 @@ static func prototype_b_case() -> Dictionary:
 	}
 
 
+## Minimal, self-contained fixture for Milestone 1.13's Prototype C
+## (PrototypeCController/PrototypeCPresenter — see docs/prototype-c.md). NOT a
+## full DeductionValidator-clean case (no suspects/questions/hints/
+## ground_truth) — those classes never read those sections, so this only
+## carries what they actually touch: a timeline with one fixed and two
+## movable events, two required window facts, one optional (disputed-claim)
+## window constraint, and a prototype_c data layer. t_a's window (09:00-09:30)
+## and t_b's window (10:10-10:40) each admit THREE of the six candidate time
+## slots, so a test has a real choice of valid placements for each —
+## t_a=09:00/09:15/09:30, t_b=10:10/10:25/10:40, none of which satisfy
+## c_lie's disjoint claimed window (09:00-09:20 on t_b) — every accepted
+## placement in this fixture already contradicts the claim, matching the real
+## X/Y/Z content's own shape.
+static func prototype_c_case() -> Dictionary:
+	return {
+		"id": "fx_pc_case",
+		"display_name": "FX",
+		"description": "FX",
+		"metadata": {"canon": false},
+		"suspects": [{"id": "sus_a", "name": "FX"}],
+		"claims": [
+			{
+				"id": "st_lie", "kind": "statement", "speaker": "sus_a", "veracity": "deceptive", "text": "FX",
+				"proof_sets": [{"id": "ps_lie", "relation": "refutes", "requires": ["e_noise"]}],
+			},
+		],
+		"evidence": [
+			{"id": "e_noise", "name": "FX", "text": "FX", "source": "fixture", "certainty": "fixed", "tags": ["scene"]},
+		],
+		"timeline": {
+			"events": [
+				{"id": "t_fixed", "label": "FX", "actor": "", "certainty": "fixed", "structural_role": "anchor"},
+				{"id": "t_a", "label": "FX", "actor": "", "certainty": "estimated", "structural_role": "first"},
+				{"id": "t_b", "label": "FX", "actor": "", "certainty": "estimated", "duration_minutes": 5, "structural_role": "second"},
+			],
+			"constraints": [
+				{"id": "c_fixed", "type": "fixed_time", "event": "t_fixed", "time": "10:00", "source": "e_noise"},
+				{"id": "c_a_window", "type": "window", "event": "t_a", "earliest": "09:00", "latest": "09:30", "source": "e_noise"},
+				{"id": "c_b_window", "type": "window", "event": "t_b", "earliest": "10:10", "latest": "10:40", "source": "e_noise"},
+				{"id": "c_lie", "type": "window", "event": "t_b", "earliest": "09:00", "latest": "09:20", "required": false, "source": "st_lie"},
+			],
+		},
+		"prototype_c": {
+			"fixed_events": ["t_fixed"],
+			"movable_events": ["t_a", "t_b"],
+			"time_slots": ["09:00", "09:15", "09:30", "10:10", "10:25", "10:40"],
+			"objective": "FX",
+			"visible_constraint_facts": {"c_a_window": "FX", "c_b_window": "FX"},
+			"contradiction": {"claim": "st_lie", "constraint_ref": "c_lie", "explanation": "FX %s"},
+			"hint_ladder": ["FX", "FX", "FX", "FX"],
+			"completion_text": "FX",
+		},
+	}
+
+
 ## Finds an entry by id anywhere a test needs to mutate a fixture in place.
 static func find(case_def: Dictionary, section: String, entry_id: String) -> Dictionary:
 	for entry in case_def.get(section, []):

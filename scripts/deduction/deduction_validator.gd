@@ -56,6 +56,7 @@ static func validate_case(case_def: Dictionary, errors: Array[String], warnings:
 	_validate_dependency_graph(case_def, ctx, errors, warnings)
 	_validate_prototype_a(case_def, ctx, errors, warnings)
 	_validate_prototype_b(case_def, ctx, errors, warnings)
+	_validate_prototype_c(case_def, ctx, errors, warnings)
 
 
 # ---------------------------------------------------------------------------
@@ -1104,6 +1105,259 @@ static func _prototype_b_signature_lines(case_def: Dictionary, role_of: Dictiona
 
 
 # ---------------------------------------------------------------------------
+# Prototype C (Milestone 1.13) — optional per-case data layer under
+# case_def["prototype_c"]: {fixed_events, movable_events, time_slots,
+# objective, visible_constraint_facts, contradiction, hint_ladder,
+# completion_text}. See docs/prototype-c.md. Absent entirely on a case with
+# no Prototype C content (e.g. the hand-built fixtures) — this whole section
+# is then a no-op.
+##
+## Deliberately adds ZERO new timeline constraint vocabulary and ZERO new
+## grading logic: every check below either cross-references the case's own
+## `timeline` section (already validated by _validate_timeline/
+## _validate_constraint above) or runs the exact same TimelineEvaluator the
+## game runs, via enumerate_accepted_prototype_c_timelines() — never a
+## private re-implementation of constraint semantics.
+
+static func _find_timeline_constraint(case_def: Dictionary, constraint_id: String) -> Dictionary:
+	for constraint in TimelineEvaluator.constraints(case_def):
+		if str(constraint.get("id", "")) == constraint_id:
+			return constraint
+	return {}
+
+
+## Every UI-offered placement (movable events assigned from the case's own
+## authored `time_slots`, fixed events pinned to their authored `fixed_time`
+## constraint) that TimelineEvaluator.evaluate() accepts. Bounded by
+## construction — the offered domain is the small, finite candidate list
+## authored specifically for the Prototype C UI (docs/prototype-c.md,
+## "Candidate time-slot domain"), never searched, widened or solved for.
+## Returns [] when prototype_c is absent or malformed enough that no
+## placement could even be built.
+static func enumerate_accepted_prototype_c_timelines(case_def: Dictionary) -> Array[Dictionary]:
+	var accepted: Array[Dictionary] = []
+	var proto: Variant = case_def.get("prototype_c")
+	if typeof(proto) != TYPE_DICTIONARY:
+		return accepted
+	var movable_ids: Array[String] = DeductionEvaluator.string_array(proto.get("movable_events", []))
+	var slots: Array[String] = DeductionEvaluator.string_array(proto.get("time_slots", []))
+	if movable_ids.is_empty() or slots.is_empty():
+		return accepted
+
+	var fixed_placement: Dictionary = {}
+	for event_id in DeductionEvaluator.string_array(proto.get("fixed_events", [])):
+		for constraint in TimelineEvaluator.constraints(case_def):
+			if str(constraint.get("type", "")) == "fixed_time" and str(constraint.get("event", "")) == event_id:
+				fixed_placement[event_id] = str(constraint.get("time", ""))
+
+	var total: int = 1
+	for _i in movable_ids.size():
+		total *= slots.size()
+	for combo_index in total:
+		var placement: Dictionary = fixed_placement.duplicate()
+		var remainder: int = combo_index
+		for event_id in movable_ids:
+			placement[event_id] = slots[remainder % slots.size()]
+			remainder = remainder / slots.size()
+		var result: Dictionary = TimelineEvaluator.evaluate(case_def, placement)
+		if str(result.get("category", "")) == TimelineEvaluator.CONSISTENT:
+			accepted.append(placement)
+	return accepted
+
+
+static func _validate_prototype_c(case_def: Dictionary, ctx: String, errors: Array[String], warnings: Array[String]) -> void:
+	var proto: Variant = case_def.get("prototype_c")
+	if proto == null:
+		return
+	if typeof(proto) != TYPE_DICTIONARY:
+		errors.append('%s prototype_c must be an object' % ctx)
+		return
+	var pc_ctx: String = "%s prototype_c" % ctx
+
+	var events: Dictionary = TimelineEvaluator.event_index(case_def)
+	var fixed_ids: Array[String] = DeductionEvaluator.string_array(proto.get("fixed_events"))
+	var movable_ids: Array[String] = DeductionEvaluator.string_array(proto.get("movable_events"))
+	if not _is_string_array(proto.get("fixed_events")) or fixed_ids.is_empty():
+		errors.append('%s must declare a non-empty "fixed_events" array of timeline event ids' % pc_ctx)
+	if not _is_string_array(proto.get("movable_events")) or movable_ids.size() < 2:
+		errors.append('%s must declare a "movable_events" array of at least 2 timeline event ids' % pc_ctx)
+
+	var seen_ids: Dictionary = {}
+	for event_id in fixed_ids + movable_ids:
+		if not events.has(event_id):
+			errors.append('%s references undefined timeline event "%s"' % [pc_ctx, event_id])
+		elif seen_ids.has(event_id):
+			errors.append('%s lists timeline event "%s" in both fixed_events and movable_events (or twice in one) — every event must be exactly one or the other' % [pc_ctx, event_id])
+		else:
+			seen_ids[event_id] = true
+	for event_id in events:
+		if not seen_ids.has(event_id):
+			errors.append('%s does not place timeline event "%s" in either fixed_events or movable_events' % [pc_ctx, event_id])
+
+	for event_id in fixed_ids:
+		var fixed_time_constraints := 0
+		for constraint in TimelineEvaluator.constraints(case_def):
+			if str(constraint.get("type", "")) == "fixed_time" and str(constraint.get("event", "")) == event_id:
+				fixed_time_constraints += 1
+		if fixed_time_constraints != 1:
+			errors.append('%s fixed event "%s" must have exactly one fixed_time timeline constraint (found %d) — a fixed event\'s locked time is always read from its own constraint, never authored twice' % [pc_ctx, event_id, fixed_time_constraints])
+	for event_id in movable_ids:
+		for constraint in TimelineEvaluator.constraints(case_def):
+			if str(constraint.get("type", "")) == "fixed_time" and str(constraint.get("event", "")) == event_id:
+				errors.append('%s movable event "%s" has its own fixed_time constraint — a movable event can never be pinned to one exact time' % [pc_ctx, event_id])
+
+	var raw_slots: Variant = proto.get("time_slots")
+	var slots: Array[String] = DeductionEvaluator.string_array(raw_slots)
+	if not _is_string_array(raw_slots) or slots.is_empty():
+		errors.append('%s must declare a non-empty "time_slots" array of "HH:MM" strings' % pc_ctx)
+	var seen_slots: Dictionary = {}
+	for slot in slots:
+		if TimelineEvaluator.parse_time(slot) < 0:
+			errors.append('%s time_slots entry "%s" is not a valid HH:MM time' % [pc_ctx, slot])
+		elif seen_slots.has(slot):
+			errors.append('%s duplicates time_slots entry "%s"' % [pc_ctx, slot])
+		else:
+			seen_slots[slot] = true
+	# Crossing midnight: every movable event must be able to occupy any
+	# candidate slot without its own duration running past 23:59 — the
+	# single-day model has no next-day wraparound (docs/deduction-system.md,
+	# "Known limitations").
+	for slot in slots:
+		var start: int = TimelineEvaluator.parse_time(slot)
+		if start < 0:
+			continue
+		for event_id in movable_ids:
+			var duration: int = TimelineEvaluator.parse_minutes((events.get(event_id, {}) as Dictionary).get("duration_minutes"), 0)
+			if start + maxi(duration, 0) > 1439:
+				errors.append('%s candidate time "%s" would let event "%s" (duration %d min) cross midnight, which this single-day model cannot represent' % [pc_ctx, slot, event_id, duration])
+
+	_require_text(proto.get("objective"), "%s objective" % pc_ctx, errors)
+	_require_text(proto.get("completion_text"), "%s completion_text" % pc_ctx, errors)
+
+	var required_constraint_ids: Dictionary = {}
+	for constraint in TimelineEvaluator.constraints(case_def):
+		if constraint.get("required", true) != false:
+			required_constraint_ids[str(constraint.get("id", ""))] = true
+
+	var facts: Variant = proto.get("visible_constraint_facts")
+	if typeof(facts) != TYPE_DICTIONARY:
+		errors.append('%s visible_constraint_facts must be an object mapping a required constraint id -> translation key' % pc_ctx)
+		facts = {}
+	for constraint_id in required_constraint_ids:
+		if not (facts as Dictionary).has(constraint_id):
+			errors.append('%s required timeline constraint "%s" has no visible_constraint_facts entry — a required constraint must never be a hidden author-only rule' % [pc_ctx, constraint_id])
+	for constraint_id in (facts as Dictionary):
+		var constraint: Dictionary = _find_timeline_constraint(case_def, str(constraint_id))
+		if constraint.is_empty():
+			errors.append('%s visible_constraint_facts references undefined timeline constraint "%s"' % [pc_ctx, constraint_id])
+		elif not required_constraint_ids.has(str(constraint_id)):
+			errors.append('%s visible_constraint_facts entry "%s" names an OPTIONAL constraint — only required (objectively true) constraints may be shown as facts; an optional constraint (e.g. a claimed time) must stay hidden' % [pc_ctx, constraint_id])
+		else:
+			_require_text((facts as Dictionary).get(constraint_id), '%s visible_constraint_facts["%s"]' % [pc_ctx, constraint_id], errors)
+
+	var contradiction: Variant = proto.get("contradiction")
+	if typeof(contradiction) != TYPE_DICTIONARY:
+		errors.append('%s must declare a "contradiction" object' % pc_ctx)
+		contradiction = {}
+	var claim_id: String = str((contradiction as Dictionary).get("claim", ""))
+	var claim: Dictionary = DeductionEvaluator.find_claim(case_def, claim_id)
+	if claim.is_empty():
+		errors.append('%s contradiction.claim references undefined claim "%s"' % [pc_ctx, claim_id])
+	elif str(claim.get("kind", "")) != "statement":
+		errors.append('%s contradiction.claim "%s" is a %s, not a statement — the final claim check disputes an NPC STATEMENT, never a hypothesis, deduction, explanation or the conclusion' % [pc_ctx, claim_id, claim.get("kind", "")])
+
+	var constraint_ref: String = str((contradiction as Dictionary).get("constraint_ref", ""))
+	var contradiction_constraint: Dictionary = _find_timeline_constraint(case_def, constraint_ref)
+	if contradiction_constraint.is_empty():
+		errors.append('%s contradiction.constraint_ref references undefined timeline constraint "%s"' % [pc_ctx, constraint_ref])
+	else:
+		if contradiction_constraint.get("required", true) != false:
+			errors.append('%s contradiction.constraint_ref "%s" must be an OPTIONAL constraint — a required constraint is already a known fact every accepted timeline satisfies, so it could never be the "impossible" claim' % [pc_ctx, constraint_ref])
+		if str(contradiction_constraint.get("source", "")) != claim_id and claim_id != "":
+			errors.append('%s contradiction.constraint_ref "%s" is sourced from "%s", not from contradiction.claim "%s" — the hypothetical constraint must represent that same claim' % [pc_ctx, constraint_ref, contradiction_constraint.get("source", ""), claim_id])
+		if (facts as Dictionary).has(constraint_ref):
+			errors.append('%s contradiction.constraint_ref "%s" must not also appear in visible_constraint_facts — the disputed claim stays hidden until the timeline is accepted' % [pc_ctx, constraint_ref])
+
+	var ladder: Variant = proto.get("hint_ladder")
+	if typeof(ladder) != TYPE_ARRAY or (ladder as Array).size() != PROTOTYPE_A_HINT_LEVELS:
+		errors.append('%s hint_ladder must be an array of exactly %d translation keys' % [pc_ctx, PROTOTYPE_A_HINT_LEVELS])
+	else:
+		for level_index in (ladder as Array).size():
+			_require_text((ladder as Array)[level_index], '%s hint_ladder level %d' % [pc_ctx, level_index + 1], errors)
+
+	# DELIBERATELY NOT run here: "at least one UI-offered timeline is
+	# accepted" and "every accepted timeline makes the claim impossible" are
+	# real, important checks, but enumerating the full candidate domain
+	# (movable_events.size()-many nested loops over time_slots) through the
+	# real TimelineEvaluator costs about half a second per case — cheap once,
+	# but ContentValidator.validate() (and therefore this function) runs on
+	# EVERY ContentDB load, including every other focused test's boot, so
+	# baking it in here would slow down the entire FAST/FULL suite, not just
+	# Prototype C's own tests. Milestone 1.13 explicitly allows this: "may be
+	# a bounded test/content-validation helper." So it lives instead in
+	# enumerate_accepted_prototype_c_timelines() (below), a public helper
+	# called directly, once, by prototype_c_content_test.gd — same real
+	# TimelineEvaluator, same bounded domain, just not on every boot.
+
+
+## [[key, context], ...] additional translation keys Prototype C's optional
+## data layer introduces — objective, every visible_constraint_facts value,
+## the contradiction explanation, the hint ladder and completion_text. Called
+## from ContentValidator alongside collect_text_keys() (see
+## docs/deduction-system.md, "Content validation").
+static func collect_prototype_c_text_keys(case_def: Dictionary) -> Array[Array]:
+	var keys: Array[Array] = []
+	var proto: Variant = case_def.get("prototype_c")
+	if typeof(proto) != TYPE_DICTIONARY:
+		return keys
+	var ctx: String = 'Deduction case "%s" prototype_c' % str(case_def.get("id", ""))
+	keys.append([proto.get("objective", ""), "%s objective" % ctx])
+	keys.append([proto.get("completion_text", ""), "%s completion_text" % ctx])
+	var facts: Variant = proto.get("visible_constraint_facts", {})
+	if typeof(facts) == TYPE_DICTIONARY:
+		for constraint_id in (facts as Dictionary):
+			keys.append([(facts as Dictionary)[constraint_id], '%s visible_constraint_facts["%s"]' % [ctx, constraint_id]])
+	var contradiction: Variant = proto.get("contradiction", {})
+	if typeof(contradiction) == TYPE_DICTIONARY:
+		keys.append([(contradiction as Dictionary).get("explanation", ""), "%s contradiction.explanation" % ctx])
+	var ladder: Variant = proto.get("hint_ladder", [])
+	if typeof(ladder) == TYPE_ARRAY:
+		for level_index in (ladder as Array).size():
+			keys.append([(ladder as Array)[level_index], "%s hint_ladder level %d" % [ctx, level_index + 1]])
+	return keys
+
+
+## Appended to structural_signature() (see below) when a case declares
+## prototype_c, so validate_structural_equivalence() enforces the same
+## fixed/movable-role, fact-shape and contradiction SHAPE across X/Y/Z
+## automatically. Roles and constraint TYPES only, never ids, times or
+## translation keys.
+static func _prototype_c_signature_lines(case_def: Dictionary, role_of: Dictionary) -> Array[String]:
+	var lines: Array[String] = []
+	var proto: Variant = case_def.get("prototype_c")
+	if typeof(proto) != TYPE_DICTIONARY:
+		return lines
+	lines.append("prototype_c:fixed=%s" % _roles(proto.get("fixed_events", []), role_of))
+	lines.append("prototype_c:movable=%s" % _roles(proto.get("movable_events", []), role_of))
+	lines.append("prototype_c:slot_count=%d" % DeductionEvaluator.string_array(proto.get("time_slots", [])).size())
+
+	var fact_types: Array = []
+	var facts: Variant = proto.get("visible_constraint_facts", {})
+	if typeof(facts) == TYPE_DICTIONARY:
+		for constraint_id in (facts as Dictionary):
+			fact_types.append(str(_find_timeline_constraint(case_def, str(constraint_id)).get("type", "")))
+	fact_types.sort()
+	lines.append("prototype_c:fact_constraint_types=[%s]" % ",".join(PackedStringArray(fact_types)))
+
+	var contradiction: Variant = proto.get("contradiction", {})
+	if typeof(contradiction) == TYPE_DICTIONARY:
+		var claim_role: String = role_of.get(str((contradiction as Dictionary).get("claim", "")), "")
+		var constraint_type: String = str(_find_timeline_constraint(case_def, str((contradiction as Dictionary).get("constraint_ref", ""))).get("type", ""))
+		lines.append("prototype_c:contradiction_claim_role=%s:constraint_type=%s" % [claim_role, constraint_type])
+	return lines
+
+
+# ---------------------------------------------------------------------------
 # Structural equivalence
 
 ## A case's proof-graph shape in role terms only — no ids, no text — as a
@@ -1179,6 +1433,7 @@ static func structural_signature(case_def: Dictionary) -> Array[String]:
 		])
 	signature.append_array(_prototype_a_signature_lines(case_def, role_of))
 	signature.append_array(_prototype_b_signature_lines(case_def, role_of))
+	signature.append_array(_prototype_c_signature_lines(case_def, role_of))
 	signature.sort()
 	return signature
 

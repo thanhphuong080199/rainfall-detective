@@ -45,6 +45,12 @@ var _pending_confirmed_action: Callable = Callable()
 ## Prototype A's. See scripts/debug/prototype_b.gd.
 @onready var launch_prototype_b_button: Button = %LaunchPrototypeBButton
 @onready var prototype_b: Control = %PrototypeB
+## Milestone 1.13: launched the same way as Prototype A/B — a fresh
+## PrototypeCController with NO DeductionSession at all (see that class's own
+## doc), never this Lab's own session, never Prototype A's or B's. See
+## scripts/debug/prototype_c.gd.
+@onready var launch_prototype_c_button: Button = %LaunchPrototypeCButton
+@onready var prototype_c: Control = %PrototypeC
 @onready var status_label: Label = %StatusLabel
 @onready var tabs: TabContainer = %Tabs
 @onready var author_tab: Control = %AuthorTab
@@ -94,6 +100,8 @@ func _ready() -> void:
 	launch_prototype_a_button.text = tr("UI_PROTOTYPE_A_LAUNCH_BUTTON")
 	launch_prototype_b_button.pressed.connect(_on_launch_prototype_b_pressed)
 	launch_prototype_b_button.text = tr("UI_PROTOTYPE_B_LAUNCH_BUTTON")
+	launch_prototype_c_button.pressed.connect(_on_launch_prototype_c_pressed)
+	launch_prototype_c_button.text = tr("UI_PROTOTYPE_C_LAUNCH_BUTTON")
 	confirm_dialog.confirmed.connect(_on_confirm_dialog_confirmed)
 
 	evidence_search_edit.text_changed.connect(func(_text): _render_evidence())
@@ -222,6 +230,7 @@ func _do_reset() -> void:
 ## must never mutate this Lab's own session. See scripts/debug/prototype_a.gd.
 func _on_launch_prototype_a_pressed() -> void:
 	prototype_b.close()  # avoid two prototype overlays visible at once; hiding never discards prototype_b's own progress
+	prototype_c.close()  # ditto for prototype_c's own progress
 	prototype_a.open(_controller.get_case_def() if _controller.get_session() != null else {})
 
 
@@ -232,7 +241,20 @@ func _on_launch_prototype_a_pressed() -> void:
 ## — see scripts/debug/prototype_b.gd.
 func _on_launch_prototype_b_pressed() -> void:
 	prototype_a.close()  # avoid two prototype overlays visible at once; hiding never discards prototype_a's own progress
+	prototype_c.close()  # ditto for prototype_c's own progress
 	prototype_b.open(_controller.get_case_def() if _controller.get_session() != null else {})
+
+
+## Milestone 1.13: launches Prototype C using the Lab's currently active case
+## as a convenience default — the facilitator can still change it before
+## pressing Start there. Uses a FRESH PrototypeCController (no DeductionSession
+## at all — see scripts/deduction/prototype_c_controller.gd's class doc),
+## never this Lab's own _controller/session and never a PrototypeAController's
+## or PrototypeBController's — see scripts/debug/prototype_c.gd.
+func _on_launch_prototype_c_pressed() -> void:
+	prototype_a.close()  # avoid two prototype overlays visible at once; hiding never discards prototype_a's own progress
+	prototype_b.close()  # ditto for prototype_b's own progress
+	prototype_c.open(_controller.get_case_def() if _controller.get_session() != null else {})
 
 
 func _on_mode_pressed(mode: String) -> void:
@@ -271,6 +293,7 @@ func refresh() -> void:
 	non_canon_badge.text = tr("UI_DEDUCTION_LAB_NON_CANON_BADGE")
 	launch_prototype_a_button.text = tr("UI_PROTOTYPE_A_LAUNCH_BUTTON")
 	launch_prototype_b_button.text = tr("UI_PROTOTYPE_B_LAUNCH_BUTTON")
+	launch_prototype_c_button.text = tr("UI_PROTOTYPE_C_LAUNCH_BUTTON")
 	if _controller.get_session() != null:
 		var case_def: Dictionary = _controller.get_case_def()
 		var session: DeductionSession = _controller.get_session()

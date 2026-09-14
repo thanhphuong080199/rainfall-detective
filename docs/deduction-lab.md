@@ -31,18 +31,31 @@ isolation `DebugPanel` already uses (`docs/case-debugger.md`). There is no
 other path to it: it is never wired through `Main.gd`, and no production
 scene references it.
 
-Since Milestone 1.11, the case row also has a **"Launch Prototype A —
-Statement Contradiction"** button, opening `scenes/debug/PrototypeA.tscn` (a
-further child scene of the Lab, with the same `OS.is_debug_build()`/Esc-
-stacking isolation) defaulted to whichever case the Lab currently has
-active. Since Milestone 1.12, an identical **"Launch Prototype B — Clue
-Connection"** button sits next to it, opening `scenes/debug/PrototypeB.tscn`
-the same way. Launching either one hides the other if it happened to be
-open (avoiding two prototype overlays on screen at once) without resetting
-its progress — see `docs/prototype-b.md`, "Entry and lifecycle". None of
-this makes the Lab itself mechanic-specific — Player Preview/Author
-Inspector are unchanged, and both prototypes always start a **fresh**
-session of their own, never reusing or mutating the Lab's or each other's.
+Since Milestone 1.11, a dedicated **`%PrototypeLaunchRow`** (its own row
+below the case controls, inside a horizontal `%PrototypeLaunchScroll`) has a
+**"Launch Prototype A — Statement Contradiction"** button, opening
+`scenes/debug/PrototypeA.tscn` (a further child scene of the Lab, with the
+same `OS.is_debug_build()`/Esc-stacking isolation) defaulted to whichever
+case the Lab currently has active. Since Milestone 1.12, an identical
+**"Launch Prototype B — Clue Connection"** button sits next to it, opening
+`scenes/debug/PrototypeB.tscn` the same way, and since Milestone 1.13 a
+third **"Launch Prototype C — Timeline Reconstruction"** button opens
+`scenes/debug/PrototypeC.tscn` the same way again. This row was split out of
+the case row and wrapped in its own horizontal scroll container in Milestone
+1.13 specifically because three full-length, Vietnamese-translated launch
+buttons alongside the case picker and mode buttons no longer fit any
+reasonably-sized window — a real regression only visible with a display
+server, not caught by any headless scene test's `visible`/structural
+assertions (see `docs/architecture.md`'s "Known limitations": headless tests
+verify wiring, never pixels). A fourth prototype, or longer future
+translations, scrolls instead of clipping off-screen. Launching any one of
+the three hides the other two if they happened to be open (avoiding
+overlapping prototype overlays on screen at once) without resetting their
+progress — see `docs/prototype-b.md`/`docs/prototype-c.md`, "Entry and
+lifecycle". None of this makes the Lab
+itself mechanic-specific — Player Preview/Author Inspector are unchanged,
+and all three prototypes always start a **fresh** run of their own, never
+reusing or mutating the Lab's or each other's.
 See `docs/prototype-a.md`/`docs/prototype-b.md` for the mechanics
 themselves.
 
@@ -365,19 +378,20 @@ Both are already part of the repository's canonical FAST/FULL commands — see
 
 ## Explicitly deferred / out of scope
 
-Prototype C's actual player interaction (timeline drag-and-drop) — the
-Lab itself still stays mechanic-neutral and does not grow evidence
-multi-selection, a clue-connection board, or a proof-submission UI of its
-own; that lives only in Prototype A's own scene (`docs/prototype-a.md`,
-launched from the button above) and Prototype B's own scene
-(`docs/prototype-b.md`, launched the same way), and, later, C's. Also still
-deferred here: a relation picker (deliberately out of scope for both A and
-B — see `docs/prototype-b.md`, "What this is not"), NPC reactions/
-consequences, production save/load integration for deductions, production
-or canon case content, art/audio/polish, external analytics or network
-telemetry, a generic graph/content editor, and choosing a core mechanic. See
-`docs/deduction-playtest-plan.md` for how that comparison is meant to be run
-once all of A/B/C exist.
+The Lab itself still stays mechanic-neutral and does not grow evidence
+multi-selection, a clue-connection board, a proof-submission UI, or a
+timeline board of its own — those live only in Prototype A's own scene
+(`docs/prototype-a.md`, launched from the button above), Prototype B's own
+scene (`docs/prototype-b.md`, launched the same way), and Prototype C's own
+scene (`docs/prototype-c.md`, Milestone 1.13, launched the same way — select
+an event, then place it into a candidate time slot; drag-and-drop was never
+required and is not built). Also still deferred here: a relation picker
+(deliberately out of scope for A/B/C — see `docs/prototype-b.md`, "What this
+is not"), NPC reactions/consequences, production save/load integration for
+deductions, production or canon case content, art/audio/polish, external
+analytics or network telemetry, a generic graph/content editor, and choosing
+a core mechanic. See `docs/deduction-playtest-plan.md` for how that
+comparison is meant to be run now that A/B/C all exist.
 
 ## Content-comprehension pilot (procedure)
 

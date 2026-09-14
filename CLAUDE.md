@@ -36,7 +36,10 @@ Verify changes headlessly — do this (at least the content-validation step) bef
   --script res://scenes/test/prototype_a_content_test.gd \
   --script res://scenes/test/prototype_b_controller_test.gd \
   --script res://scenes/test/prototype_b_presenter_test.gd \
-  --script res://scenes/test/prototype_b_content_test.gd
+  --script res://scenes/test/prototype_b_content_test.gd \
+  --script res://scenes/test/prototype_c_controller_test.gd \
+  --script res://scenes/test/prototype_c_presenter_test.gd \
+  --script res://scenes/test/prototype_c_content_test.gd
 
 # FULL — before finishing a milestone/refactor; also what CI runs on every push/PR:
 .claude/skills/godot-development/scripts/verify.sh \
@@ -64,11 +67,15 @@ Verify changes headlessly — do this (at least the content-validation step) bef
   --script res://scenes/test/prototype_b_presenter_test.gd \
   --script res://scenes/test/prototype_b_content_test.gd \
   --script res://scenes/test/prototype_b_scene_test.gd \
+  --script res://scenes/test/prototype_c_controller_test.gd \
+  --script res://scenes/test/prototype_c_presenter_test.gd \
+  --script res://scenes/test/prototype_c_content_test.gd \
+  --script res://scenes/test/prototype_c_scene_test.gd \
   --script res://scenes/test/smoke_test.gd
 ```
 Raw equivalents exist (`godot --headless --path . -s res://scenes/test/<name>.gd`) but **Godot's exit codes lie** — a `SCRIPT ERROR`, `push_error()`, or parse failure still exits 0, and a `-s` script that errors before calling `quit()` can hang indefinitely. `verify.sh` handles both (output-based pass/fail, per-step timeouts); prefer it over raw invocations. There is no separate lint/build step — import + boot + these test scripts are the whole pipeline, and `.github/workflows/verify.yml` runs the FULL command above in CI, reusing `verify.sh` rather than duplicating any check.
 
-`validate_content.gd` is fast, content-only (checks broken references *and* dependency-reachability smells in `data/`, exits 1 on any error). `conditions_test.gd`/`effects_test.gd`/`events_test.gd`/`duplicate_execution_test.gd`/`save_load_regression_test.gd`/`negative_progression_test.gd`/`dependency_analysis_test.gd` are small, independent focused tests — see `docs/testing.md` for what each covers and how to add a new one. `smoke_test.gd` is the critical-path/integration fixture: drives every autoload through the full demo flow (examine/talk/present/move, conditions, events, event chains, the two-chapter Test Case, save/load) and asserts zero *unexpected* `ContentValidator` errors/warnings; it prints `ALL TESTS PASSED` and exits 0 on success. A new Condition/Effect check goes in `conditions_test.gd`/`effects_test.gd`, never into `smoke_test.gd`. The Milestone 1.9 deduction tests (`deduction_evaluator_test.gd`, `timeline_evaluator_test.gd`, `deduction_validation_test.gd`, `deduction_cases_test.gd`) are deterministic and belong to both FAST and FULL — see `docs/deduction-system.md`, "Testing". The Milestone 1.10 Deduction Lab's pure/autoload-free helpers (`deduction_lab_controller_test.gd`, `deduction_lab_presenter_test.gd`, `deduction_lab_recorder_test.gd`) are likewise deterministic and belong to both FAST and FULL; `deduction_lab_scene_test.gd` needs a real scene tree (DebugPanel/F1 integration) and is FULL-only, like `smoke_test.gd` — see `docs/deduction-lab.md`, "Test commands". The Milestone 1.11 Prototype A tests follow the identical split: `prototype_a_controller_test.gd`/`prototype_a_presenter_test.gd`/`prototype_a_content_test.gd` are pure/autoload-free (FAST and FULL); `prototype_a_scene_test.gd` needs a real scene tree and is FULL-only — see `docs/prototype-a.md`, "Testing". The Milestone 1.12 Prototype B tests follow the same split: `prototype_b_controller_test.gd`/`prototype_b_presenter_test.gd`/`prototype_b_content_test.gd` are pure/autoload-free (FAST and FULL); `prototype_b_scene_test.gd` needs a real scene tree and is FULL-only — see `docs/prototype-b.md`, "Testing". `prototype_a_scene_test.gd` also carries the Milestone 1.12 Continue-button-stays-in-viewport layout regression (`_test_continue_button_stays_reachable_with_long_feedback`), and `prototype_b_scene_test.gd` carries the same check applied to Prototype B's own screen — see `docs/prototype-a.md`, "Layout".
+`validate_content.gd` is fast, content-only (checks broken references *and* dependency-reachability smells in `data/`, exits 1 on any error). `conditions_test.gd`/`effects_test.gd`/`events_test.gd`/`duplicate_execution_test.gd`/`save_load_regression_test.gd`/`negative_progression_test.gd`/`dependency_analysis_test.gd` are small, independent focused tests — see `docs/testing.md` for what each covers and how to add a new one. `smoke_test.gd` is the critical-path/integration fixture: drives every autoload through the full demo flow (examine/talk/present/move, conditions, events, event chains, the two-chapter Test Case, save/load) and asserts zero *unexpected* `ContentValidator` errors/warnings; it prints `ALL TESTS PASSED` and exits 0 on success. A new Condition/Effect check goes in `conditions_test.gd`/`effects_test.gd`, never into `smoke_test.gd`. The Milestone 1.9 deduction tests (`deduction_evaluator_test.gd`, `timeline_evaluator_test.gd`, `deduction_validation_test.gd`, `deduction_cases_test.gd`) are deterministic and belong to both FAST and FULL — see `docs/deduction-system.md`, "Testing". The Milestone 1.10 Deduction Lab's pure/autoload-free helpers (`deduction_lab_controller_test.gd`, `deduction_lab_presenter_test.gd`, `deduction_lab_recorder_test.gd`) are likewise deterministic and belong to both FAST and FULL; `deduction_lab_scene_test.gd` needs a real scene tree (DebugPanel/F1 integration) and is FULL-only, like `smoke_test.gd` — see `docs/deduction-lab.md`, "Test commands". The Milestone 1.11 Prototype A tests follow the identical split: `prototype_a_controller_test.gd`/`prototype_a_presenter_test.gd`/`prototype_a_content_test.gd` are pure/autoload-free (FAST and FULL); `prototype_a_scene_test.gd` needs a real scene tree and is FULL-only — see `docs/prototype-a.md`, "Testing". The Milestone 1.12 Prototype B tests follow the same split: `prototype_b_controller_test.gd`/`prototype_b_presenter_test.gd`/`prototype_b_content_test.gd` are pure/autoload-free (FAST and FULL); `prototype_b_scene_test.gd` needs a real scene tree and is FULL-only — see `docs/prototype-b.md`, "Testing". `prototype_a_scene_test.gd` also carries the Milestone 1.12 Continue-button-stays-in-viewport layout regression (`_test_continue_button_stays_reachable_with_long_feedback`), and `prototype_b_scene_test.gd` carries the same check applied to Prototype B's own screen — see `docs/prototype-a.md`, "Layout". The Milestone 1.13 Prototype C tests follow the same split again: `prototype_c_controller_test.gd`/`prototype_c_presenter_test.gd`/`prototype_c_content_test.gd` are pure/autoload-free (FAST and FULL — `prototype_c_content_test.gd` is the one file in this set that does real, bounded enumeration work through the real `TimelineEvaluator` and costs about 1.5 seconds by itself, deliberately kept out of `DeductionValidator`'s always-on checks for that reason, see `docs/prototype-c.md`); `prototype_c_scene_test.gd` needs a real scene tree and is FULL-only, and also carries its own copy of the Continue-button layout regression — see `docs/prototype-c.md`, "Testing".
 
 ## Architecture
 
@@ -163,6 +170,39 @@ an established test or authoring unsound content). See `docs/prototype-b.md`
 for the full data contract, the anti-brute-force validator rules, and the
 Prototype A/B target-separation audit (D3, a deduction, is never the same
 claim as the statement Prototype A cross-examines with a single clue).
+
+### Prototype C — Timeline Reconstruction (Milestone 1.13)
+
+The third playable deduction interaction: read a set of objective timeline
+facts, place the five movable events into candidate time slots (two events
+are already fixed and locked), submit the reconstruction, revise on
+rejection, then use the accepted timeline to decide whether one disputed NPC
+claim is possible. Debug-only, non-canon, launched from the Deduction Lab's
+"Launch Prototype C" button (never wired through `Main.gd`) — same isolation
+stance as the Lab and Prototypes A/B. `PrototypeCController`
+(`scripts/deduction/prototype_c_controller.gd`) is the **one** prototype
+controller that owns **no `DeductionSession` at all** — every check goes
+through the real, unmodified `TimelineEvaluator` (`evaluate()` for the
+reconstruction, `is_constraint_satisfied()` for the final claim), which
+needs no session to grade a placement dict. `PrototypeCPresenter` builds the
+same kind of spoiler-safe, opaque-handle player view the other two
+presenters established, with the disputed claim's key entirely absent until
+the timeline is accepted. It reuses Milestone 1.10's `DeductionLabRecorder`
+completely unmodified, tagged `"prototype": "timeline_reconstruction"`. No
+new autoload, no production `GameState`/save changes, no new timeline
+constraint vocabulary, no evaluator changes — `TimelineEvaluator` already
+existed, complete and tested, before this milestone; Prototype C only adds a
+UI and a bounded `prototype_c` content layer on top of the `timeline`
+section Milestone 1.9 already authored on every prototype case. The final
+disputed claim reuses an ALREADY-AUTHORED optional (`required: false`)
+timeline constraint (each case's bystander's false claimed errand time,
+`docs/deduction-system.md`'s own "one for each bystander's false claimed
+time") by reference, rather than authoring new content — every one of the
+~8 timelines the small, audited 6-slot-per-event candidate domain lets the
+real evaluator accept is machine-proven (`prototype_c_content_test.gd`) to
+make that claim impossible, for all three cases. See `docs/prototype-c.md`
+for the full data contract, the candidate-time-slot domain design and its
+measured performance trade-off, and the universal-contradiction proof.
 
 ### UI wiring
 
