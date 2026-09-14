@@ -85,6 +85,39 @@ direction rule. See `docs/prototype-a.md` for the full Prototype A design
 and `deduction_cases_test.gd`'s existing `_test_staging_rule_is_taught()`
 for the older two-evidence path.
 
+## 0.3 What Milestone 1.12 (Prototype B) added
+
+Purely additive: a new optional `prototype_b` object on each case
+(`docs/prototype-b.md`), touching **zero** existing evidence, claims, proof
+sets, or hint ladders. Round 1 targets D1 (`ded_badge_misused` /
+`ded_card_misused` / `ded_scanner_misused`) with its existing 3-item primary
+and alternate proof sets, unchanged. Round 2 targets D3
+(`ded_break_in_staged` / `ded_hatch_staged` / `ded_fence_staged`) with its
+existing single 3-item proof set, also unchanged — **at `slot_count: 3`, not
+the milestone brief's illustrative "2 clue slots."** This was audited, not
+assumed: `deduction_cases_test.gd` (predating 1.12) already asserts both
+2-of-3 subsets of D3's evidence are insufficient by design (`_test_staging_
+rule_is_taught`'s neighboring checks), and the third possible pair (sign +
+rule, without the observed contradiction) would be an unsound inference to
+accept. See `docs/prototype-b.md`'s own architecture-decision box for the
+full reasoning and the alternatives considered and rejected.
+
+Also audited: whether Prototype A's single-evidence `staging_sign` proof for
+`candidate_staging_claim` (a **statement**) could double as a solution for
+Prototype B's `staging_deduction` (D3, a **deduction**) target. It cannot —
+they are different claims with different, independently-sized proof
+requirements, confirmed end to end by `prototype_b_content_test.gd`
+submitting Prototype A's own accepted clue against D3 and asserting it comes
+back `insufficient_evidence`, never `valid_support`. See `docs/prototype-b.md`,
+"Content audit: separation from Prototype A."
+
+`localization/strings.csv` gained new `DED_PROTO_{X,Y,Z}_PROTOB_*` keys (two
+round questions, two success explanations, one completion text per case) and
+generic `UI_PROTOTYPE_B_*` keys — the parity table in section 5 below was
+measured before this addition and was not recounted, since it tracks the
+BASE case content (evidence/staging/alibi text) that this milestone left
+untouched, not the new Prototype B layer.
+
 ## 1. The shared proof graph (`structural_template: credential_misuse_v2`)
 
 ### Before (Milestone 1.9)

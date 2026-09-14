@@ -35,10 +35,16 @@ Since Milestone 1.11, the case row also has a **"Launch Prototype A —
 Statement Contradiction"** button, opening `scenes/debug/PrototypeA.tscn` (a
 further child scene of the Lab, with the same `OS.is_debug_build()`/Esc-
 stacking isolation) defaulted to whichever case the Lab currently has
-active. This does not make the Lab itself mechanic-specific — Player
-Preview/Author Inspector are unchanged, and Prototype A always starts a
-**fresh** session of its own, never reusing or mutating the Lab's. See
-`docs/prototype-a.md` for the mechanic itself.
+active. Since Milestone 1.12, an identical **"Launch Prototype B — Clue
+Connection"** button sits next to it, opening `scenes/debug/PrototypeB.tscn`
+the same way. Launching either one hides the other if it happened to be
+open (avoiding two prototype overlays on screen at once) without resetting
+its progress — see `docs/prototype-b.md`, "Entry and lifecycle". None of
+this makes the Lab itself mechanic-specific — Player Preview/Author
+Inspector are unchanged, and both prototypes always start a **fresh**
+session of their own, never reusing or mutating the Lab's or each other's.
+See `docs/prototype-a.md`/`docs/prototype-b.md` for the mechanics
+themselves.
 
 ## Architecture — reuse, not a parallel system
 
@@ -359,12 +365,14 @@ Both are already part of the repository's canonical FAST/FULL commands — see
 
 ## Explicitly deferred / out of scope
 
-Prototype B/C's actual player interaction (a relation picker, a clue graph/
-caseboard, timeline drag-and-drop, a final accusation/theory input) — the
+Prototype C's actual player interaction (timeline drag-and-drop) — the
 Lab itself still stays mechanic-neutral and does not grow evidence
-multi-selection or a proof-submission UI of its own; that lives only in
-Prototype A's own scene (`docs/prototype-a.md`, launched from the button
-above) and, later, B/C's. Also still deferred here: NPC reactions/
+multi-selection, a clue-connection board, or a proof-submission UI of its
+own; that lives only in Prototype A's own scene (`docs/prototype-a.md`,
+launched from the button above) and Prototype B's own scene
+(`docs/prototype-b.md`, launched the same way), and, later, C's. Also still
+deferred here: a relation picker (deliberately out of scope for both A and
+B — see `docs/prototype-b.md`, "What this is not"), NPC reactions/
 consequences, production save/load integration for deductions, production
 or canon case content, art/audio/polish, external analytics or network
 telemetry, a generic graph/content editor, and choosing a core mechanic. See

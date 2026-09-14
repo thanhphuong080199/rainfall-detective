@@ -6,10 +6,11 @@ was played in. Milestones 1.9 and 1.9.1 built the foundation; Milestone 1.10
 added the debug-only, mechanic-neutral Deduction Lab
 (`docs/deduction-lab.md`); Milestone 1.11 built the first actual mechanic,
 Prototype A (`docs/prototype-a.md`) — see section 7 below for its own
-facilitator script, which is a smaller, narrower pilot than the full A/B/C
-rotation this document otherwise describes. Prototypes B and C, and the
-full six-tester A/B/C rotation below, remain future work. See
-`docs/deduction-system.md` for the system and
+facilitator script; Milestone 1.12 built the second, Prototype B
+(`docs/prototype-b.md`) — see section 8 for its own facilitator script. Both
+are smaller, narrower pilots than the full A/B/C rotation this document
+otherwise describes. Prototype C, and the full six-tester A/B/C rotation
+below, remain future work. See `docs/deduction-system.md` for the system and
 `docs/deduction-prototype-cases.md` for the three cases.
 
 | Prototype | Mechanic | Main evaluator calls |
@@ -280,3 +281,100 @@ surfaces basic UX confusion (can't find the Hint button, doesn't notice
 which statement is selected) should be fixed and re-piloted before
 proceeding, since that confusion would otherwise contaminate whichever
 mechanic comparison follows.
+
+## 8. Prototype B pilot (Milestone 1.12)
+
+Prototype B (`docs/prototype-b.md`) is the second mechanic that now exists to
+test. Like section 7, this is a **standalone pilot of Prototype B alone** —
+it does not substitute for the six-tester A/B/C rotation above, which still
+needs Prototype C built first. Its target is qualitative: does combining
+clues feel like reasoning rather than inventory matching, and is the core
+loop (read the question → review clues → place them into slots → submit →
+get logical feedback → unlock the deduction) enjoyable, fair, and
+completable in roughly 5–10 minutes — not a statistically powered
+comparison.
+
+**Reducing answer-memory transfer.** A tester who already played Prototype A
+(section 7) solved one of X/Y/Z's proof graph once already and will
+recognize its shape faster the second time, regardless of mechanic —
+exactly the "structure learning" bias section 1 names. So: **assign a
+tester who has already played Prototype A a DIFFERENT dummy case for
+Prototype B than the one they used for A** (rotate X/Y/Z across the pool of
+testers the same way section 1's Latin-mapping table does for the full
+rotation). A tester who has not yet played anything may take any case.
+
+### Facilitator script
+
+1. Assign the tester one of X/Y/Z, per the rule above. If this tester
+   already ran the Prototype A pilot, confirm from your own notes which
+   case they used there and pick a different one here.
+2. Open the Deduction Lab (F1 → Deduction Lab tab), select the assigned
+   case, and press **Start Recording** *before* pressing **Launch Prototype
+   B** — this is what captures `prototype_started`/`round_started`
+   (`docs/prototype-b.md`, "Recorder events"). Get the tester's consent to
+   record first.
+3. Do **not** explain which clues are needed, how many rounds there are
+   beyond what the UI already shows, or that the cases share a proof graph
+   with any other session. A short neutral framing is fine: "You're looking
+   into an incident. Each question needs a few pieces of evidence placed
+   together to answer it — read what's here, and connect the clues that
+   answer the question."
+4. Ask the tester to think aloud.
+5. Intervene only if the tester is completely blocked (not merely stuck) —
+   remind them the Hint button exists, but never state which clue is
+   missing yourself.
+6. After completion (or after a reasonable time limit if they abandon —
+   record which), ask:
+   - Why do the selected clues prove the deduction only when combined?
+   - Which clue felt indispensable?
+   - Did the visible number of slots help, or did it give away too much?
+   - Did you reason about the facts, or try combinations?
+   - Did any rejected combination seem logically valid to you at the time?
+   - Was failed-attempt feedback useful without giving away the answer?
+   - Rate difficulty, 1–5.
+   - Rate satisfaction, 1–5.
+   - Which felt better: catching a contradiction in Prototype A, or
+     constructing a deduction in Prototype B — and why? (Skip this question
+     for a tester who has not played Prototype A.)
+
+### What to record
+
+Export the recording (`docs/prototype-b.md`'s schema, `"prototype":
+"clue_connection"`) and, alongside it, note:
+
+- completion time (from the export's `prototype_completed` payload);
+- connection attempts per round (filter `connection_submitted` by `round`);
+- rejected clue combinations (every `connection_submitted` whose category
+  wasn't `valid_support`);
+- clue-selection churn (`clue_selected`/`clue_removed` counts and, if
+  selection-order analysis is useful, their relative ordering in the raw
+  event stream — the submitted set itself is normalized, but these two
+  event types are not);
+- hint levels used per round (`hint_revealed` count/level);
+- abandonment (`prototype_abandoned`, if the session ends without
+  `prototype_completed`);
+- qualitative confusion moments, in the tester's own words;
+- whether the tester can restate the deduction in their own words after
+  solving it — the interview rubric from section 3 above, adapted: can they
+  explain WHY the combined clues establish the conclusion, not just WHAT the
+  conclusion was.
+
+Treat the 5–10 minute target and any small number of pilot testers as
+qualitative design evidence, not statistical proof — the same stance section
+1's "Residual bias to analyse, not ignore" already takes for the full
+rotation, and the same stance section 7 already takes for the Prototype A
+pilot.
+
+### Recommended gate before beginning Prototype C
+
+Do not start Prototype C until this pilot (or the team's own judgment from
+running it once or twice) confirms: both rounds are solvable through
+reasoning about which facts jointly establish the deduction (not
+"try-every-item-until-something-lights-up," which the fixed slot count and
+anti-brute-force validation are specifically meant to prevent), the visible
+slot count is reported as helpful framing rather than as a spoiler, and
+wrong-connection feedback is reported as useful rather than either too vague
+or too revealing. A pilot that instead surfaces basic UX confusion (can't
+find the Connect button, doesn't notice a slot is still empty) should be
+fixed and re-piloted before proceeding, for the same contamination reason
+section 7's own gate gives.

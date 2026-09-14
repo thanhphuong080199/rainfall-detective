@@ -57,6 +57,7 @@ func _initialize() -> void:
 		_test_recorder_controls()
 		_test_hide_show_preserves_session()
 		_test_translation_coverage()
+		_test_continue_button_stays_reachable_with_long_feedback()
 	else:
 		print("(skipped interactive Prototype A checks — not a debug build; OS.is_debug_build() gate could not be exercised either way here, see docs/prototype-a.md's Known limitations)")
 
@@ -418,3 +419,116 @@ func _test_translation_coverage() -> void:
 	_check(vi_title != "" and vi_title != en_title, "the Vietnamese title should be non-empty and differ from English")
 	_check(vi_present != "" and vi_present != en_present, "the Present Evidence button should also be retranslated")
 	prototype_a.close()
+
+
+## Milestone 1.12 regression: long feedback/explanation text must never push
+## the Continue button out of reach. PrototypeA.tscn now uses a fixed header,
+## a single expandable ScrollContainer body (%BodyScroll, holding PlayArea/
+## FeedbackPanel/CompletionPanel), and a fixed %Footer sibling placed AFTER
+## it in the outer VBox — a VBoxContainer always honors a non-expanding
+## sibling's minimum size, so %Footer (and therefore Continue) can never be
+## pushed outside the visible window by how long the body's content is.
+##
+## Godot's headless `-s` SceneTree entry scripts do not reliably compute real
+## Control pixel geometry (confirmed here by direct experimentation while
+## building this test — get_global_rect()/.size collapse or diverge from
+## project.godot's configured 1280x720 viewport in ways a real
+## `godot --path .` run does not; this project's own docs already name that
+## broader class of limitation — "Headless runs can't prove layout, visuals,
+## real mouse routing, or feel"). So this proves the fix through what
+## headless CAN reliably assert: (1) STRUCTURE — Continue/the completion
+## buttons live in %Footer, a sibling placed AFTER %BodyScroll, never a
+## descendant of it, so the scrolling body's content can never push them
+## anywhere; and (2) BEHAVIOR — driven through a real wrong-then-successful
+## submission, Continue stays visible and keyboard-focused however long the
+## (real, then synthetic, far-longer-than-any-authored-string) feedback text
+## is, in both locales, and the body remains capable of scrolling. Real
+## on-screen pixel verification is out of reach here — see the final
+## report's manual QA checklist for what a human should confirm in
+## `godot --path .`.
+func _test_continue_button_stays_reachable_with_long_feedback() -> void:
+	var footer: Control = prototype_a.get_node("%Footer")
+	var body_scroll: ScrollContainer = prototype_a.get_node("%BodyScroll")
+	var continue_button: Button = _button("ContinueButton")
+	var completion_buttons_row: Control = prototype_a.get_node("%CompletionButtonsRow")
+
+	# --- Structure: the footer can never be pushed by the scrolling body. ---
+	_check(continue_button.get_parent() == footer, "ContinueButton must live directly in the fixed Footer, never inside the scrolling body")
+	_check(completion_buttons_row.get_parent() == footer, "CompletionButtonsRow must also live in the fixed Footer")
+	_check(not _is_descendant_of(continue_button, body_scroll), "ContinueButton must NOT be a descendant of the scrolling BodyScroll")
+	_check(footer.get_parent() == body_scroll.get_parent() and footer.get_index() > body_scroll.get_index(), "Footer must be a LATER sibling than BodyScroll in the outer VBox, so its minimum size is always honored ahead of the scrolling body")
+	for child_name in ["%PlayArea", "%FeedbackPanel", "%CompletionPanel"]:
+		var child: Control = prototype_a.get_node(child_name)
+		_check(_is_descendant_of(child, body_scroll), "%s must live inside the scrolling BodyScroll" % child_name)
+	_check(body_scroll.get_v_scroll_bar() != null, "BodyScroll must be able to show a vertical scrollbar")
+
+	# --- Behavior: drive a real flow, then inject content far longer than
+	# any authored string, in both locales. ---
+	deduction_lab.open()
+	(deduction_lab.get_node("%LaunchPrototypeAButton") as Button).pressed.emit()
+	_start_case(CASE_ID)
+	_button("NextButton").pressed.emit()
+	_button("NextButton").pressed.emit()  # st_oren_never_touched
+
+	var explanation_label: Label = prototype_a.get_node("%FeedbackExplanation")
+	var witness_label: Label = prototype_a.get_node("%FeedbackWitnessResponse")
+	var longest_real: String = _longest_real_prototype_a_feedback_text()
+	var synthetic_long: String = "This synthetic sentence exists only to stress the feedback layout. ".repeat(80)
+	_check(synthetic_long.length() > longest_real.length(), "sanity — the synthetic string (%d chars) must exceed the longest real authored feedback text (%d chars)" % [synthetic_long.length(), longest_real.length()])
+
+	for locale in ["vi", "en"]:
+		locale_manager.set_locale(locale)
+		_click_select_evidence(POOL_LOST_PROPERTY_SHEET)
+		_present()  # 2nd locale pass re-presents an already-resolved claim, which safely reclassifies (see PrototypeAController.present_evidence()) and still shows feedback
+		_check(prototype_a.get_node("%FeedbackPanel").visible, "feedback must show after presenting (%s)" % locale)
+		_check(continue_button.visible, "Continue must be visible with real feedback text (%s)" % locale)
+		_check(continue_button.has_focus(), "opening feedback must place keyboard focus on Continue (%s)" % locale)
+		_check(continue_button.focus_mode != Control.FOCUS_NONE, "Continue must stay keyboard-focusable (%s)" % locale)
+
+		explanation_label.text = synthetic_long
+		witness_label.text = synthetic_long
+		await process_frame
+		await process_frame
+
+		_check(continue_button.visible, "Continue must remain visible once feedback text grows far longer than anything authored (%s)" % locale)
+		_check(continue_button.get_parent() == footer, "Continue's parentage must not change just because body content grew (%s)" % locale)
+		_check(explanation_label.text == synthetic_long and witness_label.text == synthetic_long, "sanity — the long text injection must actually be in place (%s)" % locale)
+
+	locale_manager.set_locale("vi")
+	prototype_a.close()
+
+
+## The longest success_explanation/witness_response string authored across
+## every case's prototype_a rounds, in either locale — used only as a sanity
+## floor for the synthetic string above, never as the sole tested content
+## (a real submission already exercises real localized text; see the loop
+## above).
+func _longest_real_prototype_a_feedback_text() -> String:
+	var longest := ""
+	for locale in ["vi", "en"]:
+		locale_manager.set_locale(locale)
+		for raw_id in content_db.get_all_deduction_case_ids():
+			var case_def: Dictionary = content_db.get_deduction_case(String(raw_id))
+			var proto: Variant = case_def.get("prototype_a")
+			if typeof(proto) != TYPE_DICTIONARY:
+				continue
+			for pa_round in ((proto as Dictionary).get("rounds", []) as Array):
+				for dict_name in ["success_explanations", "witness_responses"]:
+					var entries: Variant = (pa_round as Dictionary).get(dict_name, {})
+					if typeof(entries) != TYPE_DICTIONARY:
+						continue
+					for key in (entries as Dictionary).values():
+						var text: String = String(TranslationServer.translate(String(key)))
+						if text.length() > longest.length():
+							longest = text
+	locale_manager.set_locale("vi")
+	return longest
+
+
+func _is_descendant_of(node: Node, ancestor: Node) -> bool:
+	var current: Node = node.get_parent()
+	while current != null:
+		if current == ancestor:
+			return true
+		current = current.get_parent()
+	return false

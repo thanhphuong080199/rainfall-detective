@@ -192,6 +192,64 @@ static func prototype_a_case() -> Dictionary:
 	}
 
 
+## Minimal, self-contained fixture for Milestone 1.12's Prototype B
+## (PrototypeBController/PrototypeBPresenter — see docs/prototype-b.md). NOT
+## a full DeductionValidator-clean case (no suspects/questions/timeline/
+## ground_truth) — those classes never read those sections, so this only
+## carries what they actually touch: evidence, deduction claims with proof
+## sets, a base hint ladder for each (Prototype B REUSES the real hint
+## contract — see docs/prototype-b.md, "Hints", unlike Prototype A's own
+## fixture) and a prototype_b data layer. Two rounds, DELIBERATELY with
+## different slot counts, proving the controller reads slot_count from
+## content rather than hardcoding it:
+##   round_1: ded_first (3-slot deduction, requires e_a + e_b + e_c)
+##   round_2: ded_second (2-slot deduction, requires e_d + e_e)
+## e_noise bears on nothing (an irrelevant-evidence distractor).
+static func prototype_b_case() -> Dictionary:
+	return {
+		"id": "fx_pb_case",
+		"display_name": "FX",
+		"description": "FX",
+		"metadata": {"canon": false},
+		"evidence": [
+			{"id": "e_a", "name": "FX", "text": "FX", "source": "fixture", "certainty": "fixed", "tags": ["scene"]},
+			{"id": "e_b", "name": "FX", "text": "FX", "source": "fixture", "certainty": "fixed", "tags": ["scene"]},
+			{"id": "e_c", "name": "FX", "text": "FX", "source": "fixture", "certainty": "fixed", "tags": ["scene"]},
+			{"id": "e_d", "name": "FX", "text": "FX", "source": "fixture", "certainty": "fixed", "tags": ["scene"]},
+			{"id": "e_e", "name": "FX", "text": "FX", "source": "fixture", "certainty": "fixed", "tags": ["scene"]},
+			{"id": "e_noise", "name": "FX", "text": "FX", "source": "fixture", "certainty": "fixed", "tags": ["scene"]},
+		],
+		"claims": [
+			{
+				"id": "ded_first", "kind": "deduction", "veracity": "true", "required": true, "text": "FX first deduction",
+				"proof_sets": [{"id": "ps_first", "relation": "supports", "requires": ["e_a", "e_b", "e_c"]}],
+			},
+			{
+				"id": "ded_second", "kind": "deduction", "veracity": "true", "required": true, "text": "FX second deduction",
+				"proof_sets": [{"id": "ps_second", "relation": "supports", "requires": ["e_d", "e_e"]}],
+			},
+		],
+		"hints": [
+			_ladder("ded_first", "q_first", ["scene"], ["e_a", "e_b", "e_c"], "ded_first"),
+			_ladder("ded_second", "q_second", ["scene"], ["e_d", "e_e"], "ded_second"),
+		],
+		"prototype_b": {
+			"evidence_pool": ["e_a", "e_b", "e_c", "e_d", "e_e", "e_noise"],
+			"rounds": [
+				{
+					"id": "round_1", "question": "FX", "target": "ded_first", "relation": "supports",
+					"slot_count": 3, "success_explanation": "FX",
+				},
+				{
+					"id": "round_2", "question": "FX", "target": "ded_second", "relation": "supports",
+					"slot_count": 2, "success_explanation": "FX",
+				},
+			],
+			"completion_text": "FX",
+		},
+	}
+
+
 ## Finds an entry by id anywhere a test needs to mutate a fixture in place.
 static func find(case_def: Dictionary, section: String, entry_id: String) -> Dictionary:
 	for entry in case_def.get(section, []):

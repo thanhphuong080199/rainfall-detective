@@ -33,7 +33,11 @@ scenes/test/
 ├── prototype_a_controller_test.gd    Milestone 1.11: PrototypeAController interaction state + real-evaluator classification
 ├── prototype_a_presenter_test.gd     Milestone 1.11: player-view spoiler boundary + feedback-category mapping
 ├── prototype_a_content_test.gd       Milestone 1.11: the prototype_a data layer on the three prototype cases, by structural role
-├── prototype_a_scene_test.gd         Milestone 1.11: the Prototype A scene + Deduction Lab launch wiring (FULL only, see below)
+├── prototype_a_scene_test.gd         Milestone 1.11: the Prototype A scene + Deduction Lab launch wiring (FULL only, see below); also carries the Milestone 1.12 Continue-button layout regression
+├── prototype_b_controller_test.gd    Milestone 1.12: PrototypeBController interaction state + real-evaluator classification
+├── prototype_b_presenter_test.gd     Milestone 1.12: player-view spoiler boundary + feedback-category mapping
+├── prototype_b_content_test.gd       Milestone 1.12: the prototype_b data layer on the three prototype cases, by structural role, incl. the Prototype A/B separation audit
+├── prototype_b_scene_test.gd         Milestone 1.12: the Prototype B scene + Deduction Lab launch wiring (FULL only, see below), incl. its own copy of the Continue-button layout regression
 └── smoke_test.gd                  the critical-path / integration fixture (see below)
 ```
 
@@ -123,7 +127,10 @@ boot if `.godot/` is already built):
   --script res://scenes/test/deduction_lab_recorder_test.gd \
   --script res://scenes/test/prototype_a_controller_test.gd \
   --script res://scenes/test/prototype_a_presenter_test.gd \
-  --script res://scenes/test/prototype_a_content_test.gd
+  --script res://scenes/test/prototype_a_content_test.gd \
+  --script res://scenes/test/prototype_b_controller_test.gd \
+  --script res://scenes/test/prototype_b_presenter_test.gd \
+  --script res://scenes/test/prototype_b_content_test.gd
 ```
 
 **FULL** — before finishing a milestone/refactor, and what CI runs on every
@@ -153,6 +160,10 @@ checks `verify.sh` always does unless skipped:
   --script res://scenes/test/prototype_a_presenter_test.gd \
   --script res://scenes/test/prototype_a_content_test.gd \
   --script res://scenes/test/prototype_a_scene_test.gd \
+  --script res://scenes/test/prototype_b_controller_test.gd \
+  --script res://scenes/test/prototype_b_presenter_test.gd \
+  --script res://scenes/test/prototype_b_content_test.gd \
+  --script res://scenes/test/prototype_b_scene_test.gd \
   --script res://scenes/test/smoke_test.gd
 ```
 
@@ -412,7 +423,55 @@ active Lab case), reading/selecting evidence and presenting it through real
 buttons, wrong/correct/optional feedback, hint reveal, round transition and
 completion, restart/return confirmation (cancelling preserves the run
 exactly), recorder controls and the exported event vocabulary/schema, F1
-hide/show session preservation, and bilingual coverage.
+hide/show session preservation, bilingual coverage, and (Milestone 1.12) the
+Continue-button-stays-in-viewport layout regression
+(`_test_continue_button_stays_reachable_with_long_feedback`).
+
+### Prototype B tests (Milestone 1.12)
+
+`docs/prototype-b.md` is the source of truth for the mechanic itself; three
+more scripts join the deduction tests above in **both** FAST and FULL (same
+reasoning — pure, autoload-free, no scene tree):
+
+- `prototype_b_controller_test.gd` — `PrototypeBController`'s fresh-session-
+  per-run guarantee, isolation from a `DeductionLabController`'s and a
+  `PrototypeAController`'s own sessions, clue placement/removal/replacement,
+  exact slot-capacity enforcement (across rounds with DIFFERENT slot
+  counts), duplicate prevention, order-independence, classification through
+  the real `DeductionEvaluator`, idempotent resubmission, round/prototype
+  completion, hints via the real base API, stats/abandonment, and a
+  structural check that `DeductionSession`'s evaluator-only mutators are
+  never called directly. Uses its own fixture,
+  `deduction_fixtures.gd`'s `prototype_b_case()` (independent of
+  `base_case()`/`prototype_a_case()`).
+- `prototype_b_presenter_test.gd` — the player view's exact allow-listed
+  keys; a content sweep proving no domain id/structural role/target/relation
+  ever reaches it, against real X/Y/Z content; round-scoping (a future
+  round's question/target text is absent); `resolved_claim` absent before
+  success and populated after; and the evaluator-category → feedback
+  mapping for every outcome.
+- `prototype_b_content_test.gd` — X/Y/Z walked once in structural-role
+  terms: exactly two rounds targeting D1 and D3; D1's primary/alternate
+  paths both solve with 3 slots; D3 requires all 3 authored clues (no
+  2-of-3 subset resolves it); no proper subset of either accepted proof
+  resolves its target; every accepted proof item is available from the
+  start and pool-listed; translations resolve; the Prototype B
+  structural-signature shape matches across all three cases; and the
+  Prototype A/B separation audit (Prototype A's own accepted clue does not
+  alone solve Prototype B's D3 target), machine-checked against real
+  content.
+
+`prototype_b_scene_test.gd` is **FULL-only**, same reasoning as
+`prototype_a_scene_test.gd`/`deduction_lab_scene_test.gd`: launching from
+the Lab (with/without an active Lab case, and that launching Prototype B
+hides rather than resets Prototype A if it was open), reading/placing/
+removing/replacing evidence through real buttons, Connect disabled until
+every slot is filled, wrong-connection feedback with the board preserved,
+D1's primary AND alternate paths, D3 needing all three clues, hint reveal,
+round transition and completion, restart/return confirmation, recorder
+controls and the exported event vocabulary/schema, F1 hide/show session
+preservation, all three cases, bilingual coverage, and its own copy of the
+Milestone 1.12 Continue-button layout regression.
 
 Where new coverage goes: a new validation rule → a negative fixture in
 `deduction_validation_test.gd`; a new result category or constraint type →
