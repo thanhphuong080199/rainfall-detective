@@ -14,30 +14,99 @@ pinned down → what a change to that system should add. Read the actual
 function before adding to it — this table is a map, not a substitute for
 reading the file itself.
 
-Run the full suite via
-`.claude/skills/godot-development/scripts/verify.sh --script res://scenes/test/validate_content.gd --script res://scenes/test/conditions_test.gd --script res://scenes/test/effects_test.gd --script res://scenes/test/events_test.gd --script res://scenes/test/duplicate_execution_test.gd --script res://scenes/test/save_load_regression_test.gd --script res://scenes/test/negative_progression_test.gd --script res://scenes/test/dependency_analysis_test.gd --script res://scenes/test/deduction_evaluator_test.gd --script res://scenes/test/timeline_evaluator_test.gd --script res://scenes/test/deduction_validation_test.gd --script res://scenes/test/deduction_cases_test.gd --script res://scenes/test/deduction_lab_controller_test.gd --script res://scenes/test/deduction_lab_presenter_test.gd --script res://scenes/test/deduction_lab_recorder_test.gd --script res://scenes/test/deduction_lab_scene_test.gd --script res://scenes/test/smoke_test.gd`
-(docs/testing.md's FULL command) — see that doc for the FAST subset.
+This table (and the two canonical commands below) is reconciled against the
+*actual* current verification runners — `CLAUDE.md` and `docs/testing.md`
+own the authoritative FAST/FULL command lists; if this file and either of
+those ever disagree, `CLAUDE.md`/`docs/testing.md` win and this file is
+stale (fix it in the same change that touches either of them).
+
+**FAST** (assumes `.godot/` already built):
+```bash
+.claude/skills/godot-development/scripts/verify.sh --skip-import --skip-load-all --skip-boot \
+  --script res://scenes/test/validate_content.gd \
+  --script res://scenes/test/conditions_test.gd \
+  --script res://scenes/test/effects_test.gd \
+  --script res://scenes/test/dependency_analysis_test.gd \
+  --script res://scenes/test/deduction_evaluator_test.gd \
+  --script res://scenes/test/timeline_evaluator_test.gd \
+  --script res://scenes/test/deduction_validation_test.gd \
+  --script res://scenes/test/deduction_cases_test.gd \
+  --script res://scenes/test/deduction_lab_controller_test.gd \
+  --script res://scenes/test/deduction_lab_presenter_test.gd \
+  --script res://scenes/test/deduction_lab_recorder_test.gd \
+  --script res://scenes/test/prototype_a_controller_test.gd \
+  --script res://scenes/test/prototype_a_presenter_test.gd \
+  --script res://scenes/test/prototype_a_content_test.gd \
+  --script res://scenes/test/prototype_b_controller_test.gd \
+  --script res://scenes/test/prototype_b_presenter_test.gd \
+  --script res://scenes/test/prototype_b_content_test.gd
+```
+
+**FULL** (also what CI runs on every push/PR):
+```bash
+.claude/skills/godot-development/scripts/verify.sh \
+  --script res://scenes/test/validate_content.gd \
+  --script res://scenes/test/conditions_test.gd \
+  --script res://scenes/test/effects_test.gd \
+  --script res://scenes/test/events_test.gd \
+  --script res://scenes/test/duplicate_execution_test.gd \
+  --script res://scenes/test/save_load_regression_test.gd \
+  --script res://scenes/test/negative_progression_test.gd \
+  --script res://scenes/test/dependency_analysis_test.gd \
+  --script res://scenes/test/deduction_evaluator_test.gd \
+  --script res://scenes/test/timeline_evaluator_test.gd \
+  --script res://scenes/test/deduction_validation_test.gd \
+  --script res://scenes/test/deduction_cases_test.gd \
+  --script res://scenes/test/deduction_lab_controller_test.gd \
+  --script res://scenes/test/deduction_lab_presenter_test.gd \
+  --script res://scenes/test/deduction_lab_recorder_test.gd \
+  --script res://scenes/test/deduction_lab_scene_test.gd \
+  --script res://scenes/test/prototype_a_controller_test.gd \
+  --script res://scenes/test/prototype_a_presenter_test.gd \
+  --script res://scenes/test/prototype_a_content_test.gd \
+  --script res://scenes/test/prototype_a_scene_test.gd \
+  --script res://scenes/test/prototype_b_controller_test.gd \
+  --script res://scenes/test/prototype_b_presenter_test.gd \
+  --script res://scenes/test/prototype_b_content_test.gd \
+  --script res://scenes/test/prototype_b_scene_test.gd \
+  --script res://scenes/test/smoke_test.gd
+```
 
 ## Focused test files (add a new Condition/Effect/Event check here, not to smoke_test.gd)
 
-| File | Covers |
-|---|---|
-| `conditions_test.gd` | Every `ConditionEvaluator` leaf/composite shape, both directions where meaningful, plus the fail-closed edge cases and the validator's stacked-check precedence rejection. Add a new leaf shape's test here. |
-| `effects_test.gd` | Every `EffectRunner` effect type: resulting `GameState`, signal-emission-only-on-real-change, idempotency on repeat run, and a safe no-op for an unknown type. Add a new effect type's test here. |
-| `events_test.gd` | Negative trigger (missing condition piece), positive trigger, a "once" event's fire count under repeated reevaluation, an isolated event-chain regression, a chapter-scoped topic not leaking into an unrelated case, and `debug_reset_trigger()`'s state transitions (Milestone 1.8). |
-| `duplicate_execution_test.gd` | Regression coverage specifically for accidental double-firing: an event under redundant reevaluation, a real chapter completion (and the next chapter's activation) under redundant reevaluation, case completion likewise. |
-| `save_load_regression_test.gd` | An exact round trip of every persisted field, a triggered "once" event surviving save/reset/load without refiring, and a mid-chapter-2 save/load that doesn't re-run entry/completion effects. Isolated `user://` save file. |
-| `negative_progression_test.gd` | The paths where a bug could let a player skip required progression: event without required evidence, chapter with partial completion conditions, locked destination, wrong evidence presented. |
-| `dependency_analysis_test.gd` | `ContentValidator`'s dependency-reachability WARNING checks — both the pure collector functions in isolation and an end-to-end check that real sandbox content produces zero *unexpected* dependency warnings — plus (Milestone 1.8) `find_flag_producers`/`find_evidence_producers`/`find_interaction_producers` against real content, and the pure `_effect_produces_*` predicates in isolation. |
-| `deduction_evaluator_test.gd` | Milestone 1.9 — `DeductionEvaluator`/`DeductionSession` against `deduction_fixtures.gd`: every result category, order independence, alternate proofs, duplicate rejection, locked inputs, unlock-only-on-commit, conclusion locking, hint ladders, deterministic reset, JSON round trip. Add a new result category / API behaviour here. |
-| `timeline_evaluator_test.gd` | Milestone 1.9 — every `TimelineEvaluator` constraint type on both sides of its boundary, multiple valid timelines, optional violations, invalid input. Add a new constraint type here. |
-| `deduction_validation_test.gd` | Milestone 1.9/1.9.1 — one negative fixture per `DeductionValidator` rule, the intermediate-depth definition (evidence → D1 → D2 → conclusion passes, a third intermediate layer fails), conclusion/kind-change graph soundness, the deduction-gated-evidence warning, plus zero deduction errors/warnings in real content. Add a new deduction validation rule's negative fixture here. |
-| `deduction_cases_test.gd` | Milestone 1.9/1.9.1 — the three prototype cases (X/Y/Z) end to end in structural-role terms: primary + alternate path, conclusion locking, final-proof sufficiency (opportunity/staging/lies never resolve; removing exclusive-control evidence makes the conclusion unprovable), alternative-actor elimination, independent evidence availability, taught staging rule, statements/hypotheses/red herring, role topology + depth, timelines, identical structural signatures. Milestone 1.10 adds the "zone verified empty before the monitored window" regression (`_test_zone_verified_empty_before_window`, see `docs/deduction-prototype-cases.md` §0.1). |
-| `deduction_lab_controller_test.gd` | Milestone 1.10 — `DeductionLabController`: session ownership, isolation between cases (a fresh session on every start_case, even re-starting the same id), the has_progress()-gated switch/reset confirmation flow (immediate when nothing to lose, deferred + cancel-preserves-exactly + confirm-creates-isolated-session otherwise), mode toggle never mutating the session, snapshot/restore. |
-| `deduction_lab_presenter_test.gd` | Milestone 1.10 — `DeductionLabPresenter`: the Player Preview's exact allow-listed keys at every nesting level (structural), a content sweep against the real X/Y/Z cases proving no domain id/structural role/veracity value ever reaches it, claim-visibility gating (unresolved deduction/conclusion absent, appears the instant it's proven), hint-level-revealed progression, the fixture's gated-evidence case (X/Y/Z have none since 1.9.1), and that the Author Inspector view stays unfiltered (real ids, ground truth, proof sets). |
-| `deduction_lab_recorder_test.gd` | Milestone 1.10 — `DeductionLabRecorder`: off by default, Start/Stop/Clear, strictly-increasing sequence numbers and non-decreasing elapsed_ms via an injected fake clock, session-signal wiring with idempotent double-connect protection, `author_debug` vs. `player_preview` source tagging, the exported schema's exact fields, stable serialization, safe filename generation (including a path-traversal attempt), and export-failure handling — throwaway `user://` directory cleaned up before/after. |
-| `deduction_lab_scene_test.gd` | Milestone 1.10, **FULL only** — instantiates `Main.tscn`: DebugPanel integration (new tab, button wiring), F1 hide/show session preservation, Player/Author mode instantiation (every Author-only debug action button and every recorder control clicked once through the real UI), malformed/empty case-selection safety, bilingual coverage of the non-canon badge and the Overview tab's rendered text. |
-| `test_helpers.gd` | Not a test — shared `isolate_save`/`isolate_locale`/`finish` boilerplate every file above uses. |
+A script marked **FAST + FULL** is pure/autoload-free (no real scene tree)
+and costs a fraction of a second; one marked **FULL only** needs a real
+scene tree (`Main.tscn` instantiated) and is deliberately excluded from the
+FAST loop to keep routine iteration quick — see `docs/testing.md` for the
+rationale behind the split itself.
+
+| File | FAST/FULL | Covers |
+|---|---|---|
+| `conditions_test.gd` | FAST + FULL | Every `ConditionEvaluator` leaf/composite shape, both directions where meaningful, plus the fail-closed edge cases and the validator's stacked-check precedence rejection. Add a new leaf shape's test here. |
+| `effects_test.gd` | FAST + FULL | Every `EffectRunner` effect type: resulting `GameState`, signal-emission-only-on-real-change, idempotency on repeat run, and a safe no-op for an unknown type. Add a new effect type's test here. |
+| `events_test.gd` | FULL only | Negative trigger (missing condition piece), positive trigger, a "once" event's fire count under repeated reevaluation, an isolated event-chain regression, a chapter-scoped topic not leaking into an unrelated case, and `debug_reset_trigger()`'s state transitions (Milestone 1.8). |
+| `duplicate_execution_test.gd` | FULL only | Regression coverage specifically for accidental double-firing: an event under redundant reevaluation, a real chapter completion (and the next chapter's activation) under redundant reevaluation, case completion likewise. |
+| `save_load_regression_test.gd` | FULL only | An exact round trip of every persisted field, a triggered "once" event surviving save/reset/load without refiring, and a mid-chapter-2 save/load that doesn't re-run entry/completion effects. Isolated `user://` save file. |
+| `negative_progression_test.gd` | FULL only | The paths where a bug could let a player skip required progression: event without required evidence, chapter with partial completion conditions, locked destination, wrong evidence presented. |
+| `dependency_analysis_test.gd` | FAST + FULL | `ContentValidator`'s dependency-reachability WARNING checks — both the pure collector functions in isolation and an end-to-end check that real sandbox content produces zero *unexpected* dependency warnings — plus (Milestone 1.8) `find_flag_producers`/`find_evidence_producers`/`find_interaction_producers` against real content, and the pure `_effect_produces_*` predicates in isolation. |
+| `deduction_evaluator_test.gd` | FAST + FULL | Milestone 1.9 — `DeductionEvaluator`/`DeductionSession` against `deduction_fixtures.gd`: every result category, order independence, alternate proofs, duplicate rejection, locked inputs, unlock-only-on-commit, conclusion locking, hint ladders, deterministic reset, JSON round trip. Add a new result category / API behaviour here. |
+| `timeline_evaluator_test.gd` | FAST + FULL | Milestone 1.9 — every `TimelineEvaluator` constraint type on both sides of its boundary, multiple valid timelines, optional violations, invalid input. Add a new constraint type here. |
+| `deduction_validation_test.gd` | FAST + FULL | Milestone 1.9/1.9.1 — one negative fixture per `DeductionValidator` rule, the intermediate-depth definition (evidence → D1 → D2 → conclusion passes, a third intermediate layer fails), conclusion/kind-change graph soundness, the deduction-gated-evidence warning, plus zero deduction errors/warnings in real content. Milestone 1.12 adds the Prototype B validation rules (target must be a `deduction`, must not double as a Prototype A target, proof cardinality must match `slot_count`, no proper subset may resolve the target). Add a new deduction validation rule's negative fixture here. |
+| `deduction_cases_test.gd` | FAST + FULL | Milestone 1.9/1.9.1 — the three prototype cases (X/Y/Z) end to end in structural-role terms: primary + alternate path, conclusion locking, final-proof sufficiency (opportunity/staging/lies never resolve; removing exclusive-control evidence makes the conclusion unprovable), alternative-actor elimination, independent evidence availability, taught staging rule, statements/hypotheses/red herring, role topology + depth, timelines, identical structural signatures. Milestone 1.10 adds the "zone verified empty before the monitored window" regression (`_test_zone_verified_empty_before_window`, see `docs/deduction-prototype-cases.md` §0.1). Its `_test_staging_rule_is_taught()` neighbors are what Milestone 1.12's `prototype_b_content_test.gd` leans on to justify Prototype B's D3 round using `slot_count: 3`, not the milestone brief's illustrative 2 (see that row below). |
+| `deduction_lab_controller_test.gd` | FAST + FULL | Milestone 1.10 — `DeductionLabController`: session ownership, isolation between cases (a fresh session on every start_case, even re-starting the same id), the has_progress()-gated switch/reset confirmation flow (immediate when nothing to lose, deferred + cancel-preserves-exactly + confirm-creates-isolated-session otherwise), mode toggle never mutating the session, snapshot/restore. |
+| `deduction_lab_presenter_test.gd` | FAST + FULL | Milestone 1.10 — `DeductionLabPresenter`: the Player Preview's exact allow-listed keys at every nesting level (structural), a content sweep against the real X/Y/Z cases proving no domain id/structural role/veracity value ever reaches it, claim-visibility gating (unresolved deduction/conclusion absent, appears the instant it's proven), hint-level-revealed progression, the fixture's gated-evidence case (X/Y/Z have none since 1.9.1), and that the Author Inspector view stays unfiltered (real ids, ground truth, proof sets). |
+| `deduction_lab_recorder_test.gd` | FAST + FULL | Milestone 1.10 — `DeductionLabRecorder`: off by default, Start/Stop/Clear, strictly-increasing sequence numbers and non-decreasing elapsed_ms via an injected fake clock, session-signal wiring with idempotent double-connect protection, `author_debug` vs. `player_preview` source tagging, the exported schema's exact fields, stable serialization, safe filename generation (including a path-traversal attempt), and export-failure handling — throwaway `user://` directory cleaned up before/after. Reused completely unmodified by both Prototype A (`"statement_contradiction"`) and Prototype B (`"clue_connection"`) — see the two rows below. |
+| `deduction_lab_scene_test.gd` | FULL only | Milestone 1.10 — instantiates `Main.tscn`: DebugPanel integration (new tab, button wiring), F1 hide/show session preservation, Player/Author mode instantiation (every Author-only debug action button and every recorder control clicked once through the real UI), malformed/empty case-selection safety, bilingual coverage of the non-canon badge and the Overview tab's rendered text. Does **not** cover the "Launch Prototype A/B" buttons themselves — that launch wiring is exercised by `prototype_a_scene_test.gd`/`prototype_b_scene_test.gd` below, against the same `DeductionLab.tscn` instance. |
+| `prototype_a_controller_test.gd` | FAST + FULL | Milestone 1.11 — `PrototypeAController` (`docs/prototype-a.md`): fresh session per run, isolation from a `DeductionLabController`'s own session, statement/evidence navigation, one-evidence-only enforcement, required/optional/wrong-attempt classification through the real `DeductionEvaluator`, idempotent resubmission, round/prototype completion via `acknowledge_feedback()`, hints (Prototype-A-owned data, not the base contract's), stats/abandonment, and a structural check that no `DeductionSession` mutator is ever called directly. Uses `deduction_fixtures.gd`'s `prototype_a_case()`. |
+| `prototype_a_presenter_test.gd` | FAST + FULL | Milestone 1.11 — `PrototypeAPresenter`: the player view's exact allow-listed keys, a spoiler sweep against real X/Y/Z content, round-scoping (no future-round text), evidence text gated on opened, hint progression, and `build_feedback()`'s mapping for every evaluator category. |
+| `prototype_a_content_test.gd` | FAST + FULL | Milestone 1.11 — X/Y/Z walked once in structural-role terms: true/incomplete/required×2/optional statement-role coverage, each target solvable with one evidence item actually in the pool, every pool item available from the start, true/incomplete statements never refutable, translations resolve, and the Prototype A structural-signature shape matches across all three cases. |
+| `prototype_a_scene_test.gd` | FULL only | Milestone 1.11 — launching from the Lab (with/without an active Lab case), reading/selecting evidence and presenting it through real buttons, wrong/correct/optional feedback, hint reveal, round transition and completion, restart/return confirmation (cancelling preserves the run exactly), recorder controls and the exported schema/event vocabulary, F1 hide/show session preservation, bilingual coverage. Milestone 1.12 adds `_test_continue_button_stays_reachable_with_long_feedback()` — the Continue-button layout regression: structural proof Continue lives in `%Footer`, outside the scrolling `%BodyScroll`, plus behavioral proof it stays visible/keyboard-focused with real-then-synthetic-long feedback text in both locales (see `docs/prototype-a.md`, "Layout", for why this is checked structurally/behaviorally rather than by real pixel geometry). |
+| `prototype_b_controller_test.gd` | FAST + FULL | Milestone 1.12 — `PrototypeBController` (`docs/prototype-b.md`): fresh session per run, isolation from a `DeductionLabController`'s *and* a `PrototypeAController`'s own sessions, clue placement/removal/replacement, exact slot-capacity enforcement (including that different rounds may declare different `slot_count`s, read from content, never hardcoded), duplicate prevention, order-independence, classification through the real `DeductionEvaluator`, idempotent resubmission, round/prototype completion, hints via the **real base hint API** (not a private copy, unlike Prototype A), stats/abandonment, and a structural check that no `DeductionSession` mutator is ever called directly. Uses its own fixture, `deduction_fixtures.gd`'s `prototype_b_case()` (two rounds with deliberately *different* slot counts). |
+| `prototype_b_presenter_test.gd` | FAST + FULL | Milestone 1.12 — `PrototypeBPresenter`: the player view's exact allow-listed keys, a spoiler sweep against real X/Y/Z content (no domain id/structural role/target/relation ever reaches it), round-scoping (a future round's question/target text is absent), `resolved_claim` absent before success and populated only after, hint progression, and `build_feedback()`'s mapping for every evaluator category. |
+| `prototype_b_content_test.gd` | FAST + FULL | Milestone 1.12 — X/Y/Z walked once in structural-role terms: exactly two rounds targeting D1 and D3; D1's primary AND alternate 3-item paths both solve with `slot_count: 3`; D3 requires all 3 authored clues (no 2-of-3 subset resolves it — the audited reason round 2 uses 3 slots, not the milestone brief's illustrative 2, backed directly by `deduction_cases_test.gd`'s pre-existing insufficiency assertions); no proper subset of either accepted proof resolves its target; every accepted proof item is available from the start and pool-listed; translations resolve; the Prototype B structural-signature shape matches across all three cases; and the Prototype A/B separation audit — Prototype A's own single accepted clue does not, alone, solve Prototype B's D3 target — machine-checked against real content. |
+| `prototype_b_scene_test.gd` | FULL only | Milestone 1.12 — launching from the Lab (with/without an active Lab case, and that launching Prototype B hides rather than resets Prototype A if it was open, and vice versa), reading/placing/removing/replacing evidence through real buttons, Connect disabled until every slot is filled, wrong-connection feedback with the board preserved, D1's primary AND alternate paths, D3 needing all three clues, hint reveal, round transition and completion, restart/return confirmation, recorder controls and the exported event vocabulary/schema (including normalized `evidence_ids`), F1 hide/show session preservation, all three cases solving round 1, bilingual coverage, and its own copy of the Milestone 1.12 Continue-button layout regression (same rationale as `prototype_a_scene_test.gd`'s). |
+| `deduction_fixtures.gd` | n/a — fixture | Not a test — hand-built deduction case fixtures used by the tests above: `base_case()` (the deduction-foundation fixture, Milestone 1.9), `prototype_a_case()` (Milestone 1.11), `prototype_b_case()` (Milestone 1.12, two rounds with different slot counts). Never reaches `ContentDB`, so a fixture can be as deliberately broken as a negative test needs. |
+| `test_helpers.gd` | n/a — helper | Not a test — shared `isolate_save`/`isolate_locale`/`finish` boilerplate every file above uses. |
 
 ## `ContentValidator` / `ContentDB` — `_test_content_loaded`
 

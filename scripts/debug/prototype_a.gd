@@ -54,16 +54,31 @@ var _pending_confirmed_action: Callable = Callable()
 @onready var case_file_label: Label = %CaseFileLabel
 @onready var evidence_list: VBoxContainer = %EvidenceList
 
+## BodyScroll (Fixed header / Expandable ScrollContainer / Fixed action
+## footer — Milestone 1.12's fix for the Continue-button-pushed-offscreen
+## regression, see docs/prototype-a.md, "Layout"): PlayArea, FeedbackPanel and
+## CompletionPanel all live inside this single scrolling body, so however
+## long the localized feedback/completion text is, it scrolls instead of
+## growing past the visible window. ContinueButton/CompletionButtonsRow/
+## RecorderRow live in Footer, a fixed sibling AFTER BodyScroll in the outer
+## VBox — a VBoxContainer always honors a non-expanding sibling's minimum
+## size, so the footer (and therefore Continue) can never be pushed off
+## whatever the scrolling body's content demands.
+@onready var body_scroll: ScrollContainer = %BodyScroll
+
 @onready var feedback_panel: PanelContainer = %FeedbackPanel
 @onready var feedback_headline: Label = %FeedbackHeadline
 @onready var feedback_explanation: Label = %FeedbackExplanation
 @onready var feedback_witness_response: Label = %FeedbackWitnessResponse
-@onready var continue_button: Button = %ContinueButton
 
 @onready var completion_panel: PanelContainer = %CompletionPanel
 @onready var completion_title_label: Label = %CompletionTitleLabel
 @onready var completion_text_label: Label = %CompletionTextLabel
 @onready var stats_list: VBoxContainer = %StatsList
+
+@onready var footer: VBoxContainer = %Footer
+@onready var continue_button: Button = %ContinueButton
+@onready var completion_buttons_row: HBoxContainer = %CompletionButtonsRow
 @onready var completion_restart_button: Button = %CompletionRestartButton
 @onready var completion_export_button: Button = %CompletionExportButton
 @onready var completion_return_button: Button = %CompletionReturnButton
@@ -232,6 +247,8 @@ func _start_run(case_def: Dictionary) -> void:
 	_recorder.set_current_source(DeductionLabRecorder.SOURCE_PLAYER_PREVIEW)
 	_controller.start(case_def, _recorder)
 	feedback_panel.visible = false
+	continue_button.visible = false
+	body_scroll.scroll_vertical = 0
 	_set_status("")
 	refresh()
 
@@ -273,6 +290,7 @@ func refresh() -> void:
 	var started: bool = _controller.get_session() != null
 	play_area.visible = started and not _controller.is_completed()
 	completion_panel.visible = started and _controller.is_completed()
+	completion_buttons_row.visible = completion_panel.visible
 	if not started:
 		progress_label.text = ""
 		_render_recorder()
@@ -444,6 +462,12 @@ func _on_present_pressed() -> void:
 	refresh()
 
 
+## However long the localized explanation/witness_response text is, Continue
+## must stay visible and reachable (Milestone 1.12): the body scrolls back to
+## the top so the player sees the headline first, and focus moves onto
+## Continue itself — reachable by keyboard immediately, and a sensible resting
+## place for focus the instant feedback appears (see PrototypeA.tscn's
+## Fixed-header/ScrollContainer/Fixed-footer structure, docs/prototype-a.md).
 func _show_feedback(result: Dictionary) -> void:
 	var feedback: Dictionary = PrototypeAPresenter.build_feedback(_controller.get_case_def(), result)
 	feedback_headline.text = feedback.get("headline", "")
@@ -452,10 +476,14 @@ func _show_feedback(result: Dictionary) -> void:
 	feedback_witness_response.text = feedback.get("witness_response", "")
 	feedback_witness_response.visible = String(feedback.get("witness_response", "")) != ""
 	feedback_panel.visible = true
+	continue_button.visible = true
+	body_scroll.scroll_vertical = 0
+	continue_button.grab_focus()
 
 
 func _on_continue_pressed() -> void:
 	feedback_panel.visible = false
+	continue_button.visible = false
 	_controller.acknowledge_feedback()
 	refresh()
 

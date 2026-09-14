@@ -55,6 +55,7 @@ static func validate_case(case_def: Dictionary, errors: Array[String], warnings:
 	_validate_ground_truth(case_def, ctx, errors)
 	_validate_dependency_graph(case_def, ctx, errors, warnings)
 	_validate_prototype_a(case_def, ctx, errors, warnings)
+	_validate_prototype_b(case_def, ctx, errors, warnings)
 
 
 # ---------------------------------------------------------------------------
@@ -903,6 +904,206 @@ static func _prototype_a_signature_lines(case_def: Dictionary, role_of: Dictiona
 
 
 # ---------------------------------------------------------------------------
+# Prototype B (Milestone 1.12) — optional per-case data layer under
+# case_def["prototype_b"]: {evidence_pool, rounds: [{id, question, target,
+# relation, slot_count, success_explanation}], completion_text}. See
+# docs/prototype-b.md. Absent entirely on a case with no Prototype B content
+# (e.g. the hand-built fixtures) — this whole section is then a no-op.
+##
+## Deliberately REUSES case_def["hints"]/DeductionEvaluator.request_hint()
+## for hint progress, unlike _validate_prototype_a above: every Prototype B
+## round targets a real "deduction" claim, which the base hint contract
+## already supports (_validate_hints requires a ladder for every required
+## deduction) — see docs/prototype-b.md, "Hints". So there is no
+## Prototype-B-owned hint shape to validate here.
+##
+## Local variables below are named "entry"/"pb_round" rather than "round" to
+## avoid shadowing GDScript's builtin round() function.
+
+## A player must never win a round with a single clue — see docs/prototype-b.md,
+## "Anti-brute-force rule".
+const PROTOTYPE_B_MIN_SLOT_COUNT := 2
+
+static func _validate_prototype_b(case_def: Dictionary, ctx: String, errors: Array[String], warnings: Array[String]) -> void:
+	var proto: Variant = case_def.get("prototype_b")
+	if proto == null:
+		return
+	if typeof(proto) != TYPE_DICTIONARY:
+		errors.append('%s prototype_b must be an object' % ctx)
+		return
+	var pb_ctx: String = "%s prototype_b" % ctx
+
+	var pool_ids: Dictionary = {}
+	var raw_pool: Variant = proto.get("evidence_pool")
+	if not _is_string_array(raw_pool):
+		errors.append('%s evidence_pool must be an array of evidence ids' % pb_ctx)
+		raw_pool = []
+	for evidence_id in DeductionEvaluator.string_array(raw_pool):
+		var evidence: Dictionary = DeductionEvaluator.find_evidence(case_def, evidence_id)
+		if evidence.is_empty():
+			errors.append('%s evidence_pool references undefined evidence "%s"' % [pb_ctx, evidence_id])
+		elif not (evidence.get("unlock_requires", []) as Array).is_empty():
+			errors.append('%s evidence_pool item "%s" has unlock_requires — every Prototype B evidence item must be available from the start' % [pb_ctx, evidence_id])
+		pool_ids[evidence_id] = true
+
+	_require_text(proto.get("completion_text"), "%s completion_text" % pb_ctx, errors)
+
+	var raw_rounds: Variant = proto.get("rounds")
+	if typeof(raw_rounds) != TYPE_ARRAY or (raw_rounds as Array).is_empty():
+		errors.append('%s must declare a non-empty "rounds" array' % pb_ctx)
+		return
+
+	# Prototype B must target a broader DEDUCTION, never the same claim
+	# Prototype A cross-examines as a statement — see docs/prototype-b.md,
+	# "Separation from Prototype A".
+	var prototype_a_targets: Dictionary = {}
+	var proto_a: Variant = case_def.get("prototype_a")
+	if typeof(proto_a) == TYPE_DICTIONARY:
+		for pa_round in _dicts((proto_a as Dictionary).get("rounds", [])):
+			for claim_id in DeductionEvaluator.string_array(pa_round.get("required_refutations", [])) + DeductionEvaluator.string_array(pa_round.get("optional_refutations", [])):
+				prototype_a_targets[claim_id] = true
+
+	var seen_round_ids: Dictionary = {}
+	var seen_targets: Dictionary = {}  # claim id -> round context, across ALL rounds
+	for i in (raw_rounds as Array).size():
+		var pb_round: Variant = (raw_rounds as Array)[i]
+		var round_ctx: String = "%s round %d" % [pb_ctx, i + 1]
+		if typeof(pb_round) != TYPE_DICTIONARY:
+			errors.append('%s is not an object' % round_ctx)
+			continue
+
+		var round_id: String = str(pb_round.get("id", ""))
+		if round_id == "":
+			errors.append('%s has no "id"' % round_ctx)
+		elif seen_round_ids.has(round_id):
+			errors.append('%s duplicates round id "%s" (already used by round %d)' % [round_ctx, round_id, seen_round_ids[round_id]])
+		else:
+			seen_round_ids[round_id] = i + 1
+
+		_require_text(pb_round.get("question"), "%s question" % round_ctx, errors)
+		_require_text(pb_round.get("success_explanation"), "%s success_explanation" % round_ctx, errors)
+
+		var target: String = str(pb_round.get("target", ""))
+		var target_claim: Dictionary = DeductionEvaluator.find_claim(case_def, target)
+		if target_claim.is_empty():
+			errors.append('%s references undefined target claim "%s"' % [round_ctx, target])
+			continue
+		if str(target_claim.get("kind", "")) != "deduction":
+			errors.append('%s target "%s" is a %s, not a deduction — Prototype B may only connect clues into a DEDUCTION, never a statement, hypothesis, explanation or the final conclusion' % [round_ctx, target, target_claim.get("kind", "")])
+			continue
+		if prototype_a_targets.has(target):
+			errors.append('%s target "%s" is also a Prototype A statement-contradiction target — Prototype B must target a broader deduction claim, never the same claim Prototype A cross-examines' % [round_ctx, target])
+		if seen_targets.has(target):
+			errors.append('%s targets "%s" a second time (already targeted in %s) — a claim may only be a Prototype B round target once' % [round_ctx, target, seen_targets[target]])
+		else:
+			seen_targets[target] = round_ctx
+
+		var relation: String = str(pb_round.get("relation", ""))
+		if not DeductionEvaluator.RELATIONS.has(relation):
+			errors.append('%s relation "%s" is not a valid relation — supported relations are %s' % [round_ctx, relation, ", ".join(DeductionEvaluator.RELATIONS)])
+			continue
+
+		var slot_count: int = TimelineEvaluator.parse_minutes(pb_round.get("slot_count"), -1)
+		if slot_count < PROTOTYPE_B_MIN_SLOT_COUNT:
+			errors.append('%s slot_count must be a whole number of at least %d (a single clue must never be enough to connect) — got %s' % [round_ctx, PROTOTYPE_B_MIN_SLOT_COUNT, pb_round.get("slot_count")])
+			continue
+
+		_validate_prototype_b_target(case_def, target, target_claim, relation, slot_count, pool_ids, round_ctx, errors)
+
+
+## The target must have at least one proof set whose relation and item COUNT
+## exactly match the round's (relation, slot_count) — "proof cardinality
+## inconsistent with visible slots" — made only of evidence already in
+## evidence_pool (never a derived deduction: Prototype B only ever selects
+## evidence — see docs/prototype-b.md), and no PROPER SUBSET of that accepted
+## set may itself already resolve the target ("valid proper subset that would
+## make a larger connection redundant" / "single-evidence shortcut" — the
+## anti-brute-force rule, checked here with the real evaluator against every
+## non-empty proper subset, bounded since slot_count is always small).
+static func _validate_prototype_b_target(case_def: Dictionary, target: String, target_claim: Dictionary, relation: String, slot_count: int, pool_ids: Dictionary, round_ctx: String, errors: Array[String]) -> void:
+	var matching_sets: Array[Dictionary] = []
+	for proof_set in _dicts(target_claim.get("proof_sets", [])):
+		if str(proof_set.get("relation", "")) != relation:
+			continue
+		var requires: Array[String] = DeductionEvaluator.string_array(proof_set.get("requires", []))
+		if requires.size() == slot_count:
+			matching_sets.append(proof_set)
+	if matching_sets.is_empty():
+		errors.append('%s target "%s" has no %s proof set with exactly %d required item(s) — proof cardinality must match the visible slot count, or the round could never be won' % [round_ctx, target, relation, slot_count])
+		return
+
+	var fresh_session := DeductionSession.new(str(case_def.get("id", "")))
+	for proof_set in matching_sets:
+		var requires: Array[String] = DeductionEvaluator.string_array(proof_set.get("requires", []))
+		for item_id in requires:
+			if _claim_kind(case_def, item_id) == "deduction":
+				errors.append('%s target "%s" accepted proof set "%s" requires "%s", which is a deduction — Prototype B rounds may only require EVIDENCE items, never a derived deduction as a selectable clue' % [round_ctx, target, proof_set.get("id", ""), item_id])
+			elif DeductionEvaluator.find_evidence(case_def, item_id).is_empty():
+				errors.append('%s target "%s" accepted proof set "%s" references undefined evidence "%s"' % [round_ctx, target, proof_set.get("id", ""), item_id])
+			elif not pool_ids.has(item_id):
+				errors.append('%s target "%s" is solvable with evidence "%s", which is missing from prototype_b.evidence_pool' % [round_ctx, target, item_id])
+		if requires.size() <= 6:  # bounded — 2^6-2 = 62 subsets, cheap; real rounds are 2-4 items
+			for subset in _proper_subsets(requires):
+				var result: Dictionary = DeductionEvaluator.classify_attempt(case_def, fresh_session, target, relation, subset)
+				if DeductionEvaluator.is_valid_category(str(result.get("category", ""))):
+					errors.append('%s target "%s" accepted proof set "%s" has a smaller subset %s that ALREADY resolves it — a player could submit fewer clues than the round\'s slot_count and still win, defeating the anti-brute-force rule' % [round_ctx, target, proof_set.get("id", ""), subset])
+
+
+## Every non-empty PROPER subset of `items` (excludes both the empty set and
+## the full set), as a bitmask enumeration — cheap for the small (2-6 item)
+## lists a Prototype B proof set actually has.
+static func _proper_subsets(items: Array[String]) -> Array:
+	var subsets: Array = []
+	var n: int = items.size()
+	for mask in range(1, (1 << n) - 1):
+		var subset: Array[String] = []
+		for bit in n:
+			if mask & (1 << bit) != 0:
+				subset.append(items[bit])
+		subsets.append(subset)
+	return subsets
+
+
+## [[key, context], ...] additional translation keys Prototype B's optional
+## data layer introduces — round questions, success explanations and
+## completion_text. Called from ContentValidator alongside collect_text_keys()
+## (see docs/deduction-system.md, "Content validation").
+static func collect_prototype_b_text_keys(case_def: Dictionary) -> Array[Array]:
+	var keys: Array[Array] = []
+	var proto: Variant = case_def.get("prototype_b")
+	if typeof(proto) != TYPE_DICTIONARY:
+		return keys
+	var ctx: String = 'Deduction case "%s" prototype_b' % str(case_def.get("id", ""))
+	keys.append([proto.get("completion_text", ""), "%s completion_text" % ctx])
+	for pb_round in _dicts(proto.get("rounds", [])):
+		var round_ctx: String = '%s round "%s"' % [ctx, pb_round.get("id", "")]
+		keys.append([pb_round.get("question", ""), "%s question" % round_ctx])
+		keys.append([pb_round.get("success_explanation", ""), "%s success_explanation" % round_ctx])
+	return keys
+
+
+## Appended to structural_signature() (see below) when a case declares
+## prototype_b, so validate_structural_equivalence() enforces the same
+## round/target/slot-count SHAPE across X/Y/Z automatically. Roles only,
+## never ids or translation keys: a round is compared by index.
+static func _prototype_b_signature_lines(case_def: Dictionary, role_of: Dictionary) -> Array[String]:
+	var lines: Array[String] = []
+	var proto: Variant = case_def.get("prototype_b")
+	if typeof(proto) != TYPE_DICTIONARY:
+		return lines
+	lines.append("prototype_b:evidence_pool=%s" % _roles(proto.get("evidence_pool", []), role_of))
+	var rounds: Array[Dictionary] = _dicts(proto.get("rounds", []))
+	lines.append("prototype_b:round_count=%d" % rounds.size())
+	for i in rounds.size():
+		var pb_round: Dictionary = rounds[i]
+		lines.append("prototype_b:round=%d:target=%s:relation=%s:slot_count=%d" % [
+			i, role_of.get(str(pb_round.get("target", "")), ""), pb_round.get("relation", ""),
+			TimelineEvaluator.parse_minutes(pb_round.get("slot_count"), -1),
+		])
+	return lines
+
+
+# ---------------------------------------------------------------------------
 # Structural equivalence
 
 ## A case's proof-graph shape in role terms only — no ids, no text — as a
@@ -977,6 +1178,7 @@ static func structural_signature(case_def: Dictionary) -> Array[String]:
 			role_of.get(str(truth.get("conclusion", "")), ""),
 		])
 	signature.append_array(_prototype_a_signature_lines(case_def, role_of))
+	signature.append_array(_prototype_b_signature_lines(case_def, role_of))
 	signature.sort()
 	return signature
 

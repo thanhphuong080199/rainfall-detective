@@ -339,5 +339,27 @@
       }
     ],
     "completion_text": "DED_PROTO_X_PROTOA_COMPLETION"
+  },
+  "prototype_b": {
+    "evidence_pool": ["e_door_log", "e_tram_tap", "e_harbor_photo", "e_route_note", "e_forced_window", "e_latch_guide", "e_window_latch", "e_lost_property_sheet", "e_back_door_sighting"],
+    "rounds": [
+      {
+        "id": "round_1",
+        "question": "DED_PROTO_X_PROTOB_Q1",
+        "target": "ded_badge_misused",
+        "relation": "supports",
+        "slot_count": 3,
+        "success_explanation": "DED_PROTO_X_PROTOB_EXP1"
+      },
+      {
+        "id": "round_2",
+        "question": "DED_PROTO_X_PROTOB_Q2",
+        "target": "ded_break_in_staged",
+        "relation": "supports",
+        "slot_count": 3,
+        "success_explanation": "DED_PROTO_X_PROTOB_EXP2"
+      }
+    ],
+    "completion_text": "DED_PROTO_X_PROTOB_COMPLETION"
   }
 }

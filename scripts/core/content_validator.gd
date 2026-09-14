@@ -642,6 +642,8 @@ static func _validate_deduction_cases(errors: Array[String], warnings: Array[Str
 			_validate_translatable(entry[0], entry[1], errors)
 		for entry in DeductionValidator.collect_prototype_a_text_keys(data):
 			_validate_translatable(entry[0], entry[1], errors)
+		for entry in DeductionValidator.collect_prototype_b_text_keys(data):
+			_validate_translatable(entry[0], entry[1], errors)
 		case_list.append(data)
 	DeductionValidator.validate_structural_equivalence(case_list, errors)
 

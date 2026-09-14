@@ -339,6 +339,55 @@ between X/Y/Z. A warning (not an error) fires if the total required-
 refutation count across all rounds isn't exactly 2, since that's the
 milestone's designed 5-10 minute target, not a structural requirement.
 
+## Layout (Milestone 1.12 fix)
+
+Manual play surfaced a regression: when the feedback/explanation text under
+a submission was long (especially in Vietnamese, which typically runs
+longer than the equivalent English), it pushed the **Continue** button
+outside the visible window at 1280×720, since the original `PrototypeA.tscn`
+stacked `PlayArea`, `FeedbackPanel` (with `ContinueButton` inside it) and
+`CompletionPanel` directly as siblings in one `VBoxContainer` with no
+scrollable region — a `VBoxContainer` gives every non-expanding child its
+full requested minimum size, so however tall the feedback text's wrapped
+`Label` needed to be, the container just grew to fit it, past the window's
+actual bottom edge.
+
+The fix, applied without hardcoded text lengths, truncation, smaller fonts,
+or per-language offsets: the scene now has a **fixed header** (title/case
+row/objective/progress/status), a single **expandable `%BodyScroll`**
+(`ScrollContainer`) holding `PlayArea`/`FeedbackPanel`/`CompletionPanel`
+together, and a **fixed `%Footer`** (`VBoxContainer`) placed as a LATER
+sibling of `%BodyScroll` in the outer `VBoxContainer`, holding
+`ContinueButton`/`CompletionButtonsRow`/`RecorderRow`. A `VBoxContainer`
+always honors a non-expanding sibling's minimum size, so `%Footer` (and
+therefore Continue) can never be pushed outside the window by how long the
+scrolling body's content is — the body clips and scrolls instead. Opening
+feedback resets `%BodyScroll.scroll_vertical` to 0 and calls
+`continue_button.grab_focus()`, so the headline is visible first and
+keyboard users land on Continue immediately (`prototype_a.gd`'s
+`_show_feedback()`). Prototype B (`docs/prototype-b.md`) uses the identical
+structure in `PrototypeB.tscn` from the start, so it never reproduces this
+bug; the Deduction Lab's own screen (`DeductionLab.tscn`) was audited too
+and found NOT to have the same defect — its `%Tabs` (`TabContainer`) is
+itself the expanding element, and every tab already wraps its content in its
+own `ScrollContainer` with no button living below variable-height text.
+
+**Headless verification limitation.** Godot's `-s` `SceneTree` entry scripts
+do not reliably compute real Control pixel geometry in this environment —
+confirmed by direct experimentation while building the regression test (the
+root `Window`'s `.size` collapses to a dummy 64×64 after the first
+processed frame regardless of `project.godot`'s configured 1280×720 or an
+explicit script-side override, and reasserting it afterward does not
+propagate a fresh layout pass down through the existing Control tree). This
+is the same class of limitation `docs/architecture.md`'s "Known
+limitations" and `.claude/skills/godot-development` already name ("Headless
+runs can't prove layout, visuals, real mouse routing, or feel"). So
+`prototype_a_scene_test.gd`'s `_test_continue_button_stays_reachable_with_
+long_feedback()` proves the fix through what headless CAN reliably assert
+— see "Testing" below — and real on-screen pixel verification is a manual
+QA step (see the Milestone 1.12 final report for exactly what was/wasn't
+checked).
+
 ## Testing
 
 | File | Covers |
@@ -346,7 +395,7 @@ milestone's designed 5-10 minute target, not a structural requirement.
 | `scenes/test/prototype_a_controller_test.gd` | Fresh session per run, isolation from a `DeductionLabController`'s own session, statement/evidence navigation, one-evidence-only enforcement, required/optional/wrong-attempt classification through the real evaluator, idempotent resubmission, round/prototype completion via `acknowledge_feedback()`, hints, stats, abandonment, and a structural check that no `DeductionSession` mutator is ever called directly. Pure/autoload-free — a dedicated fixture, `deduction_fixtures.gd`'s `prototype_a_case()`. |
 | `scenes/test/prototype_a_presenter_test.gd` | The player view's exact allow-listed keys, a spoiler sweep against real X/Y/Z content, round-scoping (no future-round text), evidence text gated on opened, hint progression, and `build_feedback()`'s mapping for every evaluator category. |
 | `scenes/test/prototype_a_content_test.gd` | X/Y/Z walked once in structural-role terms: the true/incomplete/required×2/optional role coverage, each target solvable with one evidence item that's actually in the pool, every pool item available from the start, true/incomplete statements never refutable, translations resolve, and the Prototype A structural-signature shape matches across all three cases. |
-| `scenes/test/prototype_a_scene_test.gd` | **FULL-only** (needs a real scene tree, like `smoke_test.gd`/`deduction_lab_scene_test.gd`): launching from the Lab with/without an active Lab case, reading/selecting evidence via real buttons, wrong/correct/optional feedback, hint reveal, round transition and completion via real button clicks, restart/return confirmation (including that cancelling preserves the run exactly), recorder controls and the exported schema/event vocabulary, F1 hide/show session preservation, and bilingual coverage. |
+| `scenes/test/prototype_a_scene_test.gd` | **FULL-only** (needs a real scene tree, like `smoke_test.gd`/`deduction_lab_scene_test.gd`): launching from the Lab with/without an active Lab case, reading/selecting evidence via real buttons, wrong/correct/optional feedback, hint reveal, round transition and completion via real button clicks, restart/return confirmation (including that cancelling preserves the run exactly), recorder controls and the exported schema/event vocabulary, F1 hide/show session preservation, bilingual coverage, and (Milestone 1.12) `_test_continue_button_stays_reachable_with_long_feedback()` — the Continue-button layout regression: structural proof Continue lives outside the scrolling body, and behavioral proof it stays visible/focused with real-then-synthetic-long feedback text in both locales — see "Layout" above. |
 
 All four are in FAST and FULL (`docs/testing.md`) — the three pure ones cost
 about a second together; the scene test needs the same real-scene-tree setup

@@ -25,6 +25,9 @@ There is no story, no protagonist, and no Case 01 yet — and deliberately so.
   `docs/prototype-a.md` (Milestone 1.11) is the first actual mechanic on top
   of it — a debug-only, non-canon "statement contradiction" cross-examination
   (find the lie, present the one piece of evidence that disproves it),
+  launched from the Deduction Lab. `docs/prototype-b.md` (Milestone 1.12) is
+  the second — "clue connection" (place the evidence that jointly establishes
+  a real deduction into a fixed number of slots, then connect them), also
   launched from the Deduction Lab.
 
 ## Requirements

@@ -33,7 +33,10 @@ Verify changes headlessly — do this (at least the content-validation step) bef
   --script res://scenes/test/deduction_lab_recorder_test.gd \
   --script res://scenes/test/prototype_a_controller_test.gd \
   --script res://scenes/test/prototype_a_presenter_test.gd \
-  --script res://scenes/test/prototype_a_content_test.gd
+  --script res://scenes/test/prototype_a_content_test.gd \
+  --script res://scenes/test/prototype_b_controller_test.gd \
+  --script res://scenes/test/prototype_b_presenter_test.gd \
+  --script res://scenes/test/prototype_b_content_test.gd
 
 # FULL — before finishing a milestone/refactor; also what CI runs on every push/PR:
 .claude/skills/godot-development/scripts/verify.sh \
@@ -57,15 +60,19 @@ Verify changes headlessly — do this (at least the content-validation step) bef
   --script res://scenes/test/prototype_a_presenter_test.gd \
   --script res://scenes/test/prototype_a_content_test.gd \
   --script res://scenes/test/prototype_a_scene_test.gd \
+  --script res://scenes/test/prototype_b_controller_test.gd \
+  --script res://scenes/test/prototype_b_presenter_test.gd \
+  --script res://scenes/test/prototype_b_content_test.gd \
+  --script res://scenes/test/prototype_b_scene_test.gd \
   --script res://scenes/test/smoke_test.gd
 ```
 Raw equivalents exist (`godot --headless --path . -s res://scenes/test/<name>.gd`) but **Godot's exit codes lie** — a `SCRIPT ERROR`, `push_error()`, or parse failure still exits 0, and a `-s` script that errors before calling `quit()` can hang indefinitely. `verify.sh` handles both (output-based pass/fail, per-step timeouts); prefer it over raw invocations. There is no separate lint/build step — import + boot + these test scripts are the whole pipeline, and `.github/workflows/verify.yml` runs the FULL command above in CI, reusing `verify.sh` rather than duplicating any check.
 
-`validate_content.gd` is fast, content-only (checks broken references *and* dependency-reachability smells in `data/`, exits 1 on any error). `conditions_test.gd`/`effects_test.gd`/`events_test.gd`/`duplicate_execution_test.gd`/`save_load_regression_test.gd`/`negative_progression_test.gd`/`dependency_analysis_test.gd` are small, independent focused tests — see `docs/testing.md` for what each covers and how to add a new one. `smoke_test.gd` is the critical-path/integration fixture: drives every autoload through the full demo flow (examine/talk/present/move, conditions, events, event chains, the two-chapter Test Case, save/load) and asserts zero *unexpected* `ContentValidator` errors/warnings; it prints `ALL TESTS PASSED` and exits 0 on success. A new Condition/Effect check goes in `conditions_test.gd`/`effects_test.gd`, never into `smoke_test.gd`. The Milestone 1.9 deduction tests (`deduction_evaluator_test.gd`, `timeline_evaluator_test.gd`, `deduction_validation_test.gd`, `deduction_cases_test.gd`) are deterministic and belong to both FAST and FULL — see `docs/deduction-system.md`, "Testing". The Milestone 1.10 Deduction Lab's pure/autoload-free helpers (`deduction_lab_controller_test.gd`, `deduction_lab_presenter_test.gd`, `deduction_lab_recorder_test.gd`) are likewise deterministic and belong to both FAST and FULL; `deduction_lab_scene_test.gd` needs a real scene tree (DebugPanel/F1 integration) and is FULL-only, like `smoke_test.gd` — see `docs/deduction-lab.md`, "Test commands". The Milestone 1.11 Prototype A tests follow the identical split: `prototype_a_controller_test.gd`/`prototype_a_presenter_test.gd`/`prototype_a_content_test.gd` are pure/autoload-free (FAST and FULL); `prototype_a_scene_test.gd` needs a real scene tree and is FULL-only — see `docs/prototype-a.md`, "Testing".
+`validate_content.gd` is fast, content-only (checks broken references *and* dependency-reachability smells in `data/`, exits 1 on any error). `conditions_test.gd`/`effects_test.gd`/`events_test.gd`/`duplicate_execution_test.gd`/`save_load_regression_test.gd`/`negative_progression_test.gd`/`dependency_analysis_test.gd` are small, independent focused tests — see `docs/testing.md` for what each covers and how to add a new one. `smoke_test.gd` is the critical-path/integration fixture: drives every autoload through the full demo flow (examine/talk/present/move, conditions, events, event chains, the two-chapter Test Case, save/load) and asserts zero *unexpected* `ContentValidator` errors/warnings; it prints `ALL TESTS PASSED` and exits 0 on success. A new Condition/Effect check goes in `conditions_test.gd`/`effects_test.gd`, never into `smoke_test.gd`. The Milestone 1.9 deduction tests (`deduction_evaluator_test.gd`, `timeline_evaluator_test.gd`, `deduction_validation_test.gd`, `deduction_cases_test.gd`) are deterministic and belong to both FAST and FULL — see `docs/deduction-system.md`, "Testing". The Milestone 1.10 Deduction Lab's pure/autoload-free helpers (`deduction_lab_controller_test.gd`, `deduction_lab_presenter_test.gd`, `deduction_lab_recorder_test.gd`) are likewise deterministic and belong to both FAST and FULL; `deduction_lab_scene_test.gd` needs a real scene tree (DebugPanel/F1 integration) and is FULL-only, like `smoke_test.gd` — see `docs/deduction-lab.md`, "Test commands". The Milestone 1.11 Prototype A tests follow the identical split: `prototype_a_controller_test.gd`/`prototype_a_presenter_test.gd`/`prototype_a_content_test.gd` are pure/autoload-free (FAST and FULL); `prototype_a_scene_test.gd` needs a real scene tree and is FULL-only — see `docs/prototype-a.md`, "Testing". The Milestone 1.12 Prototype B tests follow the same split: `prototype_b_controller_test.gd`/`prototype_b_presenter_test.gd`/`prototype_b_content_test.gd` are pure/autoload-free (FAST and FULL); `prototype_b_scene_test.gd` needs a real scene tree and is FULL-only — see `docs/prototype-b.md`, "Testing". `prototype_a_scene_test.gd` also carries the Milestone 1.12 Continue-button-stays-in-viewport layout regression (`_test_continue_button_stays_reachable_with_long_feedback`), and `prototype_b_scene_test.gd` carries the same check applied to Prototype B's own screen — see `docs/prototype-a.md`, "Layout".
 
 ## Architecture
 
-`docs/architecture.md`, `docs/content-guide.md`, `docs/event-system.md`, `docs/case-system.md`, `docs/localization.md`, `docs/deduction-system.md`, `docs/deduction-lab.md`, `docs/prototype-a.md`, and `docs/testing.md` are the source of truth — read the relevant one before non-trivial work; what follows is only a map. Where they and generic conventions disagree, the docs win.
+`docs/architecture.md`, `docs/content-guide.md`, `docs/event-system.md`, `docs/case-system.md`, `docs/localization.md`, `docs/deduction-system.md`, `docs/deduction-lab.md`, `docs/prototype-a.md`, `docs/prototype-b.md`, and `docs/testing.md` are the source of truth — read the relevant one before non-trivial work; what follows is only a map. Where they and generic conventions disagree, the docs win.
 
 **The `.claude/skills/godot-development` project skill** (tracked in git, shared by everyone working on this repo) encodes this repo's Godot 4/GDScript conventions in full — typed GDScript, composition/signals/Resources, node lifecycle, scene ownership, when to add an autoload, avoiding NodePath coupling, resource loading, naming — plus the CLI verification workflow in detail. It auto-loads for any `.gd`/`.tscn`/`.tres`/`project.godot` work; read it and its `references/*.md` rather than re-deriving those rules.
 
@@ -100,7 +107,7 @@ Everything under `data/` (`characters/`, `evidence/`, `locations/`, `dialogue/`,
 
 ### Deduction foundation (Milestone 1.9)
 
-`data/deductions/**/*.json` (a `ContentDB` category) holds deduction cases — suspects, questions, evidence observations, claims (`statement`/`hypothesis`/`deduction`/`explanation`/`conclusion`) with authored, order-independent proof sets, timeline constraints, four-level hint ladders and ground truth. `DeductionEvaluator.commit_attempt()` returns graded outcomes (valid support/refutation, insufficient, irrelevant, compatible-but-not-proof, invalid input) and unlocks a derived deduction in a `DeductionSession` only on an explicit commit; `TimelineEvaluator` accepts any placement satisfying the required constraints. `DeductionValidator` (run by `ContentValidator`) checks references, cycles, intermediate deduction depth ≤ 2 (a `conclusion` on top is an exempt synthesis layer), reachability, timeline/ground-truth consistency and structural equivalence of cases sharing a `structural_template`, and warns on deduction-gated evidence that a deduction then requires (Milestone 1.9.1). It deliberately does not use the Condition/Effect core, adds no autoload, and is not persisted yet — read `docs/deduction-system.md` first. The three `proto_*` cases are **non-canon** playtest material (`docs/deduction-prototype-cases.md`, `docs/deduction-playtest-plan.md`). Milestone 1.10 added the debug-only Deduction Lab (`docs/deduction-lab.md`), a mechanic-neutral viewer; Milestone 1.11 added the first actual mechanic on top of it — see below.
+`data/deductions/**/*.json` (a `ContentDB` category) holds deduction cases — suspects, questions, evidence observations, claims (`statement`/`hypothesis`/`deduction`/`explanation`/`conclusion`) with authored, order-independent proof sets, timeline constraints, four-level hint ladders and ground truth. `DeductionEvaluator.commit_attempt()` returns graded outcomes (valid support/refutation, insufficient, irrelevant, compatible-but-not-proof, invalid input) and unlocks a derived deduction in a `DeductionSession` only on an explicit commit; `TimelineEvaluator` accepts any placement satisfying the required constraints. `DeductionValidator` (run by `ContentValidator`) checks references, cycles, intermediate deduction depth ≤ 2 (a `conclusion` on top is an exempt synthesis layer), reachability, timeline/ground-truth consistency and structural equivalence of cases sharing a `structural_template`, and warns on deduction-gated evidence that a deduction then requires (Milestone 1.9.1). It deliberately does not use the Condition/Effect core, adds no autoload, and is not persisted yet — read `docs/deduction-system.md` first. The three `proto_*` cases are **non-canon** playtest material (`docs/deduction-prototype-cases.md`, `docs/deduction-playtest-plan.md`). Milestone 1.10 added the debug-only Deduction Lab (`docs/deduction-lab.md`), a mechanic-neutral viewer; Milestones 1.11 and 1.12 added the first two actual mechanics on top of it — see below.
 
 ### Prototype A — Statement Contradiction (Milestone 1.11)
 
@@ -123,6 +130,39 @@ design decisions (why hints are Prototype-A-owned data rather than the base
 contract's own hint ladders, why one statement per case needed a second,
 single-evidence alternate proof set, and why the recorder needed zero
 changes to be reused).
+
+### Prototype B — Clue Connection (Milestone 1.12)
+
+The second playable deduction interaction: read an investigation question,
+place the evidence items that jointly establish a real `deduction` claim
+into a fixed number of connection slots (never a statement, hypothesis,
+explanation or the final conclusion), then connect them. Debug-only,
+non-canon, launched from the Deduction Lab's "Launch Prototype B" button —
+same isolation stance as Prototype A. `PrototypeBController`
+(`scripts/deduction/prototype_b_controller.gd`) owns a **fresh**
+`DeductionSession` per run (never the Lab's own, never a
+`PrototypeAController`'s) plus interaction-only state (round, placed clues,
+attempt/failure/replacement counts, stats); unlike Prototype A it reuses the
+**base hint contract** unmodified (`DeductionEvaluator.request_hint()` /
+`DeductionSession.get_hint_level()`), since every round's target is a real
+deduction the base contract already ladders. `PrototypeBPresenter` builds the
+same kind of spoiler-safe, opaque-handle player view established by
+`DeductionLabPresenter`/`PrototypeAPresenter`. It reuses Milestone 1.10's
+`DeductionLabRecorder` completely unmodified, tagged `"prototype":
+"clue_connection"`. No new autoload, no production `GameState`/save changes,
+no new condition/effect vocabulary, no evaluator changes, no relation
+picker — every submission goes through the real `DeductionEvaluator` with
+the round's privately authored target/relation. Round 1 targets the D1
+credential-misuse deduction (3 slots, both the primary and alternate alibi
+paths accepted); round 2 targets the D3 staging deduction — **3 slots, not
+the milestone brief's illustrative 2** (an audited, deliberate departure:
+`deduction_cases_test.gd` already asserts, and `prototype_b_content_test.gd`
+re-confirms, that no 2-of-3 subset of D3's authored evidence trio is
+sufficient — weakening that to fit a literal "2" would mean either breaking
+an established test or authoring unsound content). See `docs/prototype-b.md`
+for the full data contract, the anti-brute-force validator rules, and the
+Prototype A/B target-separation audit (D3, a deduction, is never the same
+claim as the statement Prototype A cross-examines with a single clue).
 
 ### UI wiring
 

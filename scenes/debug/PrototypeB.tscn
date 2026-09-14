@@ -1,8 +1,8 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="Script" path="res://scripts/debug/prototype_a.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/debug/prototype_b.gd" id="1"]
 
-[node name="PrototypeA" type="Control"]
+[node name="PrototypeB" type="Control"]
 visible = false
 layout_mode = 3
 anchors_preset = 15
@@ -55,7 +55,7 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 20
-text = "Prototype A — Statement Contradiction"
+text = "Prototype B — Clue Connection"
 
 [node name="NonCanonBadge" type="Label" parent="CenterPanel/Margin/VBox/Header"]
 unique_name_in_owner = true
@@ -92,11 +92,12 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "Restart"
 
-[node name="ObjectiveLabel" type="Label" parent="CenterPanel/Margin/VBox"]
+[node name="QuestionLabel" type="Label" parent="CenterPanel/Margin/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
 autowrap_mode = 2
-text = "Objective: find the contradiction in the testimony, then present the one piece of evidence that exposes it."
+theme_override_font_sizes/font_size = 16
+text = ""
 
 [node name="ProgressLabel" type="Label" parent="CenterPanel/Margin/VBox"]
 unique_name_in_owner = true
@@ -138,36 +139,21 @@ size_flags_horizontal = 3
 size_flags_stretch_ratio = 2.0
 theme_override_constants/separation = 6
 
-[node name="StatementScroll" type="ScrollContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/LeftColumn"]
-custom_minimum_size = Vector2(0, 180)
+[node name="SlotsLabel" type="Label" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/LeftColumn"]
+unique_name_in_owner = true
 layout_mode = 2
-size_flags_vertical = 3
+theme_override_font_sizes/font_size = 16
+text = "Connection slots"
 
-[node name="StatementList" type="VBoxContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/LeftColumn/StatementScroll"]
+[node name="SlotsScroll" type="ScrollContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/LeftColumn"]
+custom_minimum_size = Vector2(0, 110)
+layout_mode = 2
+
+[node name="SlotsList" type="VBoxContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/LeftColumn/SlotsScroll"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 4
-
-[node name="NavRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/LeftColumn"]
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="PreviousButton" type="Button" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/LeftColumn/NavRow"]
-unique_name_in_owner = true
-layout_mode = 2
-text = "Previous"
-
-[node name="NextButton" type="Button" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/LeftColumn/NavRow"]
-unique_name_in_owner = true
-layout_mode = 2
-text = "Next"
-
-[node name="SelectionLabel" type="Label" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/LeftColumn"]
-unique_name_in_owner = true
-layout_mode = 2
-autowrap_mode = 2
-text = ""
 
 [node name="HintScroll" type="ScrollContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/LeftColumn"]
 custom_minimum_size = Vector2(0, 70)
@@ -187,11 +173,12 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "Hint"
 
-[node name="PresentButton" type="Button" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/LeftColumn/ActionRow"]
+[node name="ConnectButton" type="Button" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/LeftColumn/ActionRow"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Present Evidence"
+disabled = true
+text = "Connect Clues"
 
 [node name="VSeparator" type="VSeparator" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea"]
 layout_mode = 2
@@ -209,7 +196,7 @@ theme_override_font_sizes/font_size = 16
 text = "Case File"
 
 [node name="EvidenceScroll" type="ScrollContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/RightColumn"]
-custom_minimum_size = Vector2(0, 120)
+custom_minimum_size = Vector2(0, 160)
 layout_mode = 2
 size_flags_vertical = 3
 
@@ -242,14 +229,15 @@ theme_override_font_sizes/font_size = 18
 autowrap_mode = 2
 text = ""
 
-[node name="FeedbackExplanation" type="Label" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/FeedbackPanel/FeedbackMargin/FeedbackVBox"]
+[node name="FeedbackDeductionText" type="Label" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/FeedbackPanel/FeedbackMargin/FeedbackVBox"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 autowrap_mode = 2
+theme_override_font_sizes/font_size = 16
 text = ""
 
-[node name="FeedbackWitnessResponse" type="Label" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/FeedbackPanel/FeedbackMargin/FeedbackVBox"]
+[node name="FeedbackExplanation" type="Label" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/FeedbackPanel/FeedbackMargin/FeedbackVBox"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -276,7 +264,7 @@ theme_override_constants/separation = 8
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 20
-text = "Testimony Broken"
+text = "Two Deductions Formed"
 
 [node name="CompletionTextLabel" type="Label" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/CompletionPanel/CompletionMargin/CompletionVBox"]
 unique_name_in_owner = true
