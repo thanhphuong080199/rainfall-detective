@@ -1,8 +1,9 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/debug/deduction_lab.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/debug/PrototypeA.tscn" id="2"]
 [ext_resource type="PackedScene" path="res://scenes/debug/PrototypeB.tscn" id="3"]
+[ext_resource type="PackedScene" path="res://scenes/debug/PrototypeC.tscn" id="4"]
 
 [node name="DeductionLab" type="Control"]
 visible = false
@@ -102,15 +103,28 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "Author Inspector"
 
-[node name="LaunchPrototypeAButton" type="Button" parent="CenterPanel/Margin/VBox/CaseRow"]
+[node name="PrototypeLaunchScroll" type="ScrollContainer" parent="CenterPanel/Margin/VBox"]
+layout_mode = 2
+vertical_scroll_mode = 0
+
+[node name="PrototypeLaunchRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox/PrototypeLaunchScroll"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="LaunchPrototypeAButton" type="Button" parent="CenterPanel/Margin/VBox/PrototypeLaunchScroll/PrototypeLaunchRow"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Launch Prototype A — Statement Contradiction"
 
-[node name="LaunchPrototypeBButton" type="Button" parent="CenterPanel/Margin/VBox/CaseRow"]
+[node name="LaunchPrototypeBButton" type="Button" parent="CenterPanel/Margin/VBox/PrototypeLaunchScroll/PrototypeLaunchRow"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Launch Prototype B — Clue Connection"
+
+[node name="LaunchPrototypeCButton" type="Button" parent="CenterPanel/Margin/VBox/PrototypeLaunchScroll/PrototypeLaunchRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Launch Prototype C — Timeline Reconstruction"
 
 [node name="StatusLabel" type="Label" parent="CenterPanel/Margin/VBox"]
 unique_name_in_owner = true
@@ -296,4 +310,7 @@ title = "Confirm"
 unique_name_in_owner = true
 
 [node name="PrototypeB" parent="." instance=ExtResource("3")]
+unique_name_in_owner = true
+
+[node name="PrototypeC" parent="." instance=ExtResource("4")]
 unique_name_in_owner = true

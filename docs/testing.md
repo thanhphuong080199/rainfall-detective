@@ -38,6 +38,10 @@ scenes/test/
 ├── prototype_b_presenter_test.gd     Milestone 1.12: player-view spoiler boundary + feedback-category mapping
 ├── prototype_b_content_test.gd       Milestone 1.12: the prototype_b data layer on the three prototype cases, by structural role, incl. the Prototype A/B separation audit
 ├── prototype_b_scene_test.gd         Milestone 1.12: the Prototype B scene + Deduction Lab launch wiring (FULL only, see below), incl. its own copy of the Continue-button layout regression
+├── prototype_c_controller_test.gd    Milestone 1.13: PrototypeCController interaction state (NO DeductionSession — grading via the real TimelineEvaluator)
+├── prototype_c_presenter_test.gd     Milestone 1.13: player-view spoiler boundary (before/after acceptance) + feedback-category mapping
+├── prototype_c_content_test.gd       Milestone 1.13: the prototype_c data layer on the three prototype cases, incl. the universal-contradiction proof over the bounded candidate-slot domain
+├── prototype_c_scene_test.gd         Milestone 1.13: the Prototype C scene + Deduction Lab launch wiring (FULL only, see below), incl. its own copy of the Continue-button layout regression
 └── smoke_test.gd                  the critical-path / integration fixture (see below)
 ```
 
@@ -130,7 +134,10 @@ boot if `.godot/` is already built):
   --script res://scenes/test/prototype_a_content_test.gd \
   --script res://scenes/test/prototype_b_controller_test.gd \
   --script res://scenes/test/prototype_b_presenter_test.gd \
-  --script res://scenes/test/prototype_b_content_test.gd
+  --script res://scenes/test/prototype_b_content_test.gd \
+  --script res://scenes/test/prototype_c_controller_test.gd \
+  --script res://scenes/test/prototype_c_presenter_test.gd \
+  --script res://scenes/test/prototype_c_content_test.gd
 ```
 
 **FULL** — before finishing a milestone/refactor, and what CI runs on every
@@ -164,6 +171,10 @@ checks `verify.sh` always does unless skipped:
   --script res://scenes/test/prototype_b_presenter_test.gd \
   --script res://scenes/test/prototype_b_content_test.gd \
   --script res://scenes/test/prototype_b_scene_test.gd \
+  --script res://scenes/test/prototype_c_controller_test.gd \
+  --script res://scenes/test/prototype_c_presenter_test.gd \
+  --script res://scenes/test/prototype_c_content_test.gd \
+  --script res://scenes/test/prototype_c_scene_test.gd \
   --script res://scenes/test/smoke_test.gd
 ```
 
@@ -472,6 +483,62 @@ round transition and completion, restart/return confirmation, recorder
 controls and the exported event vocabulary/schema, F1 hide/show session
 preservation, all three cases, bilingual coverage, and its own copy of the
 Milestone 1.12 Continue-button layout regression.
+
+### Prototype C tests (Milestone 1.13)
+
+`docs/prototype-c.md` is the source of truth for the mechanic itself; three
+more scripts join the deduction tests above in **both** FAST and FULL (same
+reasoning — pure, autoload-free, no scene tree):
+
+- `prototype_c_controller_test.gd` — `PrototypeCController`'s fresh-
+  interaction-state-per-run guarantee, isolation from a
+  `DeductionLabController`'s/`PrototypeAController`'s/`PrototypeBController`'s
+  own state, fixed events locked against every mutator, select/place/move/
+  remove (including two events legally sharing a slot), incomplete-board
+  submission gating, invalid-timeline rejection with retained placements,
+  identical-resubmission blocking until a move, acceptance via the REAL
+  `TimelineEvaluator` (not exact-solution equality), an optional constraint
+  never blocking acceptance, hints, the final claim check (both answers),
+  stats/abandonment, and a structural check that `DeductionSession` is never
+  referenced at all — the one prototype controller that owns no session.
+  Uses its own fixture, `deduction_fixtures.gd`'s `prototype_c_case()`.
+- `prototype_c_presenter_test.gd` — the player view's exact allow-listed
+  keys (15 before acceptance); a content sweep proving no domain id/
+  structural role/raw constraint field ever reaches it, against real X/Y/Z
+  content, both BEFORE and AFTER acceptance; the claim key's entire absence
+  before acceptance and presence after; the resolution key's entire absence
+  until the claim is correctly resolved, with the player-specific
+  interpolated time; and the violation/claim feedback mappings for every
+  outcome.
+- `prototype_c_content_test.gd` — X/Y/Z walked once in structural terms: 7
+  events/2 fixed/5 movable; the authored solution offered and passing; every
+  required constraint has a translated fact and every optional one doesn't;
+  the universal-contradiction proof (every accepted UI-offered timeline
+  makes the disputed claim impossible) via
+  `DeductionValidator.enumerate_accepted_prototype_c_timelines()` — the one
+  heavy, bounded check deliberately kept OUT of the always-on
+  `DeductionValidator` for performance (it costs about half a second per
+  case through the real evaluator); an alternate valid timeline; an
+  optional violation never blocking acceptance; a deliberately wrong
+  placement rejected; translations; and structural-signature parity across
+  all three cases. This file costs about 1.5 seconds by itself — noticeably
+  more than the other pure deduction tests, and a deliberate, audited
+  trade-off (see `docs/prototype-c.md`, "Candidate time-slot domain").
+
+`prototype_c_scene_test.gd` is **FULL-only**, same reasoning as
+`prototype_b_scene_test.gd`/`prototype_a_scene_test.gd`/
+`deduction_lab_scene_test.gd`: launching from the Lab (with/without an
+active Lab case, and that launching Prototype C hides, never resets,
+Prototype A AND Prototype B if either was open), fixed events rendered
+locked with no buttons, select/place/move/remove through real buttons,
+Check disabled until complete then invalid-then-corrected with retained
+placements, an alternate valid timeline also accepted, fact inspection,
+hint reveal, the final claim phase (wrong then correct, with the
+interpolated time visible), completion with all seven stat lines, restart/
+return confirmation, recorder controls and the exported event vocabulary/
+schema, F1 hide/show session preservation, all three cases, bilingual
+coverage, and its own copy of the Milestone 1.12 Continue-button layout
+regression.
 
 Where new coverage goes: a new validation rule → a negative fixture in
 `deduction_validation_test.gd`; a new result category or constraint type →

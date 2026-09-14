@@ -1,0 +1,416 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/debug/prototype_c.gd" id="1"]
+
+[node name="PrototypeC" type="Control"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+script = ExtResource("1")
+
+[node name="DimBackground" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+color = Color(0, 0, 0, 0.85)
+
+[node name="CenterPanel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+offset_left = 20.0
+offset_top = 20.0
+offset_right = -20.0
+offset_bottom = -20.0
+
+[node name="Margin" type="MarginContainer" parent="CenterPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="VBox" type="VBoxContainer" parent="CenterPanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Header" type="HBoxContainer" parent="CenterPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="TitleLabel" type="Label" parent="CenterPanel/Margin/VBox/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 20
+text = "Prototype C — Timeline Reconstruction"
+
+[node name="NonCanonBadge" type="Label" parent="CenterPanel/Margin/VBox/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "NON-CANON PROTOTYPE"
+
+[node name="ReturnButton" type="Button" parent="CenterPanel/Margin/VBox/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Return to Lab"
+
+[node name="CaseRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CaseLabel" type="Label" parent="CenterPanel/Margin/VBox/CaseRow"]
+layout_mode = 2
+text = "Case:"
+
+[node name="CaseOptionButton" type="OptionButton" parent="CenterPanel/Margin/VBox/CaseRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="StartButton" type="Button" parent="CenterPanel/Margin/VBox/CaseRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Start"
+
+[node name="RestartButton" type="Button" parent="CenterPanel/Margin/VBox/CaseRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Restart"
+
+[node name="ObjectiveLabel" type="Label" parent="CenterPanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 2
+theme_override_font_sizes/font_size = 16
+text = ""
+
+[node name="ProgressLabel" type="Label" parent="CenterPanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 2
+text = ""
+
+[node name="StatusLabel" type="Label" parent="CenterPanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 2
+text = "No case selected yet."
+
+[node name="HSeparator" type="HSeparator" parent="CenterPanel/Margin/VBox"]
+layout_mode = 2
+
+[node name="BodyScroll" type="ScrollContainer" parent="CenterPanel/Margin/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 260)
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="BodyVBox" type="VBoxContainer" parent="CenterPanel/Margin/VBox/BodyScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="PlayArea" type="HBoxContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="LeftColumn" type="VBoxContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.0
+theme_override_constants/separation = 6
+
+[node name="TimelineLabel" type="Label" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/LeftColumn"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Timeline"
+
+[node name="TimelineScroll" type="ScrollContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/LeftColumn"]
+custom_minimum_size = Vector2(0, 170)
+layout_mode = 2
+
+[node name="TimelineList" type="VBoxContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/LeftColumn/TimelineScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="HintScroll" type="ScrollContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/LeftColumn"]
+custom_minimum_size = Vector2(0, 70)
+layout_mode = 2
+
+[node name="HintList" type="VBoxContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/LeftColumn/HintScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ActionRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/LeftColumn"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="HintButton" type="Button" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/LeftColumn/ActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Hint"
+
+[node name="CheckButton" type="Button" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/LeftColumn/ActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+disabled = true
+text = "Check Timeline"
+
+[node name="VSeparator" type="VSeparator" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea"]
+layout_mode = 2
+
+[node name="RightColumn" type="VBoxContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.0
+theme_override_constants/separation = 6
+
+[node name="EventsLabel" type="Label" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/RightColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Events"
+
+[node name="EventsScroll" type="ScrollContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/RightColumn"]
+custom_minimum_size = Vector2(0, 120)
+layout_mode = 2
+
+[node name="EventsList" type="VBoxContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/RightColumn/EventsScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="FactsLabel" type="Label" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/RightColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Known facts"
+
+[node name="FactsScroll" type="ScrollContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/RightColumn"]
+custom_minimum_size = Vector2(0, 120)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="FactsList" type="VBoxContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/RightColumn/FactsScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="FeedbackPanel" type="PanelContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="FeedbackMargin" type="MarginContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/FeedbackPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="FeedbackVBox" type="VBoxContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/FeedbackPanel/FeedbackMargin"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="FeedbackHeadline" type="Label" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/FeedbackPanel/FeedbackMargin/FeedbackVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+autowrap_mode = 2
+text = ""
+
+[node name="FeedbackViolationsList" type="VBoxContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/FeedbackPanel/FeedbackMargin/FeedbackVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="ClaimPanel" type="PanelContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="ClaimMargin" type="MarginContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/ClaimPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="ClaimVBox" type="VBoxContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/ClaimPanel/ClaimMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ClaimLabel" type="Label" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/ClaimPanel/ClaimMargin/ClaimVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Disputed claim"
+
+[node name="ClaimStatementLabel" type="Label" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/ClaimPanel/ClaimMargin/ClaimVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+autowrap_mode = 2
+theme_override_font_sizes/font_size = 16
+text = ""
+
+[node name="ClaimButtonsRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/ClaimPanel/ClaimMargin/ClaimVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ClaimFitsButton" type="Button" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/ClaimPanel/ClaimMargin/ClaimVBox/ClaimButtonsRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Fits the timeline"
+
+[node name="ClaimImpossibleButton" type="Button" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/ClaimPanel/ClaimMargin/ClaimVBox/ClaimButtonsRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Impossible"
+
+[node name="ClaimFeedbackLabel" type="Label" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/ClaimPanel/ClaimMargin/ClaimVBox"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+autowrap_mode = 2
+text = ""
+
+[node name="ClaimResolutionLabel" type="Label" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/ClaimPanel/ClaimMargin/ClaimVBox"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+autowrap_mode = 2
+theme_override_font_sizes/font_size = 16
+text = ""
+
+[node name="CompletionPanel" type="PanelContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="CompletionMargin" type="MarginContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/CompletionPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="CompletionVBox" type="VBoxContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/CompletionPanel/CompletionMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CompletionTitleLabel" type="Label" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/CompletionPanel/CompletionMargin/CompletionVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Timeline Reconstructed"
+
+[node name="CompletionTextLabel" type="Label" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/CompletionPanel/CompletionMargin/CompletionVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+autowrap_mode = 2
+text = ""
+
+[node name="StatsList" type="VBoxContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/CompletionPanel/CompletionMargin/CompletionVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="Footer" type="VBoxContainer" parent="CenterPanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ContinueButton" type="Button" parent="CenterPanel/Margin/VBox/Footer"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 2
+text = "Continue"
+
+[node name="CompletionButtonsRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox/Footer"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CompletionRestartButton" type="Button" parent="CenterPanel/Margin/VBox/Footer/CompletionButtonsRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Restart"
+
+[node name="CompletionExportButton" type="Button" parent="CenterPanel/Margin/VBox/Footer/CompletionButtonsRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Export Recording"
+
+[node name="CompletionReturnButton" type="Button" parent="CenterPanel/Margin/VBox/Footer/CompletionButtonsRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Return to Lab"
+
+[node name="RecorderRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox/Footer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="RecorderStartButton" type="Button" parent="CenterPanel/Margin/VBox/Footer/RecorderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Start Recording"
+
+[node name="RecorderStopButton" type="Button" parent="CenterPanel/Margin/VBox/Footer/RecorderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Stop"
+
+[node name="RecorderClearButton" type="Button" parent="CenterPanel/Margin/VBox/Footer/RecorderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Clear"
+
+[node name="RecorderExportButton" type="Button" parent="CenterPanel/Margin/VBox/Footer/RecorderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Export Recording"
+
+[node name="RecorderStatusLabel" type="Label" parent="CenterPanel/Margin/VBox/Footer/RecorderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+autowrap_mode = 2
+text = "Recording: OFF — 0 events captured."
+
+[node name="ConfirmDialog" type="ConfirmationDialog" parent="."]
+unique_name_in_owner = true
+title = "Confirm"

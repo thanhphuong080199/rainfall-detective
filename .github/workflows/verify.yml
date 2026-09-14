@@ -61,4 +61,8 @@ jobs:
             --script res://scenes/test/prototype_b_presenter_test.gd \
             --script res://scenes/test/prototype_b_content_test.gd \
             --script res://scenes/test/prototype_b_scene_test.gd \
+            --script res://scenes/test/prototype_c_controller_test.gd \
+            --script res://scenes/test/prototype_c_presenter_test.gd \
+            --script res://scenes/test/prototype_c_content_test.gd \
+            --script res://scenes/test/prototype_c_scene_test.gd \
             --script res://scenes/test/smoke_test.gd

@@ -361,5 +361,30 @@
       }
     ],
     "completion_text": "DED_PROTO_Y_PROTOB_COMPLETION"
+  },
+  "prototype_c": {
+    "fixed_events": ["tl_gym_checkin", "tl_card_used"],
+    "movable_events": ["tl_teodor_leaves", "tl_coat_borrowed", "tl_hatch_forced", "tl_bin_out", "tl_coat_returned"],
+    "time_slots": ["20:40", "20:45", "20:55", "21:14", "21:18", "21:25"],
+    "objective": "DED_PROTO_Y_PROTOC_OBJECTIVE",
+    "visible_constraint_facts": {
+      "c_card_time": "DED_PROTO_Y_PROTOC_FACT_CARD_TIME",
+      "c_gym_time": "DED_PROTO_Y_PROTOC_FACT_GYM_TIME",
+      "c_teodor_leaves_claimed": "DED_PROTO_Y_PROTOC_FACT_TEODOR_LEAVES",
+      "c_teodor_travel": "DED_PROTO_Y_PROTOC_FACT_TEODOR_TRAVEL",
+      "c_coat_borrowed_window": "DED_PROTO_Y_PROTOC_FACT_COAT_BORROWED",
+      "c_coat_returned_window": "DED_PROTO_Y_PROTOC_FACT_COAT_RETURNED",
+      "c_hatch_after_entry": "DED_PROTO_Y_PROTOC_FACT_HATCH_AFTER_ENTRY",
+      "c_hatch_heard": "DED_PROTO_Y_PROTOC_FACT_HATCH_HEARD",
+      "c_hatch_not_during_errand": "DED_PROTO_Y_PROTOC_FACT_HATCH_NOT_DURING_ERRAND",
+      "c_bin_window": "DED_PROTO_Y_PROTOC_FACT_BIN_WINDOW"
+    },
+    "contradiction": {
+      "claim": "st_bruno_left_early",
+      "constraint_ref": "c_bruno_claimed_departure",
+      "explanation": "DED_PROTO_Y_PROTOC_CONTRADICTION_EXP"
+    },
+    "hint_ladder": ["DED_PROTO_Y_PROTOC_HINT_1", "DED_PROTO_Y_PROTOC_HINT_2", "DED_PROTO_Y_PROTOC_HINT_3", "DED_PROTO_Y_PROTOC_HINT_4"],
+    "completion_text": "DED_PROTO_Y_PROTOC_COMPLETION"
   }
 }

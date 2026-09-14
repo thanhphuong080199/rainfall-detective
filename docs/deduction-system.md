@@ -16,14 +16,14 @@ three dummy mysteries built on it are audited in
 `docs/deduction-prototype-cases.md`. How they will be playtested is in
 `docs/deduction-playtest-plan.md`. `docs/deduction-lab.md` (Milestone 1.10)
 is a debug-only, mechanic-neutral viewer for those three cases;
-`docs/prototype-a.md` (Milestone 1.11) and `docs/prototype-b.md` (Milestone
-1.12) are the first two actual mechanics built on top of everything below,
-both launched from that Lab.
+`docs/prototype-a.md` (Milestone 1.11), `docs/prototype-b.md` (Milestone
+1.12) and `docs/prototype-c.md` (Milestone 1.13) are the three actual
+mechanics built on top of everything below, all launched from that Lab.
 
-**This is infrastructure, not story, and mostly not UI.** Prototype C
-still has no screen. Every deduction case in `data/deductions/prototypes/`
-is a **non-canon** dummy (`metadata.canon: false`). Nothing in them belongs
-to the game's world.
+**This is infrastructure, not story, and mostly not UI beyond the three debug
+prototypes above.** Every deduction case in `data/deductions/prototypes/` is
+a **non-canon** dummy (`metadata.canon: false`). Nothing in them belongs to
+the game's world.
 
 ## Design principles the contract enforces
 
