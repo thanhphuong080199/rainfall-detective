@@ -494,3 +494,94 @@ each section's own gate already gives. Do not choose or combine a core
 mechanic from any single pilot, or even from one full six-tester rotation in
 isolation — section 6's decision rule and section 1's guidance on residual
 bias both apply to whatever rotation follows this milestone.
+
+## 10. Resolution policy pilot (Milestone 1.14)
+
+All three prototypes now share one resolution policy
+(`docs/resolution-policy.md`):
+
+- limited formal commits;
+- drafts and moves that are never checked until committed;
+- progressive feedback;
+- acknowledged assistance and partner resolution, with no game over;
+- a recorded Independent / Guided / Assisted tier.
+
+The tentative structure under test is:
+
+- **B** — frequent core deduction;
+- **A** — high-stakes NPC confrontation;
+- **C** — end-of-chapter timeline reconstruction.
+
+Keep sections 7–9's facilitator scripts and case-rotation rules, and add the
+following.
+
+### Facilitator additions
+
+- Do **not** explain the budget, tiers or partner resolution up front — the
+  UI states them. Note whether the tester reads the status line and the hint
+  notice unprompted.
+- Never press Accept Assistance or Resolve with Partner for the tester.
+  Never suggest restarting to "get attempts back". If the tester restarts,
+  note when and why; the export's `prototype_restarted` payload shows the
+  previous tier and failure count.
+- If a tester abandons, record which phase they abandoned in (commits
+  remaining / assistance required / assisted / partner offered) and what they
+  said.
+
+### Questions (after each prototype)
+
+1. Did limited formal commits make you think before submitting?
+2. Were you afraid to experiment?
+3. Did feedback feel useful or vague?
+4. Did Assisted Mode feel helpful or patronizing?
+5. Did partner resolution preserve your understanding? Ask the tester to
+   explain the answer in their own words.
+6. **B only:** did committing both drafts as one theory reduce guessing, or
+   only increase confusion?
+7. **C only:** did selecting a temporal justification improve the final
+   deduction?
+8. Would you prefer a Story Mode with earlier assistance?
+9. Which tier did you finish at? Compare the answer with the completion
+   summary — does the self-report match?
+
+### What to record
+
+**From the export:**
+
+- `formal_commit_started` / `formal_commit_failed` counts per unit;
+- time between consecutive failed commits, as a proxy for thinking vs. rapid
+  guessing;
+- `run_resolution_result_changed` (Milestone 1.14.1; was
+  `resolution_tier_changed`) and its `reason` (failure, hint, assistance,
+  partner);
+- whether `assistance_offered` was followed by `assistance_accepted`, and
+  how long that took;
+- `partner_resolution_offered` vs. `partner_resolution_used`;
+- B's `draft_selected` / `draft_saved` churn and `theory_batch_rejected`
+  count;
+- C's `claim_justification_result` sequence (verdict-wrong vs.
+  justification-wrong);
+- `prototype_restarted` (count and previous tier) and
+  `prototype_abandoned`.
+
+**From observation:**
+
+- abandonment and restart behavior, in the tester's own words — record both
+  carefully, since a restart is the one way to "reset" a budget;
+- whether the explanation rubric (section 3) differs between Independent,
+  Guided and Assisted finishes.
+
+### Recommended gate before the vertical slice
+
+Proceed only if all of these hold:
+
+- testers who reach partner resolution still score at least 2 on the
+  explanation rubric;
+- no tester describes Assisted Mode as "the game solved it for me" without
+  also being able to explain the logic;
+- restarts are rare, and are not used to dodge assistance.
+
+If most testers find B's batch commit confusing, pilot a per-question commit
+variant before building the core loop around it. If testers report being
+afraid to experiment, consider the Story Mode question (earlier assistance)
+before raising any limit.

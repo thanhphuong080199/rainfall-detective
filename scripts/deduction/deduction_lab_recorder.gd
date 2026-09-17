@@ -12,7 +12,22 @@ extends RefCounted
 ## tests get deterministic, controllable sequences instead of depending on
 ## real wall-clock time — see docs/deduction-lab.md, "Recorder schema".
 
+## The outer envelope schema — session_id/case_id/prototype/locale/
+## started_at_utc/events, plus every event's own sequence/elapsed_ms/type/
+## source/payload shape. Unchanged since Milestone 1.10; a new event TYPE or
+## payload key never requires bumping this on its own (see EVENT_SCHEMA_VERSION).
 const SCHEMA_VERSION := 1
+## The event VOCABULARY a consumer must know to interpret every event's
+## "type" and "payload" correctly — which types exist and what each payload
+## key means. Milestone 1.14 replaced Prototype B's round/connection events
+## with theory-batch events and added the whole resolution-policy vocabulary;
+## Milestone 1.14.1 renamed several of THOSE payload keys and one event type
+## for clarity (docs/resolution-policy.md, "Local unit state vs. run
+## result"). Both are real vocabulary breaks, so this bumped from 1 to 2 —
+## see docs/deduction-lab.md, "Recorder schema", for the full v1/v2 diff. A
+## consumer decides how to parse "type"/"payload" from THIS number, never
+## from SCHEMA_VERSION, which never changes for a vocabulary-only edit.
+const EVENT_SCHEMA_VERSION := 2
 const DEFAULT_EXPORT_DIR := "user://deduction_lab_recordings"
 
 const SOURCE_PLAYER_PREVIEW := "player_preview"
@@ -182,9 +197,13 @@ func _on_case_solved(case_id: String) -> void:
 # Export
 
 ## The documented versioned schema (docs/deduction-lab.md, "Recorder schema").
+## "schema_version" is the outer envelope (unchanged, 1); "event_schema_version"
+## is the event vocabulary a consumer must match against before interpreting
+## any event's "type"/"payload" (2 — see the EVENT_SCHEMA_VERSION constant).
 func to_export_dict() -> Dictionary:
 	return {
 		"schema_version": SCHEMA_VERSION,
+		"event_schema_version": EVENT_SCHEMA_VERSION,
 		"session_id": _session_id,
 		"case_id": _case_id,
 		"prototype": _prototype,

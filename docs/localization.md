@@ -118,6 +118,7 @@ namespacing):
 | Prefix | For |
 |---|---|
 | `UI_` | Static UI chrome — button/menu labels, section headers, status messages, hint text. Named after what the string *is* (`UI_SAVE`, `UI_BACK`), not where it appears. |
+| `UI_RESOLUTION_` | Shared resolution-policy chrome for the three deduction prototypes — tier labels, attempt status, assistance/partner notices, completion summary lines (Milestone 1.14, `docs/resolution-policy.md`); Milestone 1.14.1 added `UI_RESOLUTION_RUN_RESULT`/`UI_RESOLUTION_RUN_RESULT_FROM_EARLIER` for the separate run-result line. Prototype-specific resolution text keeps its `UI_PROTOTYPE_A_`/`_B_`/`_C_` prefix. |
 | `CHAR_<id>_NAME` | A character's `name` field. |
 | `EVID_<id>_NAME` / `_SHORT` / `_DETAIL` | An evidence item's `name` / `short_description` / `detailed_description`. |
 | `LOC_<id>_NAME` | A location's `name` field. |

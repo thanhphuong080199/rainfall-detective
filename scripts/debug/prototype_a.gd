@@ -15,6 +15,13 @@ extends Control
 ## event vocabulary's recorder calls (docs/prototype-a.md, "Recorder
 ## events").
 ##
+## Milestone 1.14 (docs/resolution-policy.md): renders the confrontation's
+## credibility/tier status, the assistance panel once assistance is
+## acknowledged, and the footer's Accept Assistance / Resolve with Partner
+## actions — all from the presenter's view, never from policy internals.
+## Policy state lives in the controller, so closing a dialog, switching locale
+## or F1 hide/show can never reset a run's attempts.
+##
 ## In a release export, OS.is_debug_build() is false and _ready() returns
 ## before doing anything else — the same isolation DebugPanel/DeductionLab
 ## already use, applied again here in case this scene is ever reparented
@@ -27,6 +34,12 @@ extends Control
 ## "Return to Lab" is a distinct, deliberate action (this node's OWN visible
 ## flag) — unlike F1 hide/show, it ends the run (recording prototype_abandoned
 ## if incomplete) and is gated behind a confirmation when there is progress.
+
+## Milestone 1.14.1 ("Prevent Deduction Lab show-through"): lets DeductionLab
+## restore its own hidden content the instant this overlay actually closes —
+## whether via Return to Lab or Esc — without DeductionLab having to poll
+## `visible` every frame.
+signal closed
 
 var _controller: PrototypeAController
 var _recorder: DeductionLabRecorder
@@ -42,6 +55,19 @@ var _pending_confirmed_action: Callable = Callable()
 @onready var objective_label: Label = %ObjectiveLabel
 @onready var progress_label: Label = %ProgressLabel
 @onready var status_label: Label = %StatusLabel
+## The CURRENT round's own state only (Milestone 1.14.1) — attempts
+## remaining, assistance required, etc. Never the run result; see
+## %RunResultLabel and ResolutionPresenter.build_status()'s
+## "current_status_text"/"run_result_text" split.
+@onready var resolution_status_label: Label = %ResolutionStatusLabel
+## The run-wide resolution result only, always shown separately from the
+## current round's own status so a fresh round is never misread as itself
+## Assisted just because an earlier round used help.
+@onready var run_result_label: Label = %RunResultLabel
+
+@onready var assistance_panel: PanelContainer = %AssistancePanel
+@onready var assistance_headline: Label = %AssistanceHeadline
+@onready var assistance_text: Label = %AssistanceText
 
 @onready var play_area: HBoxContainer = %PlayArea
 @onready var statement_list: VBoxContainer = %StatementList
@@ -49,6 +75,13 @@ var _pending_confirmed_action: Callable = Callable()
 @onready var next_button: Button = %NextButton
 @onready var selection_label: Label = %SelectionLabel
 @onready var hint_list: VBoxContainer = %HintList
+@onready var hint_notice_label: Label = %HintNoticeLabel
+## Milestone 1.14.1: lives in the fixed %Footer now (moved out of the
+## scrolling %PlayArea/LeftColumn), so Present Evidence — the primary formal
+## commit — can never be pushed offscreen by long assistance/feedback text.
+## Its visibility still tracks %PlayArea's own, managed explicitly in
+## refresh() since it is no longer PlayArea's descendant.
+@onready var action_row: HBoxContainer = %ActionRow
 @onready var hint_button: Button = %HintButton
 @onready var present_button: Button = %PresentButton
 @onready var case_file_label: Label = %CaseFileLabel
@@ -56,13 +89,14 @@ var _pending_confirmed_action: Callable = Callable()
 
 ## BodyScroll (Fixed header / Expandable ScrollContainer / Fixed action
 ## footer — Milestone 1.12's fix for the Continue-button-pushed-offscreen
-## regression, see docs/prototype-a.md, "Layout"): PlayArea, FeedbackPanel and
-## CompletionPanel all live inside this single scrolling body, so however
-## long the localized feedback/completion text is, it scrolls instead of
-## growing past the visible window. ContinueButton/CompletionButtonsRow/
-## RecorderRow live in Footer, a fixed sibling AFTER BodyScroll in the outer
-## VBox — a VBoxContainer always honors a non-expanding sibling's minimum
-## size, so the footer (and therefore Continue) can never be pushed off
+## regression, see docs/prototype-a.md, "Layout"): AssistancePanel, PlayArea,
+## FeedbackPanel and CompletionPanel all live inside this single scrolling
+## body, so however long the localized feedback/completion text is, it
+## scrolls instead of growing past the visible window. ContinueButton/
+## ResolutionActionsRow/CompletionButtonsRow/RecorderRow live in Footer, a
+## fixed sibling AFTER BodyScroll in the outer VBox — a VBoxContainer always
+## honors a non-expanding sibling's minimum size, so the footer (and therefore
+## Continue and the assistance/partner actions) can never be pushed off
 ## whatever the scrolling body's content demands.
 @onready var body_scroll: ScrollContainer = %BodyScroll
 
@@ -70,6 +104,9 @@ var _pending_confirmed_action: Callable = Callable()
 @onready var feedback_headline: Label = %FeedbackHeadline
 @onready var feedback_explanation: Label = %FeedbackExplanation
 @onready var feedback_witness_response: Label = %FeedbackWitnessResponse
+@onready var feedback_rebuttal: Label = %FeedbackRebuttal
+@onready var feedback_partner_note: Label = %FeedbackPartnerNote
+@onready var feedback_resolution_notice: Label = %FeedbackResolutionNotice
 
 @onready var completion_panel: PanelContainer = %CompletionPanel
 @onready var completion_title_label: Label = %CompletionTitleLabel
@@ -78,6 +115,9 @@ var _pending_confirmed_action: Callable = Callable()
 
 @onready var footer: VBoxContainer = %Footer
 @onready var continue_button: Button = %ContinueButton
+@onready var resolution_actions_row: HBoxContainer = %ResolutionActionsRow
+@onready var accept_assistance_button: Button = %AcceptAssistanceButton
+@onready var partner_resolve_button: Button = %PartnerResolveButton
 @onready var completion_buttons_row: HBoxContainer = %CompletionButtonsRow
 @onready var completion_restart_button: Button = %CompletionRestartButton
 @onready var completion_export_button: Button = %CompletionExportButton
@@ -111,6 +151,8 @@ func _ready() -> void:
 	hint_button.pressed.connect(_on_hint_pressed)
 	present_button.pressed.connect(_on_present_pressed)
 	continue_button.pressed.connect(_on_continue_pressed)
+	accept_assistance_button.pressed.connect(_on_accept_assistance_pressed)
+	partner_resolve_button.pressed.connect(_on_partner_resolve_pressed)
 	completion_restart_button.pressed.connect(_on_restart_pressed)
 	completion_export_button.pressed.connect(_on_recorder_export_pressed)
 	completion_return_button.pressed.connect(_on_return_pressed)
@@ -135,9 +177,12 @@ func _apply_static_text() -> void:
 	previous_button.text = tr("UI_PROTOTYPE_A_PREVIOUS")
 	next_button.text = tr("UI_PROTOTYPE_A_NEXT")
 	hint_button.text = tr("UI_PROTOTYPE_A_HINT")
+	hint_notice_label.text = tr(ResolutionPresenter.HINT_NOTICE_KEY)
 	present_button.text = tr("UI_PROTOTYPE_A_PRESENT")
 	case_file_label.text = tr("UI_PROTOTYPE_A_CASE_FILE")
 	continue_button.text = tr("UI_PROTOTYPE_A_CONTINUE")
+	accept_assistance_button.text = tr("UI_RESOLUTION_ACCEPT_ASSISTANCE")
+	partner_resolve_button.text = tr("UI_RESOLUTION_RESOLVE_WITH_PARTNER")
 	completion_title_label.text = tr("UI_PROTOTYPE_A_COMPLETE_TITLE")
 	completion_restart_button.text = tr("UI_PROTOTYPE_A_RESTART")
 	completion_export_button.text = tr("UI_PROTOTYPE_A_RECORDER_EXPORT")
@@ -181,6 +226,7 @@ func open(preferred_case_def: Dictionary = {}) -> void:
 
 func close() -> void:
 	visible = false
+	closed.emit()
 
 
 func _refresh_if_visible() -> void:
@@ -242,7 +288,9 @@ func _on_restart_pressed() -> void:
 ## Start Recording" through "pressed Start" is exactly how prototype_started/
 ## round_started get captured at all (see docs/prototype-a.md, "Recorder
 ## events", and the facilitator script in docs/deduction-playtest-plan.md).
-## The facilitator can still Stop/Clear explicitly for a fresh boundary.
+## The facilitator can still Stop/Clear explicitly for a fresh boundary. A
+## second run on this controller is recorded as prototype_restarted by the
+## controller itself.
 func _start_run(case_def: Dictionary) -> void:
 	_recorder.set_current_source(DeductionLabRecorder.SOURCE_PLAYER_PREVIEW)
 	_controller.start(case_def, _recorder)
@@ -291,8 +339,14 @@ func refresh() -> void:
 	play_area.visible = started and not _controller.is_completed()
 	completion_panel.visible = started and _controller.is_completed()
 	completion_buttons_row.visible = completion_panel.visible
+	action_row.visible = play_area.visible and not feedback_panel.visible
 	if not started:
 		progress_label.text = ""
+		resolution_status_label.text = ""
+		run_result_label.text = ""
+		assistance_panel.visible = false
+		resolution_actions_row.visible = false
+		action_row.visible = false
 		_render_recorder()
 		return
 
@@ -303,8 +357,14 @@ func refresh() -> void:
 		view.get("case_title", ""), badge,
 		tr("UI_PROTOTYPE_A_ROUND_LABEL") % [int(view.get("round_index", 0)) + 1, view.get("round_count", 1)],
 	]
+	var status: Dictionary = view.get("resolution_status", {})
+	resolution_status_label.text = status.get("current_status_text", "")
+	run_result_label.text = status.get("run_result_text", "")
+	_render_assistance(view)
+	_render_resolution_actions(view)
 
 	if _controller.is_completed():
+		action_row.visible = false
 		_render_completion(view)
 		_render_recorder()
 		return
@@ -313,16 +373,43 @@ func refresh() -> void:
 	_render_evidence(view)
 	_render_hints(view)
 	_render_selection_label(view)
-	present_button.disabled = String(view.get("selected_evidence_handle", "")) == ""
+	present_button.disabled = String(view.get("selected_evidence_handle", "")) == "" or not status.get("can_submit", false)
 	previous_button.disabled = _controller.get_statement_index() <= 0
 	next_button.disabled = _controller.get_statement_index() >= _controller.get_statement_ids().size() - 1
 	_render_recorder()
+
+
+## Only rendered once the view actually carries an "assistance" block — the
+## presenter omits it entirely until assistance was acknowledged.
+func _render_assistance(view: Dictionary) -> void:
+	var assistance: Dictionary = view.get("assistance", {})
+	assistance_panel.visible = not assistance.is_empty()
+	if assistance.is_empty():
+		return
+	assistance_headline.text = assistance.get("headline", "")
+	var lines: Array[String] = [String(assistance.get("focus", ""))]
+	if String(assistance.get("category_hint", "")) != "":
+		lines.append(String(assistance.get("category_hint", "")))
+	assistance_text.text = "\n".join(lines)
+
+
+## The footer's Accept Assistance / Resolve with Partner row. Hidden while
+## feedback is open so Continue stays the single, focused next step.
+func _render_resolution_actions(view: Dictionary) -> void:
+	var status: Dictionary = view.get("resolution_status", {})
+	var assistance_required: bool = status.get("assistance_required", false)
+	var partner_available: bool = status.get("partner_available", false)
+	accept_assistance_button.visible = assistance_required
+	partner_resolve_button.visible = partner_available
+	resolution_actions_row.visible = not _controller.is_completed() and not feedback_panel.visible \
+		and (assistance_required or partner_available)
 
 
 func _render_statements(view: Dictionary) -> void:
 	UiUtil.clear_children(statement_list)
 	var statements: Array = view.get("statements", [])
 	var current_handle: String = view.get("current_statement_handle", "")
+	var focus_handle: String = String((view.get("assistance", {}) as Dictionary).get("statement_handle", ""))
 	for i in statements.size():
 		var statement: Dictionary = statements[i]
 		var row := HBoxContainer.new()
@@ -331,6 +418,8 @@ func _render_statements(view: Dictionary) -> void:
 		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var is_current: bool = statement.get("handle", "") == current_handle
 		var prefix := "> " if is_current else "  "
+		if focus_handle != "" and statement.get("handle", "") == focus_handle:
+			prefix += "[%s] " % tr("UI_PROTOTYPE_A_PARTNER_FOCUS_LABEL")
 		if statement.get("resolved", false):
 			prefix += "[%s] " % (tr("UI_PROTOTYPE_A_FEEDBACK_OPTIONAL_HEADLINE") if statement.get("outcome", "") == "optional" else tr("UI_PROTOTYPE_A_FEEDBACK_SUCCESS_HEADLINE"))
 		var speaker: String = statement.get("speaker", "")
@@ -427,12 +516,17 @@ func _render_hints(view: Dictionary) -> void:
 		hint_list.add_child(label)
 
 
+## A hint that raises the run's tier says so explicitly in the status line —
+## never a silent tier change.
 func _on_hint_pressed() -> void:
 	var statement_id: String = _controller.get_current_statement_id()
 	if statement_id == "":
 		return
 	_recorder.set_current_source(DeductionLabRecorder.SOURCE_PLAYER_PREVIEW)
-	_controller.reveal_next_hint(statement_id)
+	var result: Dictionary = _controller.reveal_next_hint(statement_id)
+	var notice: String = ResolutionPresenter.build_run_result_notice(result.get("resolution", {}))
+	if notice != "":
+		_set_status(notice)
 	refresh()
 
 
@@ -462,6 +556,21 @@ func _on_present_pressed() -> void:
 	refresh()
 
 
+func _on_accept_assistance_pressed() -> void:
+	_recorder.set_current_source(DeductionLabRecorder.SOURCE_PLAYER_PREVIEW)
+	var result: Dictionary = _controller.accept_assistance()
+	_set_status(ResolutionPresenter.build_run_result_notice(result.get("resolution", {})))
+	body_scroll.scroll_vertical = 0
+	refresh()
+
+
+func _on_partner_resolve_pressed() -> void:
+	_recorder.set_current_source(DeductionLabRecorder.SOURCE_PLAYER_PREVIEW)
+	var result: Dictionary = _controller.resolve_with_partner()
+	_show_feedback(result)
+	refresh()
+
+
 ## However long the localized explanation/witness_response text is, Continue
 ## must stay visible and reachable (Milestone 1.12): the body scrolls back to
 ## the top so the player sees the headline first, and focus moves onto
@@ -470,15 +579,21 @@ func _on_present_pressed() -> void:
 ## Fixed-header/ScrollContainer/Fixed-footer structure, docs/prototype-a.md).
 func _show_feedback(result: Dictionary) -> void:
 	var feedback: Dictionary = PrototypeAPresenter.build_feedback(_controller.get_case_def(), result)
-	feedback_headline.text = feedback.get("headline", "")
-	feedback_headline.visible = String(feedback.get("headline", "")) != ""
+	_set_label(feedback_headline, feedback.get("headline", ""))
 	feedback_explanation.text = feedback.get("explanation", "")
-	feedback_witness_response.text = feedback.get("witness_response", "")
-	feedback_witness_response.visible = String(feedback.get("witness_response", "")) != ""
+	_set_label(feedback_witness_response, feedback.get("witness_response", ""))
+	_set_label(feedback_rebuttal, feedback.get("rebuttal", ""))
+	_set_label(feedback_partner_note, feedback.get("partner_note", ""))
+	_set_label(feedback_resolution_notice, feedback.get("resolution_notice", ""))
 	feedback_panel.visible = true
 	continue_button.visible = true
 	body_scroll.scroll_vertical = 0
 	continue_button.grab_focus()
+
+
+func _set_label(label: Label, text: String) -> void:
+	label.text = text
+	label.visible = text != ""
 
 
 func _on_continue_pressed() -> void:
@@ -486,21 +601,16 @@ func _on_continue_pressed() -> void:
 	continue_button.visible = false
 	_controller.acknowledge_feedback()
 	refresh()
+	if accept_assistance_button.is_visible_in_tree():
+		accept_assistance_button.grab_focus()
+	elif partner_resolve_button.is_visible_in_tree():
+		partner_resolve_button.grab_focus()
 
 
 func _render_completion(view: Dictionary) -> void:
 	completion_text_label.text = view.get("completion_text", "")
 	UiUtil.clear_children(stats_list)
-	var stats: Dictionary = view.get("stats", {})
-	var total_seconds: int = int(float(stats.get("elapsed_ms", 0)) / 1000.0)
-	var time_text: String = "%d:%02d" % [total_seconds / 60, total_seconds % 60]
-	for line in [
-		tr("UI_PROTOTYPE_A_STATS_TIME") % time_text,
-		tr("UI_PROTOTYPE_A_STATS_SUBMISSIONS") % int(stats.get("submissions", 0)),
-		tr("UI_PROTOTYPE_A_STATS_INCORRECT") % int(stats.get("incorrect", 0)),
-		tr("UI_PROTOTYPE_A_STATS_OPTIONAL") % int(stats.get("optional_found", 0)),
-		tr("UI_PROTOTYPE_A_STATS_HINTS") % int(stats.get("hints_used", 0)),
-	]:
+	for line in view.get("completion_lines", []):
 		var label := Label.new()
 		label.text = line
 		stats_list.add_child(label)

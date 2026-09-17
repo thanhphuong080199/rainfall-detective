@@ -129,7 +129,10 @@ static func alternate_valid_timeline() -> Dictionary:
 ##            refuted by e_b alone)
 ##   round_2: st_optional (innocent lie, refuted by e_d alone) + st_required2
 ##            (required lie, refuted by e_c alone)
-## e_noise bears on nothing (an irrelevant-evidence distractor).
+## e_noise bears on nothing (an irrelevant-evidence distractor). e_alt is a
+## second, ALTERNATE single-evidence refutation of st_required1 (Milestone
+## 1.14: an alternate valid proof must never cost credibility) — authored
+## AFTER ps_required1, so partner resolution's "first authored path" is e_b.
 static func prototype_a_case() -> Dictionary:
 	return {
 		"id": "fx_pa_case",
@@ -146,6 +149,7 @@ static func prototype_a_case() -> Dictionary:
 			{"id": "e_c", "name": "FX", "text": "FX", "source": "fixture", "certainty": "fixed", "tags": ["scene"]},
 			{"id": "e_d", "name": "FX", "text": "FX", "source": "fixture", "certainty": "fixed", "tags": ["scene"]},
 			{"id": "e_noise", "name": "FX", "text": "FX", "source": "fixture", "certainty": "fixed", "tags": ["scene"]},
+			{"id": "e_alt", "name": "FX", "text": "FX", "source": "fixture", "certainty": "fixed", "tags": ["scene"]},
 		],
 		"claims": [
 			{
@@ -154,7 +158,10 @@ static func prototype_a_case() -> Dictionary:
 			},
 			{
 				"id": "st_required1", "kind": "statement", "speaker": "sus_b", "veracity": "deceptive", "text": "FX",
-				"proof_sets": [{"id": "ps_required1", "relation": "refutes", "requires": ["e_b"]}],
+				"proof_sets": [
+					{"id": "ps_required1", "relation": "refutes", "requires": ["e_b"]},
+					{"id": "ps_required1_alt", "relation": "refutes", "requires": ["e_alt"]},
+				],
 			},
 			{
 				"id": "st_optional", "kind": "statement", "speaker": "sus_a", "veracity": "deceptive", "lie_motive": "unrelated_to_crime", "text": "FX",
@@ -166,7 +173,7 @@ static func prototype_a_case() -> Dictionary:
 			},
 		],
 		"prototype_a": {
-			"evidence_pool": ["e_a", "e_b", "e_c", "e_d", "e_noise"],
+			"evidence_pool": ["e_a", "e_b", "e_c", "e_d", "e_noise", "e_alt"],
 			"rounds": [
 				{
 					"id": "round_1",
@@ -204,7 +211,9 @@ static func prototype_a_case() -> Dictionary:
 ## content rather than hardcoding it:
 ##   round_1: ded_first (3-slot deduction, requires e_a + e_b + e_c)
 ##   round_2: ded_second (2-slot deduction, requires e_d + e_e)
-## e_noise bears on nothing (an irrelevant-evidence distractor).
+## e_noise bears on nothing (an irrelevant-evidence distractor). e_f completes
+## an ALTERNATE 3-item path for ded_first (e_a + e_b + e_f, authored second),
+## so Milestone 1.14's batch commit can prove alternate paths still succeed.
 static func prototype_b_case() -> Dictionary:
 	return {
 		"id": "fx_pb_case",
@@ -218,11 +227,15 @@ static func prototype_b_case() -> Dictionary:
 			{"id": "e_d", "name": "FX", "text": "FX", "source": "fixture", "certainty": "fixed", "tags": ["scene"]},
 			{"id": "e_e", "name": "FX", "text": "FX", "source": "fixture", "certainty": "fixed", "tags": ["scene"]},
 			{"id": "e_noise", "name": "FX", "text": "FX", "source": "fixture", "certainty": "fixed", "tags": ["scene"]},
+			{"id": "e_f", "name": "FX", "text": "FX", "source": "fixture", "certainty": "fixed", "tags": ["scene"]},
 		],
 		"claims": [
 			{
 				"id": "ded_first", "kind": "deduction", "veracity": "true", "required": true, "text": "FX first deduction",
-				"proof_sets": [{"id": "ps_first", "relation": "supports", "requires": ["e_a", "e_b", "e_c"]}],
+				"proof_sets": [
+					{"id": "ps_first", "relation": "supports", "requires": ["e_a", "e_b", "e_c"]},
+					{"id": "ps_first_alt", "relation": "supports", "requires": ["e_a", "e_b", "e_f"]},
+				],
 			},
 			{
 				"id": "ded_second", "kind": "deduction", "veracity": "true", "required": true, "text": "FX second deduction",
@@ -234,7 +247,7 @@ static func prototype_b_case() -> Dictionary:
 			_ladder("ded_second", "q_second", ["scene"], ["e_d", "e_e"], "ded_second"),
 		],
 		"prototype_b": {
-			"evidence_pool": ["e_a", "e_b", "e_c", "e_d", "e_e", "e_noise"],
+			"evidence_pool": ["e_a", "e_b", "e_c", "e_d", "e_e", "e_noise", "e_f"],
 			"rounds": [
 				{
 					"id": "round_1", "question": "FX", "target": "ded_first", "relation": "supports",
@@ -262,7 +275,11 @@ static func prototype_b_case() -> Dictionary:
 ## t_a=09:00/09:15/09:30, t_b=10:10/10:25/10:40, none of which satisfy
 ## c_lie's disjoint claimed window (09:00-09:20 on t_b) — every accepted
 ## placement in this fixture already contradicts the claim, matching the real
-## X/Y/Z content's own shape.
+## X/Y/Z content's own shape. Milestone 1.14: TWO facts each rule the claim out
+## on their own — c_b_window (t_b's window is disjoint from the claim) and
+## c_b_after_fixed (t_b comes after the 10:00 anchor) — so a test can prove
+## every legitimate supporting fact is accepted, while c_a_window (a different
+## event) never justifies the verdict.
 static func prototype_c_case() -> Dictionary:
 	return {
 		"id": "fx_pc_case",
@@ -289,6 +306,7 @@ static func prototype_c_case() -> Dictionary:
 				{"id": "c_fixed", "type": "fixed_time", "event": "t_fixed", "time": "10:00", "source": "e_noise"},
 				{"id": "c_a_window", "type": "window", "event": "t_a", "earliest": "09:00", "latest": "09:30", "source": "e_noise"},
 				{"id": "c_b_window", "type": "window", "event": "t_b", "earliest": "10:10", "latest": "10:40", "source": "e_noise"},
+				{"id": "c_b_after_fixed", "type": "before", "events": ["t_fixed", "t_b"], "source": "e_noise"},
 				{"id": "c_lie", "type": "window", "event": "t_b", "earliest": "09:00", "latest": "09:20", "required": false, "source": "st_lie"},
 			],
 		},
@@ -297,8 +315,11 @@ static func prototype_c_case() -> Dictionary:
 			"movable_events": ["t_a", "t_b"],
 			"time_slots": ["09:00", "09:15", "09:30", "10:10", "10:25", "10:40"],
 			"objective": "FX",
-			"visible_constraint_facts": {"c_a_window": "FX", "c_b_window": "FX"},
-			"contradiction": {"claim": "st_lie", "constraint_ref": "c_lie", "explanation": "FX %s"},
+			"visible_constraint_facts": {"c_a_window": "FX", "c_b_window": "FX", "c_b_after_fixed": "FX"},
+			"contradiction": {
+				"claim": "st_lie", "constraint_ref": "c_lie", "explanation": "FX %s",
+				"supporting_constraint_refs": ["c_b_window", "c_b_after_fixed"],
+			},
 			"hint_ladder": ["FX", "FX", "FX", "FX"],
 			"completion_text": "FX",
 		},

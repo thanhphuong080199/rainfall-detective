@@ -382,6 +382,7 @@
     "contradiction": {
       "claim": "st_bruno_left_early",
       "constraint_ref": "c_bruno_claimed_departure",
+      "supporting_constraint_refs": ["c_bin_window"],
       "explanation": "DED_PROTO_Y_PROTOC_CONTRADICTION_EXP"
     },
     "hint_ladder": ["DED_PROTO_Y_PROTOC_HINT_1", "DED_PROTO_Y_PROTOC_HINT_2", "DED_PROTO_Y_PROTOC_HINT_3", "DED_PROTO_Y_PROTOC_HINT_4"],

@@ -40,6 +40,20 @@ func _initialize() -> void:
 	_test_hints()
 	_test_stats_and_abandonment()
 	_test_no_direct_session_mutation()
+	# Milestone 1.14 — resolution policy (docs/resolution-policy.md).
+	_test_valid_required_refutation_stays_independent()
+	_test_optional_innocent_lie_costs_no_credibility()
+	_test_alternate_valid_refutation_costs_no_credibility()
+	_test_meaningful_wrong_presentation_consumes_credibility()
+	_test_ui_invalid_attempts_consume_nothing()
+	_test_third_failure_enters_assisted_and_blocks_presenting()
+	_test_assistance_targets_the_statement_not_the_evidence()
+	_test_assisted_attempt_can_still_succeed()
+	_test_partner_resolution_uses_real_evaluator()
+	_test_partner_resolution_unavailable_before_threshold()
+	_test_hints_raise_resolution_tier()
+	_test_completion_tier_and_recorder_events()
+	_test_restart_is_recorded_as_a_new_run()
 
 	quit(TestHelpers.finish(_failures, _pass_count))
 
@@ -319,3 +333,233 @@ func _test_no_direct_session_mutation() -> void:
 	var source: String = FileAccess.get_file_as_string("res://scripts/deduction/prototype_a_controller.gd")
 	for forbidden in ["_session.resolve_claim(", "_session.record_attempt(", "_session.advance_hint(", "_session.mark_solved("]:
 		_check(not source.contains(forbidden), "prototype_a_controller.gd must never call DeductionSession.%s directly — only DeductionEvaluator may" % forbidden.trim_suffix("("))
+
+
+# ---------------------------------------------------------------------------
+# Milestone 1.14 — resolution policy
+
+## Five DISTINCT, genuinely evaluated failing (statement index, evidence)
+## pairs in the fixture's round 1 — enough to exhaust the standard (3) and
+## assisted (2) budgets without ever re-presenting a known failed pair.
+const ROUND_1_FAILING_PAIRS := [[1, "e_noise"], [1, "e_a"], [1, "e_c"], [1, "e_d"], [0, "e_a"]]
+
+
+func _present_pair(controller, statement_index: int, evidence_id: String) -> Dictionary:
+	controller.select_statement(statement_index)
+	controller.select_evidence(evidence_id)
+	return controller.present_evidence()
+
+
+func _fail_round_1(controller, from_index: int, count: int) -> Dictionary:
+	var last: Dictionary = {}
+	for i in range(from_index, from_index + count):
+		var pair: Array = ROUND_1_FAILING_PAIRS[i]
+		last = _present_pair(controller, pair[0], pair[1])
+	return last
+
+
+func _test_valid_required_refutation_stays_independent() -> void:
+	var controller = _started_controller()
+	var result: Dictionary = _present_pair(controller, 1, "e_b")
+	_check(result.get("counted") == true and result.get("outcome") == "required", "a valid required refutation is a counted formal commit")
+	_check(controller.get_policy().get_run_resolution_result() == "independent", "a first-try refutation with no hints must stay Independent")
+	_check(controller.get_policy().get_standard_attempts_remaining() == 3, "a valid refutation must never cost credibility")
+	_check(controller.get_policy().is_unit_resolved() and controller.get_policy().get_unit_resolved_by() == "player", "resolving the part's only required refutation resolves the unit, by the player")
+
+
+func _test_optional_innocent_lie_costs_no_credibility() -> void:
+	var controller = _started_controller()
+	_present_pair(controller, 1, "e_b")
+	controller.acknowledge_feedback()
+	var optional: Dictionary = _present_pair(controller, 0, "e_d")
+	_check(optional.get("outcome") == "optional" and optional.get("counted") == true, "the innocent lie is a valid, counted commit")
+	_check(controller.get_policy().get_standard_attempts_remaining() == 3 and controller.get_policy().get_run_resolution_result() == "independent", "a valid optional innocent lie must never reduce credibility or the tier")
+	_check(not controller.get_policy().is_unit_resolved(), "the optional lie must not resolve the part (the required refutation is still open)")
+	_check(controller.get_policy().can_submit(), "presenting must stay open after the optional lie")
+
+
+func _test_alternate_valid_refutation_costs_no_credibility() -> void:
+	var controller = _started_controller()
+	var alternate: Dictionary = _present_pair(controller, 1, "e_alt")
+	_check(alternate.get("category") == "valid_refutation" and alternate.get("outcome") == "required", "the alternate single-evidence proof must be accepted")
+	_check(controller.get_policy().get_failed_commit_count() == 0 and controller.get_policy().get_run_resolution_result() == "independent", "an accepted alternate refutation must never count as a failure")
+
+
+func _test_meaningful_wrong_presentation_consumes_credibility() -> void:
+	var recorder: DeductionLabRecorder = load("res://scripts/deduction/deduction_lab_recorder.gd").new()
+	recorder.start("fx_pa_case", "statement_contradiction", "en")
+	var controller = _new_controller()
+	controller.start(fixtures.prototype_a_case(), recorder)
+	controller.open_evidence("e_a")
+	var result: Dictionary = _present_pair(controller, 1, "e_noise")
+	_check(result.get("counted") == true and result.get("category") == "irrelevant_evidence", "an irrelevant presentation is a genuinely evaluated failure")
+	_check(controller.get_policy().get_standard_attempts_remaining() == 2, "a failed presentation should cost one credibility")
+	_check(controller.get_policy().get_run_resolution_result() == "guided", "one failed formal commit should make the run Guided")
+	_check(result.get("resolution", {}).get("counted") == true and result.get("resolution", {}).get("run_resolution_result_changed") == true, "the result should carry the credibility/tier consequence for feedback")
+	_check(controller.get_round_index() == 0 and controller.get_statement_index() == 1, "a failure must never reset the testimony or move the player")
+	_check(controller.get_session().has_opened_evidence("e_a"), "a failure must never discard reading progress")
+	_check(not JSON.stringify(result).contains("e_b"), "a failure result must never carry the correct evidence id")
+	var types: Array = recorder.get_events().map(func(e): return e.get("type"))
+	for expected in ["formal_commit_started", "attempt_submitted", "formal_commit_failed", "run_resolution_result_changed"]:
+		_check(types.has(expected), "a failed presentation should record %s, got %s" % [expected, types])
+
+
+func _test_ui_invalid_attempts_consume_nothing() -> void:
+	var recorder: DeductionLabRecorder = load("res://scripts/deduction/deduction_lab_recorder.gd").new()
+	recorder.start("fx_pa_case", "statement_contradiction", "en")
+	var controller = _new_controller()
+	controller.start(fixtures.prototype_a_case(), recorder)
+
+	var nothing: Dictionary = controller.present_evidence()  # no evidence selected
+	_check(nothing.get("counted") == false and nothing.get("reason") == "nothing_to_submit", "presenting with nothing selected must count nothing")
+
+	_present_pair(controller, 1, "e_noise")
+	var events_after_failure: int = recorder.get_events().size()
+	var duplicate: Dictionary = _present_pair(controller, 1, "e_noise")
+	_check(duplicate.get("counted") == false and duplicate.get("reason") == "duplicate_failed_attempt", "re-presenting a pair that already failed must count nothing")
+	_check(controller.get_policy().get_failed_commit_count() == 1 and controller.get_stats().get("submissions") == 1, "a duplicate must not change the formal-commit counts")
+	_check(controller.get_session().get_attempts().size() == 1, "a duplicate must not reach the evaluator's commit path")
+
+	_present_pair(controller, 1, "e_b")
+	var resolved_again: Dictionary = _present_pair(controller, 1, "e_b")
+	_check(resolved_again.get("counted") == false and resolved_again.get("already_resolved") == true, "re-presenting against an already-resolved statement must count nothing")
+	_check(controller.get_policy().get_formal_commit_count() == 2, "only the failure and the first valid refutation are formal commits")
+	var attempt_events: Array = recorder.get_events().filter(func(e): return e.get("type") == "attempt_submitted" or e.get("type") == "formal_commit_started")
+	_check(attempt_events.size() == 4, "exactly two formal commits' worth of attempt telemetry should exist (duplicates and resubmissions record nothing), got %d" % attempt_events.size())
+	_check(recorder.get_events().size() > events_after_failure, "sanity — the real refutation did record events")
+
+
+func _test_third_failure_enters_assisted_and_blocks_presenting() -> void:
+	var controller = _started_controller()
+	_fail_round_1(controller, 0, 2)
+	_check(controller.get_policy().get_standard_attempts_remaining() == 1 and controller.can_present() == false, "sanity — two failures, nothing selected")
+	var third: Dictionary = _fail_round_1(controller, 2, 1)
+	_check(third.get("resolution", {}).get("assistance_offered") == true, "the third failed presentation should offer assistance")
+	_check(controller.get_policy().requires_assistance() and controller.get_policy().get_run_resolution_result() == "assisted", "the third failure should enter Assisted Mode")
+
+	controller.select_statement(1)
+	_check(controller.select_evidence("e_b"), "selecting evidence stays free while assistance is pending")
+	_check(not controller.can_present(), "presenting must be disabled until assistance is acknowledged")
+	var blocked: Dictionary = controller.present_evidence()
+	_check(blocked.get("counted") == false and blocked.get("reason") == "submission_locked", "a presentation while locked must be refused without counting")
+	_check(controller.get_session().get_claim_status("st_required1") == "", "a locked presentation must never reach the evaluator, even with the right evidence")
+	_check(controller.get_selected_evidence_id() == "e_b", "a refused presentation should keep the player's selection")
+
+
+func _test_assistance_targets_the_statement_not_the_evidence() -> void:
+	var controller = _started_controller()
+	_check(controller.get_assistance_target_id() == "", "no assistance target before any threshold")
+	_fail_round_1(controller, 0, 3)
+	_check(controller.get_assistance_target_id() == "", "the assistance target must stay hidden until assistance is ACKNOWLEDGED, not merely offered")
+	controller.select_statement(0)  # the player is looking at the TRUE statement when they accept
+	var accepted: Dictionary = controller.accept_assistance()
+	_check(accepted.get("accepted") == true, "assistance should be acceptable after the third failure")
+	_check(controller.get_assistance_target_id() == "st_required1", "assistance should point at the unresolved required statement")
+	_check(controller.get_statement_index() == 0, "acknowledging assistance must preserve the player's current statement selection")
+	_check(not JSON.stringify(accepted).contains("e_b") and not JSON.stringify(accepted).contains("e_alt"), "the assistance result must never carry an accepted evidence id")
+	_check(controller.accept_assistance().get("accepted") == false, "assistance cannot be acknowledged twice")
+
+
+func _test_assisted_attempt_can_still_succeed() -> void:
+	var controller = _started_controller()
+	_fail_round_1(controller, 0, 3)
+	controller.accept_assistance()
+	var assisted_failure: Dictionary = _fail_round_1(controller, 3, 1)
+	_check(assisted_failure.get("counted") == true and controller.get_policy().get_assisted_attempts_remaining() == 1, "an assisted failure consumes one of the two assisted attempts")
+	var success: Dictionary = _present_pair(controller, 1, "e_b")
+	_check(success.get("outcome") == "required" and success.get("round_ready") == true, "the player can still solve it themselves in Assisted Mode")
+	_check(controller.get_policy().get_unit_resolved_by() == "player" and controller.get_policy().get_run_resolution_result() == "assisted", "an assisted player solution is the player's, at the Assisted tier")
+
+
+func _test_partner_resolution_uses_real_evaluator() -> void:
+	var recorder: DeductionLabRecorder = load("res://scripts/deduction/deduction_lab_recorder.gd").new()
+	recorder.start("fx_pa_case", "statement_contradiction", "en")
+	var controller = _new_controller()
+	controller.start(fixtures.prototype_a_case(), recorder)
+	_fail_round_1(controller, 0, 3)
+	controller.accept_assistance()
+	var fifth: Dictionary = _fail_round_1(controller, 3, 2)
+	_check(fifth.get("resolution", {}).get("partner_offered") == true and controller.get_policy().can_use_partner_resolution(), "two assisted failures should offer partner resolution")
+	_check(not controller.can_present(), "blind presenting must be closed once partner resolution is offered")
+
+	var attempts_before: int = controller.get_session().get_attempts().size()
+	var partner: Dictionary = controller.resolve_with_partner()
+	_check(partner.get("partner") == true and partner.get("category") == "valid_refutation" and partner.get("outcome") == "required", "partner resolution should report a valid required refutation")
+	_check(partner.get("evidence_id") == "e_b", "partner resolution should use the FIRST authored single-evidence refutation path")
+	_check(controller.get_session().get_claim_status("st_required1") == "refuted", "the statement must be resolved in the session")
+	_check(controller.get_session().get_attempts().size() == attempts_before + 1, "partner resolution must go through DeductionEvaluator.commit_attempt() (one new logged attempt), never a direct session mutation")
+	_check(partner.get("counted") == false and controller.get_stats().get("submissions") == 5, "partner resolution must never count as the player's own formal commit")
+	_check(controller.get_policy().get_unit_resolved_by() == "partner" and controller.get_stats().get("partner_resolutions") == 1, "the unit must be attributed to the partner")
+	_check(partner.get("round_ready") == true, "the part should be ready to continue — no replay, no game over")
+
+	var types: Array = recorder.get_events().map(func(e): return e.get("type"))
+	for expected in ["assistance_offered", "assistance_accepted", "partner_resolution_offered", "partner_resolution_used"]:
+		_check(types.has(expected), "the assistance/partner flow should record %s, got %s" % [expected, types])
+	var resolved_events: Array = recorder.get_events().filter(func(e): return e.get("type") == "contradiction_resolved")
+	_check(resolved_events.size() == 1 and resolved_events[0].get("payload", {}).get("resolved_by") == "partner", "the resolution must be recorded as the partner's, not the player's")
+
+	controller.acknowledge_feedback()
+	_check(controller.get_round_index() == 1, "the prototype continues to the next part after partner resolution")
+	_check(controller.get_policy().get_standard_attempts_remaining() == 3 and controller.can_present() == false, "the next part starts with full credibility (nothing selected yet)")
+	_check(controller.get_policy().get_run_resolution_result() == "assisted", "the run's tier never moves back after a partner resolution")
+	_check(controller.resolve_with_partner().get("counted") == false and controller.get_round_index() == 1, "partner resolution is unavailable again in a fresh part")
+
+
+func _test_partner_resolution_unavailable_before_threshold() -> void:
+	var controller = _started_controller()
+	var early: Dictionary = controller.resolve_with_partner()
+	_check(early.get("counted") == false and early.get("reason") == "partner_unavailable", "partner resolution must be refused before the assisted budget is exhausted")
+	_check(controller.get_session().get_attempts().is_empty() and controller.get_session().get_resolved_claims().is_empty(), "a refused partner resolution must not touch the session")
+	_fail_round_1(controller, 0, 3)
+	_check(controller.resolve_with_partner().get("reason") == "partner_unavailable", "partner resolution must also be refused while assistance is merely pending")
+
+
+func _test_hints_raise_resolution_tier() -> void:
+	var controller = _started_controller()
+	var level1: Dictionary = controller.reveal_next_hint("st_required1")
+	_check(controller.get_policy().get_run_resolution_result() == "guided" and level1.get("resolution", {}).get("run_resolution_result_changed") == true, "hint level 1 should make the run Guided, reported explicitly")
+	controller.reveal_next_hint("st_required1")
+	var level3: Dictionary = controller.reveal_next_hint("st_required1")
+	_check(controller.get_policy().get_run_resolution_result() == "assisted" and level3.get("resolution", {}).get("run_resolution_result_changed") == true, "hint level 3 should make the run Assisted")
+	_check(controller.get_policy().can_submit() and controller.get_policy().get_standard_attempts_remaining() == 3, "hints never cost credibility or lock presenting")
+	controller.select_evidence("e_noise")
+	controller.clear_selected_evidence()
+	controller.select_statement(0)
+	_check(controller.get_policy().get_run_resolution_result() == "assisted", "changing or clearing selections never lowers the tier")
+
+
+func _test_completion_tier_and_recorder_events() -> void:
+	var recorder: DeductionLabRecorder = load("res://scripts/deduction/deduction_lab_recorder.gd").new()
+	recorder.start("fx_pa_case", "statement_contradiction", "en")
+	var controller = _new_controller()
+	controller.start(fixtures.prototype_a_case(), recorder)
+	_present_pair(controller, 1, "e_noise")
+	_present_pair(controller, 1, "e_b")
+	controller.acknowledge_feedback()
+	_present_pair(controller, 1, "e_c")
+	controller.acknowledge_feedback()
+	_check(controller.is_completed(), "sanity — both parts complete")
+	var completed: Array = recorder.get_events().filter(func(e): return e.get("type") == "prototype_completed")
+	_check(completed.size() == 1, "prototype_completed should be recorded once")
+	var resolution: Dictionary = completed[0].get("payload", {}).get("resolution", {}) if not completed.is_empty() else {}
+	_check(resolution.get("run_resolution_result") == "guided" and resolution.get("formal_commits") == 3 and resolution.get("failed_commits") == 1, "the completion payload should carry the resolution summary, got %s" % [resolution])
+	var succeeded: Array = recorder.get_events().filter(func(e): return e.get("type") == "formal_commit_succeeded")
+	_check(succeeded.size() == 2 and succeeded.all(func(e): return e.get("payload", {}).get("resolved_by") == "player"), "every player solution should be recorded as resolved_by player")
+	for event in recorder.get_events():
+		_check(int(event.get("sequence", 0)) > 0 and event.has("elapsed_ms"), "every event should carry a sequence and elapsed time")
+
+
+func _test_restart_is_recorded_as_a_new_run() -> void:
+	var recorder: DeductionLabRecorder = load("res://scripts/deduction/deduction_lab_recorder.gd").new()
+	recorder.start("fx_pa_case", "statement_contradiction", "en")
+	var controller = _new_controller()
+	controller.start(fixtures.prototype_a_case(), recorder)
+	_fail_round_1(controller, 0, 2)
+	controller.start(fixtures.prototype_a_case(), recorder)
+	var restarted: Array = recorder.get_events().filter(func(e): return e.get("type") == "prototype_restarted")
+	_check(restarted.size() == 1, "a second start() on the same controller must be recorded as a restart")
+	var payload: Dictionary = restarted[0].get("payload", {}) if not restarted.is_empty() else {}
+	_check(payload.get("previous_run_resolution_result") == "guided" and payload.get("previous_failed_commits") == 2 and payload.get("previous_completed") == false, "the restart should record how the previous run stood, got %s" % [payload])
+	_check(controller.get_run_count() == 2 and controller.get_policy().get_run_resolution_result() == "independent", "a restart creates a new run with a fresh policy — recorded, never hidden")
+	var started: Array = recorder.get_events().filter(func(e): return e.get("type") == "prototype_started")
+	_check(started.size() == 2 and started[1].get("payload", {}).get("run") == 2, "each run's prototype_started should carry its run number")

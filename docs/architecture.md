@@ -316,6 +316,23 @@ built on. Full design in `docs/deduction-system.md`; summary:
   for inspecting these cases and exercising the evaluator/validator/timeline
   APIs above — still no UI for actual player interaction (no A/B/C screen),
   and still no autoload or persisted state.
+- Milestones 1.11–1.13 add three debug-only, non-canon mechanics launched
+  from the Lab, each a pure controller + allow-listed presenter + scene:
+  statement contradiction (`docs/prototype-a.md`), clue connection
+  (`docs/prototype-b.md`) and timeline reconstruction
+  (`docs/prototype-c.md`).
+- Milestone 1.14 adds `ResolutionPolicy`, a pure `RefCounted` owned by each
+  prototype controller (`docs/resolution-policy.md`). It limits formal
+  commits per resolution unit, requires acknowledged assistance after three
+  failures, offers partner resolution — always through the real evaluators
+  — after two more, and records a one-way Independent/Guided/Assisted
+  run-wide result, explicitly separate from each unit's own local phase and
+  failure budget (`get_run_resolution_result()` vs. `get_current_unit_phase()`
+  — hardened with explicit naming in Milestone 1.14.1, after which
+  `ResolutionPresenter` renders the two as separate lines so a fresh unit is
+  never mislabeled by an earlier one's result). It still adds no autoload
+  and no persisted state; production save integration of formal-commit
+  state is explicitly deferred.
 
 ## Localization
 

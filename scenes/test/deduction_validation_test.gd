@@ -46,6 +46,7 @@ func _initialize() -> void:
 	_test_missing_canon_metadata()
 	_test_missing_structural_role()
 	_test_structural_equivalence()
+	_test_prototype_c_supporting_constraint_refs()
 	_test_real_content_is_clean()
 
 	quit(TestHelpers.finish(_failures, _pass_count))
@@ -349,6 +350,35 @@ func _test_structural_equivalence() -> void:
 	errors = []
 	validator.validate_structural_equivalence([reference, no_alternate], errors)
 	_check(errors.size() == 1 and errors[0].contains("proof:credential_misused"), "a case dropping the alternate proof path should be reported as a proof-graph difference: %s" % [errors])
+
+
+## Milestone 1.14: Prototype C's temporal-justification list. Each negative
+## case is a deep copy of the real X case with exactly one thing changed in
+## contradiction.supporting_constraint_refs (the base fixture has no
+## prototype_c layer to break).
+func _test_prototype_c_supporting_constraint_refs() -> void:
+	var real: Dictionary = content_db.get_deduction_case("proto_x_archive_ledger")
+	var clean_errors: Array = (_validate(real.duplicate(true)).get("errors", []) as Array).filter(func(e: String) -> bool: return e.contains("supporting_constraint_refs"))
+	_check(clean_errors.is_empty(), "the real X justification list should validate: %s" % [clean_errors])
+	_check(validator.prototype_c_facts_ruling_out_claim(real) == ["c_shredding_window"], "exactly one X fact rules Ilse's claim out on its own, got %s" % [validator.prototype_c_facts_ruling_out_claim(real)])
+
+	var cases: Array = [
+		[null, "supporting_constraint_refs must be a non-empty array", "a missing justification list"],
+		[["c_shredding_window", "c_shredding_window"], 'lists "c_shredding_window" more than once', "a duplicated justification"],
+		[["c_ilse_claimed_departure"], "must not list the disputed claim's own constraint", "the claim's own constraint as its justification"],
+		[["c_nope"], "is not a visible_constraint_facts entry", "an unknown/hidden justification"],
+		[["c_badge_time", "c_shredding_window"], "shares no timeline event with the disputed claim", "a fact about an unrelated event"],
+		[["c_window_not_during_errand", "c_shredding_window"], 'entry "c_window_not_during_errand" does not, on its own, rule out the disputed claim', "a related fact that doesn't actually rule the claim out"],
+		[["c_window_not_during_errand"], 'omits "c_shredding_window"', "a list missing a genuinely valid justification"],
+	]
+	for entry in cases:
+		var broken: Dictionary = real.duplicate(true)
+		var contradiction: Dictionary = broken["prototype_c"]["contradiction"]
+		if entry[0] == null:
+			contradiction.erase("supporting_constraint_refs")
+		else:
+			contradiction["supporting_constraint_refs"] = entry[0]
+		_expect_error(broken, entry[1], entry[2])
 
 
 func _test_real_content_is_clean() -> void:
