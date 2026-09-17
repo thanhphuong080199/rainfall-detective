@@ -420,6 +420,18 @@ func _test_ui_invalid_attempts_consume_nothing() -> void:
 	_check(controller.get_policy().get_failed_commit_count() == 1 and controller.get_stats().get("submissions") == 1, "a duplicate must not change the formal-commit counts")
 	_check(controller.get_session().get_attempts().size() == 1, "a duplicate must not reach the evaluator's commit path")
 
+	# Milestone 1.14.2A: the blocked duplicate is now OBSERVABLE (previously
+	# silently dropped) — purely additive, and must never change what was
+	# just asserted above (counted/reason/formal-commit counts/attempts).
+	var blocked_events: Array = recorder.get_events().filter(func(e): return e.get("type") == "attempt_blocked_duplicate")
+	_check(blocked_events.size() == 1, "the blocked duplicate should be recorded exactly once, got %d" % blocked_events.size())
+	_check(blocked_events[0].get("payload", {}).get("statement_id") == controller.get_current_statement_id() and blocked_events[0].get("payload", {}).get("evidence_id") == "e_noise", "the blocked-duplicate payload should identify the exact repeated candidate")
+	var unrecorded_controller = _new_controller()
+	unrecorded_controller.start(fixtures.prototype_a_case())  # no recorder at all
+	_present_pair(unrecorded_controller, 1, "e_noise")
+	var duplicate_unrecorded: Dictionary = _present_pair(unrecorded_controller, 1, "e_noise")
+	_check(JSON.stringify(duplicate_unrecorded) == JSON.stringify(duplicate), "attaching a recorder must never change what present_evidence() returns for a blocked duplicate")
+
 	_present_pair(controller, 1, "e_b")
 	var resolved_again: Dictionary = _present_pair(controller, 1, "e_b")
 	_check(resolved_again.get("counted") == false and resolved_again.get("already_resolved") == true, "re-presenting against an already-resolved statement must count nothing")

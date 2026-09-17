@@ -324,6 +324,7 @@ recorder itself carries none of this):
 | `evidence_opened` | The first time a given evidence item is opened (via `DeductionSession.mark_evidence_opened()`) |
 | `evidence_selected` | Choosing an item as the one to present (may repeat as the player changes their mind) |
 | `attempt_submitted` | Every genuinely new submission (never for a resubmission on an already-resolved claim) — payload: sequence, round, statement id, evidence id, evaluator category, outcome (`required`/`optional`/`unsuccessful`) |
+| `attempt_blocked_duplicate` | Milestone 1.14.2A — presenting a statement+evidence pair that already failed (previously silently dropped; see `docs/prototype-evaluation.md`) — payload: round, statement id, evidence id. Purely observational: never counted, never reaches the evaluator, never changes `present_evidence()`'s return value |
 | `contradiction_resolved` | Only on a **newly** successful required/optional resolution — payload includes the outcome |
 | `hint_revealed` | Each new hint level (never a repeat of an already-revealed level) |
 | `round_completed` | On `acknowledge_feedback()`, once a round's required refutation(s) are all resolved |

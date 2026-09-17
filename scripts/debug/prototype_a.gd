@@ -45,6 +45,12 @@ var _controller: PrototypeAController
 var _recorder: DeductionLabRecorder
 var _last_view: Dictionary = {}
 var _pending_confirmed_action: Callable = Callable()
+## Milestone 1.14.2A: the outcome of the LAST summary export, shown in
+## %RecorderStatusLabel (see _render_recorder()) — kept separate from
+## %StatusLabel's own "Exported recording to <path>" message, which scene
+## tests parse verbatim as a single path and must stay byte-for-byte
+## unchanged from Milestone 1.10.
+var _last_summary_export: Dictionary = {}
 
 @onready var title_label: Label = %TitleLabel
 @onready var non_canon_badge: Label = %NonCanonBadge
@@ -626,6 +632,16 @@ func _render_recorder() -> void:
 	recorder_status_label.text = "Recording: %s — %d event(s) captured (session id: %s)." % [
 		"ON" if _recorder.is_recording() else "OFF", _recorder.get_events().size(), _recorder.get_session_id(),
 	]
+	if not _controller.get_case_def().is_empty():
+		# Milestone 1.14.2A: a live, developer-facing digest of THIS run —
+		# independent of whether recording is on, since it reads the
+		# controller's own get_stats(), never the recorder's event log.
+		recorder_status_label.text += "\nStats: %s" % PrototypeEvaluationSummary.format_stats_line(_controller.get_stats())
+	if not _last_summary_export.is_empty():
+		if _last_summary_export.get("success", false):
+			recorder_status_label.text += "\nSummary exported to %s" % _last_summary_export.get("path", "")
+		else:
+			recorder_status_label.text += "\nSummary export failed: %s" % _last_summary_export.get("error", "")
 
 
 ## Reads the case id from the PICKER, not from _controller.get_case_def() —
@@ -652,10 +668,20 @@ func _on_recorder_clear_pressed() -> void:
 	_render_recorder()
 
 
+## Milestone 1.14.2A: alongside the raw event log, also exports a compact
+## evaluation summary (PrototypeEvaluationSummary — submissions, incorrect
+## submissions, unique candidates tried, duplicate/repeated-candidate
+## attempts, resolution outcome, per run) to a SEPARATE sibling file — never
+## replacing or altering the raw export, which stays exactly as Milestone
+## 1.10 produced it. %StatusLabel's own "Exported recording to <path>"
+## message is UNCHANGED (scene tests parse it as a single verbatim path);
+## the summary export's own outcome is reported through %RecorderStatusLabel
+## instead (see _render_recorder()).
 func _on_recorder_export_pressed() -> void:
 	var result: Dictionary = _recorder.export_to_file()
 	if result.get("success", false):
 		_set_status("Exported recording to %s" % result.get("path", ""))
+		_last_summary_export = PrototypeEvaluationSummary.export_to_file(_recorder.to_export_dict(), DeductionLabRecorder.DEFAULT_EXPORT_DIR)
 	else:
 		_set_status("Export failed: %s" % result.get("error", ""))
 	_render_recorder()

@@ -609,10 +609,12 @@ recorder itself carries none of this):
 | `timeline_submitted` | Every genuinely new submission (never a blocked-duplicate resubmit) — payload: sequence, normalized (event-id-sorted) placement map, moves since the previous submission, facts-opened count, evaluator category, violation count |
 | `timeline_rejected` | Immediately alongside `timeline_submitted` when the category isn't `timeline_consistent` |
 | `timeline_accepted` | Immediately alongside `timeline_submitted` when the category is `timeline_consistent` |
+| `timeline_blocked_duplicate` | Milestone 1.14.2A — resubmitting a placement identical to any earlier failed one (previously silently dropped; see `docs/prototype-evaluation.md`) — payload `placements` (the repeated normalized map). Purely observational: never counted, never reaches the evaluator, never changes `submit_timeline()`'s return value |
 | `violation_shown` | Alongside a rejection — payload: the violated required constraint ids (internal ids for analysis only; the UI never renders a raw id back to the player) |
 | `hint_revealed` | Each new hint level (never a repeat of an already-exhausted ladder) |
 | `claim_answered` | Every counted final-claim answer — payload: attempt number, "fits"/"impossible", `justification_constraint_id`, whether it was correct |
 | `claim_justification_result` | Alongside it (Milestone 1.14) — payload: attempt, `justification_constraint_id`, `verdict_correct`, `justification_valid`, `correct` |
+| `claim_blocked_duplicate` | Milestone 1.14.2A — resubmitting a verdict+fact pair identical to one that already failed (previously silently dropped) — payload `answer`, `justification_constraint_id`. Purely observational: never counted, never changes `answer_claim()`'s return value |
 | `contradiction_resolved` | When the claim is resolved — payload `attempt`, `resolved_by` (`player`/`partner`) |
 | `prototype_completed` | Acknowledging a resolved claim — payload is the full stats dict |
 | `prototype_abandoned` | Return to Lab (or Esc) with real progress and no completion |

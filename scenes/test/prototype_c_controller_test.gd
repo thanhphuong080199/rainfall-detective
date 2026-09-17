@@ -55,6 +55,7 @@ func _initialize() -> void:
 	_test_incomplete_timeline_cannot_submit()
 	_test_invalid_timeline_rejected_and_retained()
 	_test_identical_resubmission_blocked_until_a_move()
+	_test_duplicate_timeline_telemetry_is_observable_and_inert()
 	_test_authored_and_alternate_placements_both_accepted()
 	_test_optional_constraint_never_blocks_acceptance()
 	_test_hints()
@@ -73,6 +74,7 @@ func _initialize() -> void:
 	_test_every_supporting_fact_completes()
 	_test_unrelated_supporting_fact_fails_and_timeline_survives()
 	_test_claim_feedback_levels_and_duplicates()
+	_test_duplicate_claim_telemetry_is_observable_and_inert()
 	_test_claim_assistance_and_partner_resolution()
 	_test_acknowledge_claim_is_idempotent()
 	_test_stats_and_abandonment()
@@ -228,6 +230,25 @@ func _test_identical_resubmission_blocked_until_a_move() -> void:
 	controller.place_event("t_a", "09:00")
 	_check(controller.can_resubmit(), "a real placement change re-enables resubmission")
 	_check(controller.submit_timeline().get("blocked_duplicate") == false, "a genuinely new placement is not a duplicate")
+
+
+## Milestone 1.14.2A: the blocked duplicate is now OBSERVABLE (previously
+## silently dropped) — purely additive, and must never change the
+## blocked_duplicate/counted result a caller sees.
+func _test_duplicate_timeline_telemetry_is_observable_and_inert() -> void:
+	var recorder = _new_recorder()
+	var controller = _started_controller(recorder)
+	_submit(controller, FAILING_PLACEMENTS[0])
+	var blocked: Dictionary = controller.submit_timeline()
+
+	var blocked_events: Array = recorder.get_events().filter(func(e): return e.get("type") == "timeline_blocked_duplicate")
+	_check(blocked_events.size() == 1, "the blocked duplicate timeline should be recorded exactly once, got %d" % blocked_events.size())
+	_check(blocked_events[0].get("payload", {}).get("placements") == controller.get_placements(), "the blocked-duplicate payload should carry the repeated placement")
+
+	var unrecorded = _started_controller()
+	_submit(unrecorded, FAILING_PLACEMENTS[0])
+	var blocked_unrecorded: Dictionary = unrecorded.submit_timeline()
+	_check(JSON.stringify(blocked_unrecorded) == JSON.stringify(blocked), "attaching a recorder must never change what submit_timeline() returns for a blocked duplicate")
 
 
 func _test_authored_and_alternate_placements_both_accepted() -> void:
@@ -428,6 +449,25 @@ func _test_claim_feedback_levels_and_duplicates() -> void:
 	_check(second.get("feedback_level") == "guided" and second.get("verdict_correct") == false, "the second claim failure may say the verdict is off")
 	var third: Dictionary = controller.answer_claim(true, "c_a_window" if false else "c_a_window")
 	_check(third.get("reason") == "duplicate_failed_claim", "sanity — still a duplicate")
+
+
+## Milestone 1.14.2A: the blocked duplicate is now OBSERVABLE (previously
+## silently dropped) — purely additive, and must never change the
+## duplicate_failed_claim/counted result a caller sees.
+func _test_duplicate_claim_telemetry_is_observable_and_inert() -> void:
+	var recorder = _new_recorder()
+	var controller = _accepted_controller(recorder)
+	controller.answer_claim(true, "c_a_window")
+	var duplicate: Dictionary = controller.answer_claim(true, "c_a_window")
+
+	var blocked_events: Array = recorder.get_events().filter(func(e): return e.get("type") == "claim_blocked_duplicate")
+	_check(blocked_events.size() == 1, "the blocked duplicate claim should be recorded exactly once, got %d" % blocked_events.size())
+	_check(blocked_events[0].get("payload", {}).get("answer") == "impossible" and blocked_events[0].get("payload", {}).get("justification_constraint_id") == "c_a_window", "the blocked-duplicate payload should identify the repeated verdict+fact")
+
+	var unrecorded = _accepted_controller()
+	unrecorded.answer_claim(true, "c_a_window")
+	var duplicate_unrecorded: Dictionary = unrecorded.answer_claim(true, "c_a_window")
+	_check(JSON.stringify(duplicate_unrecorded) == JSON.stringify(duplicate), "attaching a recorder must never change what answer_claim() returns for a blocked duplicate")
 
 
 func _test_claim_assistance_and_partner_resolution() -> void:

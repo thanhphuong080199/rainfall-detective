@@ -48,6 +48,9 @@ var _controller: PrototypeCController
 var _recorder: DeductionLabRecorder
 var _last_view: Dictionary = {}
 var _pending_confirmed_action: Callable = Callable()
+## Milestone 1.14.2A: see prototype_a.gd's identical field for the full
+## rationale (kept separate from %StatusLabel's own verbatim path message).
+var _last_summary_export: Dictionary = {}
 ## Which flow the shared %ContinueButton currently dismisses: "" (hidden),
 ## "timeline" (dismiss the Check-Timeline feedback panel) or "claim"
 ## (acknowledge a resolved final-claim check and complete the prototype).
@@ -770,6 +773,16 @@ func _render_recorder() -> void:
 	recorder_status_label.text = "Recording: %s — %d event(s) captured (session id: %s)." % [
 		"ON" if _recorder.is_recording() else "OFF", _recorder.get_events().size(), _recorder.get_session_id(),
 	]
+	if not _controller.get_case_def().is_empty():
+		# Milestone 1.14.2A: a live, developer-facing digest of THIS run —
+		# independent of whether recording is on, since it reads the
+		# controller's own get_stats(), never the recorder's event log.
+		recorder_status_label.text += "\nStats: %s" % PrototypeEvaluationSummary.format_stats_line(_controller.get_stats())
+	if not _last_summary_export.is_empty():
+		if _last_summary_export.get("success", false):
+			recorder_status_label.text += "\nSummary exported to %s" % _last_summary_export.get("path", "")
+		else:
+			recorder_status_label.text += "\nSummary export failed: %s" % _last_summary_export.get("error", "")
 
 
 ## Reads the case id from the PICKER, not from _controller.get_case_def() —
@@ -795,10 +808,16 @@ func _on_recorder_clear_pressed() -> void:
 	_render_recorder()
 
 
+## Milestone 1.14.2A: alongside the raw event log, also exports a compact
+## evaluation summary (PrototypeEvaluationSummary) to a SEPARATE sibling
+## file — see prototype_a.gd's identical handler for the full rationale
+## (%StatusLabel's own message stays byte-for-byte unchanged; the summary
+## export's outcome is reported through %RecorderStatusLabel instead).
 func _on_recorder_export_pressed() -> void:
 	var result: Dictionary = _recorder.export_to_file()
 	if result.get("success", false):
 		_set_status("Exported recording to %s" % result.get("path", ""))
+		_last_summary_export = PrototypeEvaluationSummary.export_to_file(_recorder.to_export_dict(), DeductionLabRecorder.DEFAULT_EXPORT_DIR)
 	else:
 		_set_status("Export failed: %s" % result.get("error", ""))
 	_render_recorder()

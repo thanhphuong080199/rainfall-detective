@@ -32,6 +32,7 @@ Verify changes headlessly — do this (at least the content-validation step) bef
   --script res://scenes/test/deduction_lab_presenter_test.gd \
   --script res://scenes/test/deduction_lab_recorder_test.gd \
   --script res://scenes/test/resolution_policy_test.gd \
+  --script res://scenes/test/prototype_evaluation_summary_test.gd \
   --script res://scenes/test/prototype_a_controller_test.gd \
   --script res://scenes/test/prototype_a_presenter_test.gd \
   --script res://scenes/test/prototype_a_content_test.gd \
@@ -61,6 +62,7 @@ Verify changes headlessly — do this (at least the content-validation step) bef
   --script res://scenes/test/deduction_lab_recorder_test.gd \
   --script res://scenes/test/deduction_lab_scene_test.gd \
   --script res://scenes/test/resolution_policy_test.gd \
+  --script res://scenes/test/prototype_evaluation_summary_test.gd \
   --script res://scenes/test/prototype_a_controller_test.gd \
   --script res://scenes/test/prototype_a_presenter_test.gd \
   --script res://scenes/test/prototype_a_content_test.gd \
@@ -81,7 +83,7 @@ Raw equivalents exist (`godot --headless --path . -s res://scenes/test/<name>.gd
 
 ## Architecture
 
-`docs/architecture.md`, `docs/content-guide.md`, `docs/event-system.md`, `docs/case-system.md`, `docs/localization.md`, `docs/deduction-system.md`, `docs/deduction-lab.md`, `docs/prototype-a.md`, `docs/prototype-b.md`, and `docs/testing.md` are the source of truth — read the relevant one before non-trivial work; what follows is only a map. Where they and generic conventions disagree, the docs win.
+`docs/architecture.md`, `docs/content-guide.md`, `docs/event-system.md`, `docs/case-system.md`, `docs/localization.md`, `docs/deduction-system.md`, `docs/deduction-lab.md`, `docs/prototype-a.md`, `docs/prototype-b.md`, `docs/prototype-c.md`, `docs/resolution-policy.md`, `docs/prototype-evaluation.md`, and `docs/testing.md` are the source of truth — read the relevant one before non-trivial work; what follows is only a map. Where they and generic conventions disagree, the docs win.
 
 **The `.claude/skills/godot-development` project skill** (tracked in git, shared by everyone working on this repo) encodes this repo's Godot 4/GDScript conventions in full — typed GDScript, composition/signals/Resources, node lifecycle, scene ownership, when to add an autoload, avoiding NodePath coupling, resource loading, naming — plus the CLI verification workflow in detail. It auto-loads for any `.gd`/`.tscn`/`.tres`/`project.godot` work; read it and its `references/*.md` rather than re-deriving those rules.
 
@@ -268,6 +270,39 @@ theory-batch events) without a version field to say so — see
 pure and runs in both FAST and FULL. Read `docs/resolution-policy.md` first —
 it also records the deferred production-save requirement (persist
 formal-commit state before showing feedback).
+
+### Prototype evaluation instrumentation & audit (Milestone 1.14.2A/1.14.2B)
+
+Makes the existing prototypes easier to evaluate in a playtest and safer to
+carry into Milestone 1.15 — **without** redesigning any puzzle rule,
+success/failure semantics, or scoring. `PrototypeEvaluationSummary`
+(`scripts/deduction/prototype_evaluation_summary.gd`) is a pure,
+autoload-free static helper that reads an already-captured
+`DeductionLabRecorder` export (unmodified again — see above) and computes a
+compact per-run summary (submissions, incorrect submissions, distinct
+candidates tried, how often an already-failed candidate was resubmitted,
+resolution outcome, duration). The one real gap this closes: each
+prototype's existing "refuse an already-failed resubmission at no cost"
+path (Milestone 1.14) previously returned without ever calling the
+recorder, so a facilitator could not tell a single failed attempt apart from
+the same wrong answer mashed five times — exactly the "blind
+trial-and-error" signal the anti-bruteforce pass exists to discourage. Four
+one-line, strictly-after-the-refusal `_record(...)` additions (one per
+controller's duplicate-block path, two in Prototype C for its timeline and
+claim units) make this observable; every one of the returned results they
+sit next to is asserted, by test, to be byte-identical whether a recorder is
+attached or not. No new autoload, no session/GameState mutation, no
+cross-prototype leakage (each prototype scene already owned its own
+recorder instance). Each debug scene's existing Export button now also
+writes a sibling `*_summary.json` next to the unchanged raw recording, and
+`%RecorderStatusLabel` shows a live stats digest independent of whether
+recording is even on. Read `docs/prototype-evaluation.md` first — it also
+records the Milestone 1.14.2B audit findings (state ownership, retry/reset,
+save/load, invalid-content handling, hard-coded assumptions, and the real —
+but deliberately NOT unified — duplication across the three controllers'
+own run-clock/telemetry plumbing, left for Milestone 1.15 to decide).
+`prototype_evaluation_summary_test.gd` is pure and runs in both FAST and
+FULL.
 
 ### UI wiring
 
