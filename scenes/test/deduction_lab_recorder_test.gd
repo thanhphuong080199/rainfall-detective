@@ -43,6 +43,7 @@ func _initialize() -> void:
 	_test_session_wiring_and_source_tagging()
 	_test_session_reset_event()
 	_test_schema_and_metadata()
+	_test_event_schema_version_matches_vocabulary()
 	_test_stable_serialization()
 	_test_export_success()
 	_test_safe_filename_generation()
@@ -173,10 +174,11 @@ func _test_schema_and_metadata() -> void:
 	var exported: Dictionary = recorder.to_export_dict()
 	var keys: Array = exported.keys()
 	keys.sort()
-	var expected: Array = ["case_id", "events", "locale", "prototype", "schema_version", "session_id", "started_at_utc"]
+	var expected: Array = ["case_id", "event_schema_version", "events", "locale", "prototype", "schema_version", "session_id", "started_at_utc"]
 	expected.sort()
 	_check(keys == expected, "the export schema should have exactly the documented top-level fields, got %s" % [keys])
-	_check(exported.get("schema_version") == 1, "schema_version should be 1")
+	_check(exported.get("schema_version") == 1, "schema_version (the outer envelope) should stay 1")
+	_check(exported.get("event_schema_version") == 2, "event_schema_version (the event vocabulary) should be 2 (Milestone 1.14.1 — docs/deduction-lab.md, \"Recorder schema\")")
 	_check(exported.get("case_id") == "proto_x_archive_ledger", "case_id should round-trip")
 	_check(exported.get("locale") == "vi", "locale should round-trip")
 	_check(exported.get("prototype") == "deduction_lab", "prototype should round-trip")
@@ -189,6 +191,37 @@ func _test_schema_and_metadata() -> void:
 	for forbidden in [OS.get_environment("USER"), OS.get_environment("USERNAME")]:
 		if forbidden != "":
 			_check(not serialized.contains(forbidden), "the export must never contain the OS user name")
+
+
+## Contract test (Milestone 1.14.1, docs/deduction-lab.md "Recorder schema"):
+## the declared event_schema_version must actually agree with the event
+## vocabulary a real prototype run emits through this recorder — never bump
+## one without the other, and never let a retired v1 event type or payload
+## key slip back in. Drives a real PrototypeAController failure through this
+## recorder and inspects the exported dict directly, not just the version
+## number in isolation.
+func _test_event_schema_version_matches_vocabulary() -> void:
+	var recorder = _new_recorder()
+	recorder.start("fx_pa_case", "statement_contradiction", "en")
+	var controller = load("res://scripts/deduction/prototype_a_controller.gd").new()
+	var fixtures = load("res://scenes/test/deduction_fixtures.gd")
+	controller.start(fixtures.prototype_a_case(), recorder)
+	controller.select_statement(1)  # st_required1
+	controller.select_evidence("e_c")  # wrong for st_required1 — a genuine failed formal commit
+	controller.present_evidence()
+
+	var exported: Dictionary = recorder.to_export_dict()
+	_check(exported.get("event_schema_version") == 2, "the exported recording should declare event_schema_version 2, got %s" % exported.get("event_schema_version"))
+	var types: Array = []
+	var failed_commit_payload: Dictionary = {}
+	for event in (exported.get("events", []) as Array):
+		types.append(event.get("type"))
+		if event.get("type") == "formal_commit_failed":
+			failed_commit_payload = event.get("payload", {})
+	_check(types.has("run_resolution_result_changed"), "a v2 export should use the renamed run_resolution_result_changed event type, got %s" % [types])
+	_check(not types.has("resolution_tier_changed"), "a v2 export must never emit the retired v1 event type resolution_tier_changed, got %s" % [types])
+	_check(failed_commit_payload.has("run_resolution_result_before") and failed_commit_payload.has("run_resolution_result_after"), "v2 formal_commit_failed payloads should carry run_resolution_result_before/after, got %s" % [failed_commit_payload])
+	_check(not failed_commit_payload.has("tier_before") and not failed_commit_payload.has("tier_after"), "v2 formal_commit_failed payloads must never carry the retired v1 tier_before/tier_after keys, got %s" % [failed_commit_payload])
 
 
 func _test_stable_serialization() -> void:

@@ -111,6 +111,18 @@ layout_mode = 2
 autowrap_mode = 2
 text = "No case selected yet."
 
+[node name="ResolutionStatusLabel" type="Label" parent="CenterPanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 2
+text = ""
+
+[node name="RunResultLabel" type="Label" parent="CenterPanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 2
+text = ""
+
 [node name="HSeparator" type="HSeparator" parent="CenterPanel/Margin/VBox"]
 layout_mode = 2
 
@@ -125,86 +137,6 @@ horizontal_scroll_mode = 0
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 12
-
-[node name="PlayArea" type="HBoxContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox"]
-unique_name_in_owner = true
-visible = false
-layout_mode = 2
-size_flags_vertical = 3
-theme_override_constants/separation = 12
-
-[node name="LeftColumn" type="VBoxContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_stretch_ratio = 2.0
-theme_override_constants/separation = 6
-
-[node name="SlotsLabel" type="Label" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/LeftColumn"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 16
-text = "Connection slots"
-
-[node name="SlotsScroll" type="ScrollContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/LeftColumn"]
-custom_minimum_size = Vector2(0, 110)
-layout_mode = 2
-
-[node name="SlotsList" type="VBoxContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/LeftColumn/SlotsScroll"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 4
-
-[node name="HintScroll" type="ScrollContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/LeftColumn"]
-custom_minimum_size = Vector2(0, 70)
-layout_mode = 2
-
-[node name="HintList" type="VBoxContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/LeftColumn/HintScroll"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="ActionRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/LeftColumn"]
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="HintButton" type="Button" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/LeftColumn/ActionRow"]
-unique_name_in_owner = true
-layout_mode = 2
-text = "Hint"
-
-[node name="ConnectButton" type="Button" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/LeftColumn/ActionRow"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-disabled = true
-text = "Connect Clues"
-
-[node name="VSeparator" type="VSeparator" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea"]
-layout_mode = 2
-
-[node name="RightColumn" type="VBoxContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_stretch_ratio = 1.0
-theme_override_constants/separation = 6
-
-[node name="CaseFileLabel" type="Label" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/RightColumn"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 16
-text = "Case File"
-
-[node name="EvidenceScroll" type="ScrollContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/RightColumn"]
-custom_minimum_size = Vector2(0, 160)
-layout_mode = 2
-size_flags_vertical = 3
-
-[node name="EvidenceList" type="VBoxContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/RightColumn/EvidenceScroll"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 4
 
 [node name="FeedbackPanel" type="PanelContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox"]
 unique_name_in_owner = true
@@ -243,6 +175,139 @@ layout_mode = 2
 size_flags_horizontal = 3
 autowrap_mode = 2
 text = ""
+
+[node name="FeedbackPartnerNote" type="Label" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/FeedbackPanel/FeedbackMargin/FeedbackVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+autowrap_mode = 2
+text = ""
+
+[node name="FeedbackResolutionNotice" type="Label" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/FeedbackPanel/FeedbackMargin/FeedbackVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+autowrap_mode = 2
+text = ""
+
+[node name="AssistancePanel" type="PanelContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="AssistanceMargin" type="MarginContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/AssistancePanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 8
+
+[node name="AssistanceVBox" type="VBoxContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/AssistancePanel/AssistanceMargin"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="AssistanceHeadline" type="Label" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/AssistancePanel/AssistanceMargin/AssistanceVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+autowrap_mode = 2
+text = ""
+
+[node name="AssistanceText" type="Label" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/AssistancePanel/AssistanceMargin/AssistanceVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+autowrap_mode = 2
+text = ""
+
+[node name="PlayArea" type="HBoxContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="LeftColumn" type="VBoxContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 2.0
+theme_override_constants/separation = 6
+
+[node name="DraftTabsRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/LeftColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="DraftStatusLabel" type="Label" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/LeftColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 2
+text = ""
+
+[node name="SlotsLabel" type="Label" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/LeftColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Connection slots"
+
+[node name="SlotsScroll" type="ScrollContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/LeftColumn"]
+custom_minimum_size = Vector2(0, 110)
+layout_mode = 2
+
+[node name="SlotsList" type="VBoxContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/LeftColumn/SlotsScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="HintScroll" type="ScrollContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/LeftColumn"]
+custom_minimum_size = Vector2(0, 70)
+layout_mode = 2
+
+[node name="HintList" type="VBoxContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/LeftColumn/HintScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="HintNoticeLabel" type="Label" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/LeftColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+autowrap_mode = 2
+text = ""
+
+[node name="CommitHelpLabel" type="Label" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/LeftColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+autowrap_mode = 2
+text = ""
+
+[node name="VSeparator" type="VSeparator" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea"]
+layout_mode = 2
+
+[node name="RightColumn" type="VBoxContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.0
+theme_override_constants/separation = 6
+
+[node name="CaseFileLabel" type="Label" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/RightColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Case File"
+
+[node name="EvidenceScroll" type="ScrollContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/RightColumn"]
+custom_minimum_size = Vector2(0, 160)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="EvidenceList" type="VBoxContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox/PlayArea/RightColumn/EvidenceScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
 
 [node name="CompletionPanel" type="PanelContainer" parent="CenterPanel/Margin/VBox/BodyScroll/BodyVBox"]
 unique_name_in_owner = true
@@ -289,6 +354,49 @@ layout_mode = 2
 size_flags_horizontal = 3
 focus_mode = 2
 text = "Continue"
+
+[node name="ActionRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox/Footer"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="HintButton" type="Button" parent="CenterPanel/Margin/VBox/Footer/ActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Hint"
+
+[node name="SaveDraftButton" type="Button" parent="CenterPanel/Margin/VBox/Footer/ActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Save Draft"
+
+[node name="CommitTheoryButton" type="Button" parent="CenterPanel/Margin/VBox/Footer/ActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 2
+disabled = true
+text = "Commit Theory"
+
+[node name="ResolutionActionsRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox/Footer"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="AcceptAssistanceButton" type="Button" parent="CenterPanel/Margin/VBox/Footer/ResolutionActionsRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 2
+text = "Accept Assistance"
+
+[node name="PartnerResolveButton" type="Button" parent="CenterPanel/Margin/VBox/Footer/ResolutionActionsRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 2
+text = "Resolve with Partner"
 
 [node name="CompletionButtonsRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox/Footer"]
 unique_name_in_owner = true

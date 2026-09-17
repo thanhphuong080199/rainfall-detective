@@ -50,6 +50,8 @@ func _initialize() -> void:
 		_test_optional_constraint_never_blocks_acceptance(case_def)
 		_test_invalid_placement_is_rejected(case_def)
 		_test_every_accepted_timeline_contradicts_the_claim(case_def, accepted)
+		_test_supporting_facts_are_exactly_those_that_rule_out_the_claim(case_def, accepted)
+		_test_controller_accepts_every_supporting_fact_and_nothing_else(case_def)
 		_test_translations_resolve(case_def)
 	_test_prototype_c_structurally_equivalent_across_cases()
 
@@ -168,6 +170,58 @@ func _test_every_accepted_timeline_contradicts_the_claim(case_def: Dictionary, a
 			starts[event_id] = timeline.parse_time(placement[event_id])
 		var claim_fits: bool = timeline.is_constraint_satisfied(contradiction_constraint, starts, events_index)
 		_check(not claim_fits, "%s: accepted timeline %s must make the disputed claim impossible, but the claim's constraint was still satisfied" % [case_id, placement])
+
+
+## Milestone 1.14: contradiction.supporting_constraint_refs must be EXACTLY the
+## visible facts that, on their own, rule the claim out
+## (DeductionValidator.prototype_c_facts_ruling_out_claim(), which the always-on
+## validator also enforces) — and every accepted timeline satisfies each of
+## them while contradicting the claim, so the justification holds for every
+## timeline a player can build, not only the authored one.
+func _test_supporting_facts_are_exactly_those_that_rule_out_the_claim(case_def: Dictionary, accepted: Array) -> void:
+	var case_id: String = case_def.get("id", "")
+	var contradiction: Dictionary = case_def.get("prototype_c", {}).get("contradiction", {})
+	var authored: Array = contradiction.get("supporting_constraint_refs", []).duplicate()
+	authored.sort()
+	var ruling_out: Array = validator.prototype_c_facts_ruling_out_claim(case_def)
+	ruling_out.sort()
+	_check(not authored.is_empty() and authored == ruling_out, "%s: supporting facts %s must be exactly the facts that rule the claim out on their own %s" % [case_id, authored, ruling_out])
+	var events_index: Dictionary = timeline.event_index(case_def)
+	for ref in authored:
+		var fact: Dictionary = {}
+		for constraint in timeline.constraints(case_def):
+			if str(constraint.get("id", "")) == ref:
+				fact = constraint
+		for placement in accepted:
+			var starts: Dictionary = {}
+			for event_id in placement:
+				starts[event_id] = timeline.parse_time(placement[event_id])
+			_check(timeline.is_constraint_satisfied(fact, starts, events_index), "%s: supporting fact %s must hold in every accepted timeline %s" % [case_id, ref, placement])
+
+
+## The runtime check agrees with the content: against the authored solution,
+## "Impossible" succeeds with every supporting fact and fails with every other
+## visible fact; "Fits" never succeeds; a failed justification never touches
+## the accepted timeline.
+func _test_controller_accepts_every_supporting_fact_and_nothing_else(case_def: Dictionary) -> void:
+	var case_id: String = case_def.get("id", "")
+	var controller_script: Variant = load("res://scripts/deduction/prototype_c_controller.gd")
+	var refs: Array = case_def.get("prototype_c", {}).get("contradiction", {}).get("supporting_constraint_refs", [])
+	var solution: Dictionary = case_def.get("ground_truth", {}).get("solution_timeline", {})
+	var fact_ids: Array = (case_def.get("prototype_c", {}).get("visible_constraint_facts", {}) as Dictionary).keys()
+	for fact_id in fact_ids:
+		var controller = controller_script.new()
+		controller.start(case_def)
+		for event_id in solution:
+			if not controller.is_fixed(event_id):
+				controller.place_event(event_id, str(solution[event_id]))
+		controller.submit_timeline()
+		var placements: Dictionary = controller.get_placements()
+		var fits: Dictionary = controller.answer_claim(false, fact_id)
+		_check(fits.get("correct") == false, "%s: \"Fits\" with %s must never succeed" % [case_id, fact_id])
+		var impossible: Dictionary = controller.answer_claim(true, fact_id)
+		_check(impossible.get("correct") == refs.has(fact_id), "%s: \"Impossible\" justified by %s must %s" % [case_id, fact_id, "succeed" if refs.has(fact_id) else "fail"])
+		_check(controller.get_placements() == placements and controller.is_accepted(), "%s: claim answers never touch the accepted timeline" % case_id)
 
 
 func _test_translations_resolve(case_def: Dictionary) -> void:

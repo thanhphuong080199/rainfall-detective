@@ -27,8 +27,14 @@ There is no story, no protagonist, and no Case 01 yet — and deliberately so.
   (find the lie, present the one piece of evidence that disproves it),
   launched from the Deduction Lab. `docs/prototype-b.md` (Milestone 1.12) is
   the second — "clue connection" (place the evidence that jointly establishes
-  a real deduction into a fixed number of slots, then connect them), also
-  launched from the Deduction Lab.
+  a real deduction into a fixed number of slots), also launched from the
+  Deduction Lab. `docs/prototype-c.md` (Milestone 1.13) is the third,
+  "timeline reconstruction": place events on a timeline, then use it to
+  expose an impossible claim. `docs/resolution-policy.md` (Milestone 1.14)
+  covers what all three share: limited formal commits, drafts that are never
+  checked until committed, acknowledged assistance and partner resolution.
+  There is no game over, and each run records whether it was solved
+  Independently, Guided or Assisted.
 
 ## Requirements
 

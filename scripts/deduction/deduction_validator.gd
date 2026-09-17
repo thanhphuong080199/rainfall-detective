@@ -1165,6 +1165,71 @@ static func enumerate_accepted_prototype_c_timelines(case_def: Dictionary) -> Ar
 	return accepted
 
 
+## Visible facts that, ON THEIR OWN, make the disputed claim impossible
+## (Milestone 1.14's temporal justification — docs/prototype-c.md, "Final
+## claim justification"): the fact is satisfiable on the board, yet no
+## placement of the events it and the claim reference satisfies both. Fixed
+## events sit at their authored fixed_time (they are locked on the board);
+## every other referenced event ranges over the case's own candidate
+## time_slots — the same bounded domain the rest of Prototype C uses, never
+## searched beyond it. Only facts sharing an event with the claim are
+## enumerated at all, and at most |time_slots|^3 placements per fact (a pair
+## fact plus a single-event claim), so this is cheap enough for the always-on
+## validator, unlike enumerate_accepted_prototype_c_timelines() below. Every
+## check goes through TimelineEvaluator.is_constraint_satisfied() — no private
+## constraint semantics.
+static func prototype_c_facts_ruling_out_claim(case_def: Dictionary) -> Array[String]:
+	var out: Array[String] = []
+	var proto: Variant = case_def.get("prototype_c")
+	if typeof(proto) != TYPE_DICTIONARY:
+		return out
+	var contradiction: Variant = proto.get("contradiction")
+	var facts: Variant = proto.get("visible_constraint_facts")
+	var slots: Array[String] = DeductionEvaluator.string_array(proto.get("time_slots", []))
+	if typeof(contradiction) != TYPE_DICTIONARY or typeof(facts) != TYPE_DICTIONARY or slots.is_empty():
+		return out
+	var claim_constraint: Dictionary = _find_timeline_constraint(case_def, str((contradiction as Dictionary).get("constraint_ref", "")))
+	if claim_constraint.is_empty():
+		return out
+
+	var events: Dictionary = TimelineEvaluator.event_index(case_def)
+	var fixed_starts: Dictionary = {}
+	for event_id in DeductionEvaluator.string_array(proto.get("fixed_events", [])):
+		for constraint in TimelineEvaluator.constraints(case_def):
+			if str(constraint.get("type", "")) == "fixed_time" and str(constraint.get("event", "")) == event_id:
+				fixed_starts[event_id] = TimelineEvaluator.parse_time(constraint.get("time"))
+	var claim_events: Array[String] = TimelineEvaluator.constraint_event_ids(claim_constraint)
+
+	for fact_id in (facts as Dictionary):
+		var fact: Dictionary = _find_timeline_constraint(case_def, str(fact_id))
+		var fact_events: Array[String] = TimelineEvaluator.constraint_event_ids(fact)
+		if fact.is_empty() or not fact_events.any(func(event_id: String) -> bool: return claim_events.has(event_id)):
+			continue
+		var free: Array[String] = []
+		for event_id in fact_events + claim_events:
+			if not fixed_starts.has(event_id) and not free.has(event_id):
+				free.append(event_id)
+		if free.size() > 3:
+			continue
+		var fact_satisfiable := false
+		var jointly_satisfiable := false
+		for combo_index in int(pow(slots.size(), free.size())):
+			var starts: Dictionary = fixed_starts.duplicate()
+			var remainder: int = combo_index
+			for event_id in free:
+				starts[event_id] = TimelineEvaluator.parse_time(slots[remainder % slots.size()])
+				remainder = remainder / slots.size()
+			if not TimelineEvaluator.is_constraint_satisfied(fact, starts, events):
+				continue
+			fact_satisfiable = true
+			if TimelineEvaluator.is_constraint_satisfied(claim_constraint, starts, events):
+				jointly_satisfiable = true
+				break
+		if fact_satisfiable and not jointly_satisfiable:
+			out.append(str(fact_id))
+	return out
+
+
 static func _validate_prototype_c(case_def: Dictionary, ctx: String, errors: Array[String], warnings: Array[String]) -> void:
 	var proto: Variant = case_def.get("prototype_c")
 	if proto == null:
@@ -1278,6 +1343,37 @@ static func _validate_prototype_c(case_def: Dictionary, ctx: String, errors: Arr
 		if (facts as Dictionary).has(constraint_ref):
 			errors.append('%s contradiction.constraint_ref "%s" must not also appear in visible_constraint_facts — the disputed claim stays hidden until the timeline is accepted' % [pc_ctx, constraint_ref])
 
+	# Milestone 1.14 — the final verdict needs a temporal justification
+	# (docs/prototype-c.md, "Final claim justification"): every listed fact must
+	# be selectable, bear on the claim, and ON ITS OWN rule the claim out; every
+	# visible fact that does so must be listed, so no valid justification is
+	# ever rejected.
+	var refs_raw: Variant = (contradiction as Dictionary).get("supporting_constraint_refs")
+	var refs: Array[String] = DeductionEvaluator.string_array(refs_raw)
+	if not _is_string_array(refs_raw) or refs.is_empty():
+		errors.append('%s contradiction.supporting_constraint_refs must be a non-empty array of visible fact constraint ids — the final verdict needs at least one temporal justification the player can select' % pc_ctx)
+	var claim_event_ids: Array[String] = TimelineEvaluator.constraint_event_ids(contradiction_constraint)
+	var structurally_valid_refs: Array[String] = []
+	for ref in refs:
+		if structurally_valid_refs.has(ref):
+			errors.append('%s contradiction.supporting_constraint_refs lists "%s" more than once' % [pc_ctx, ref])
+		elif ref == constraint_ref:
+			errors.append('%s contradiction.supporting_constraint_refs must not list the disputed claim\'s own constraint "%s" — a justification is an established fact, never the claim itself' % [pc_ctx, ref])
+		elif not (facts as Dictionary).has(ref):
+			errors.append('%s contradiction.supporting_constraint_refs entry "%s" is not a visible_constraint_facts entry — a justification must be a fact the player can actually read and select' % [pc_ctx, ref])
+		elif not TimelineEvaluator.constraint_event_ids(_find_timeline_constraint(case_def, ref)).any(func(event_id: String) -> bool: return claim_event_ids.has(event_id)):
+			errors.append('%s contradiction.supporting_constraint_refs entry "%s" shares no timeline event with the disputed claim — on its own it cannot bear on that claim at all' % [pc_ctx, ref])
+		else:
+			structurally_valid_refs.append(ref)
+	if not contradiction_constraint.is_empty() and not refs.is_empty():
+		var ruling_out: Array[String] = prototype_c_facts_ruling_out_claim(case_def)
+		for ref in structurally_valid_refs:
+			if not ruling_out.has(ref):
+				errors.append('%s contradiction.supporting_constraint_refs entry "%s" does not, on its own, rule out the disputed claim anywhere in the candidate time-slot domain — it does not genuinely participate in the contradiction' % [pc_ctx, ref])
+		for fact_id in ruling_out:
+			if not refs.has(fact_id):
+				errors.append('%s contradiction.supporting_constraint_refs omits "%s", a visible fact that on its own rules out the disputed claim — every genuinely valid justification must be accepted' % [pc_ctx, fact_id])
+
 	var ladder: Variant = proto.get("hint_ladder")
 	if typeof(ladder) != TYPE_ARRAY or (ladder as Array).size() != PROTOTYPE_A_HINT_LEVELS:
 		errors.append('%s hint_ladder must be an array of exactly %d translation keys' % [pc_ctx, PROTOTYPE_A_HINT_LEVELS])
@@ -1354,6 +1450,11 @@ static func _prototype_c_signature_lines(case_def: Dictionary, role_of: Dictiona
 		var claim_role: String = role_of.get(str((contradiction as Dictionary).get("claim", "")), "")
 		var constraint_type: String = str(_find_timeline_constraint(case_def, str((contradiction as Dictionary).get("constraint_ref", ""))).get("type", ""))
 		lines.append("prototype_c:contradiction_claim_role=%s:constraint_type=%s" % [claim_role, constraint_type])
+		var support_types: Array = []
+		for ref in DeductionEvaluator.string_array((contradiction as Dictionary).get("supporting_constraint_refs", [])):
+			support_types.append(str(_find_timeline_constraint(case_def, ref).get("type", "")))
+		support_types.sort()
+		lines.append("prototype_c:supporting_fact_types=[%s]" % ",".join(PackedStringArray(support_types)))
 	return lines
 
 

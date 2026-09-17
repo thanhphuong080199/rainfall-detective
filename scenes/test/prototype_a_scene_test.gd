@@ -17,6 +17,8 @@ const POOL_LOST_PROPERTY_SHEET := 0  # refutes st_oren_never_touched (required, 
 const POOL_FORCED_WINDOW := 1  # refutes st_oren_break_in (required, round 2)
 const POOL_SHREDDING_LOG := 2  # refutes st_ilse_left_early (optional, round 2)
 const POOL_WING_CAMERA := 3  # irrelevant to every statement here
+const POOL_WINDOW_LATCH := 4  # irrelevant to round 1's required statement
+const POOL_TRAM_TAP := 5  # irrelevant to round 1's required statement
 
 var main_instance: Node
 var debug_panel: Control
@@ -58,6 +60,11 @@ func _initialize() -> void:
 		_test_hide_show_preserves_session()
 		_test_translation_coverage()
 		_test_continue_button_stays_reachable_with_long_feedback()
+		# Milestone 1.14 — resolution policy (docs/resolution-policy.md).
+		_test_credibility_assistance_and_partner_via_buttons()
+		_test_partner_completion_summary()
+		_test_attempts_survive_locale_f1_and_cancel_then_restart_is_recorded()
+		_test_resolution_actions_live_in_fixed_footer()
 	else:
 		print("(skipped interactive Prototype A checks — not a debug build; OS.is_debug_build() gate could not be exercised either way here, see docs/prototype-a.md's Known limitations)")
 
@@ -290,7 +297,7 @@ func _test_round_transition_and_completion() -> void:
 	_check(prototype_a.get_node("%CompletionPanel").visible, "completing both required contradictions should show the completion panel")
 	_check((prototype_a.get_node("%CompletionTextLabel") as Label).text != "", "the completion panel should show the authored completion text")
 	var stats_list: VBoxContainer = prototype_a.get_node("%StatsList")
-	_check(stats_list.get_child_count() == 5, "the completion panel should show all five stat lines")
+	_check(stats_list.get_child_count() == 8, "the completion panel should show all eight summary lines (7 shared resolution lines + optional contradictions)")
 	prototype_a.close()
 
 
@@ -461,6 +468,7 @@ func _test_continue_button_stays_reachable_with_long_feedback() -> void:
 		var child: Control = prototype_a.get_node(child_name)
 		_check(_is_descendant_of(child, body_scroll), "%s must live inside the scrolling BodyScroll" % child_name)
 	_check(body_scroll.get_v_scroll_bar() != null, "BodyScroll must be able to show a vertical scrollbar")
+	_check(prototype_a.get_node("%FeedbackPanel").get_index() < prototype_a.get_node("%PlayArea").get_index(), "FeedbackPanel must be the body's first section, so resetting the scroll shows the feedback — not the play area (Milestone 1.14 visual QA)")
 
 	# --- Behavior: drive a real flow, then inject content far longer than
 	# any authored string, in both locales. ---
@@ -523,6 +531,187 @@ func _longest_real_prototype_a_feedback_text() -> String:
 							longest = text
 	locale_manager.set_locale("vi")
 	return longest
+
+
+# ---------------------------------------------------------------------------
+# Milestone 1.14 — resolution policy
+
+func _t(key: String) -> String:
+	return String(TranslationServer.translate(key))
+
+
+func _label(name: String) -> Label:
+	return prototype_a.get_node("%" + name) as Label
+
+
+func _launch_and_start() -> void:
+	deduction_lab.open()
+	(deduction_lab.get_node("%LaunchPrototypeAButton") as Button).pressed.emit()
+	_start_case(CASE_ID)
+
+
+func _present_and_continue(pool_index: int) -> void:
+	_click_select_evidence(pool_index)
+	_present()
+	_continue_after_feedback()
+
+
+## Round 1 of X: three standard failures on the required statement, accept
+## assistance, two assisted failures — every one a DIFFERENT, genuinely wrong
+## evidence item, driven only through real buttons.
+func _exhaust_round_1_budget() -> void:
+	_button("NextButton").pressed.emit()
+	_button("NextButton").pressed.emit()  # st_oren_never_touched
+	for pool_index in [POOL_WING_CAMERA, POOL_FORCED_WINDOW, POOL_SHREDDING_LOG]:
+		_present_and_continue(pool_index)
+	_button("AcceptAssistanceButton").pressed.emit()
+	for pool_index in [POOL_WINDOW_LATCH, POOL_TRAM_TAP]:
+		_present_and_continue(pool_index)
+
+
+func _test_credibility_assistance_and_partner_via_buttons() -> void:
+	_launch_and_start()
+	var status_label: Label = _label("ResolutionStatusLabel")
+	var run_result_label: Label = _label("RunResultLabel")
+	var correct_name: String = _t("DED_PROTO_X_E_LOST_PROPERTY_SHEET_NAME")
+	_check(status_label.text.contains("3/3") and not status_label.text.contains(_t("UI_RESOLUTION_TIER_INDEPENDENT")), "a fresh round's own status must show full credibility and never the run result, got \"%s\"" % status_label.text)
+	_check(run_result_label.text.contains(_t("UI_RESOLUTION_TIER_INDEPENDENT")), "the separate run-result line should say Independent, got \"%s\"" % run_result_label.text)
+	_button("NextButton").pressed.emit()
+	_button("NextButton").pressed.emit()
+
+	var expected_remaining: Array = ["2/3", "1/3"]
+	var failing: Array = [POOL_WING_CAMERA, POOL_FORCED_WINDOW, POOL_SHREDDING_LOG]
+	for i in failing.size():
+		_click_select_evidence(failing[i])
+		_present()
+		_check(_label("FeedbackRebuttal").visible and _label("FeedbackRebuttal").text != "", "failure %d should show an NPC rebuttal" % (i + 1))
+		_check(_label("FeedbackResolutionNotice").visible and _label("FeedbackResolutionNotice").text != "", "failure %d should state its credibility/assistance consequence" % (i + 1))
+		for label_name in ["FeedbackHeadline", "FeedbackExplanation", "FeedbackRebuttal", "FeedbackResolutionNotice"]:
+			_check(not _label(label_name).text.contains(correct_name), "failure feedback (%s) must never reveal the correct evidence" % label_name)
+		_check(not _button("AcceptAssistanceButton").is_visible_in_tree(), "the resolution actions must stay hidden while feedback is open (Continue is the one next step)")
+		_continue_after_feedback()
+		if i < expected_remaining.size():
+			_check(status_label.text.contains(expected_remaining[i]), "credibility should read %s after failure %d, got \"%s\"" % [expected_remaining[i], i + 1, status_label.text])
+	_check((prototype_a.get_node("%StatementList") as VBoxContainer).get_child_count() == 3, "failures must never reset the testimony")
+
+	_check(status_label.text.contains(_t("UI_RESOLUTION_STATUS_ASSISTANCE_REQUIRED")), "the third failure should show assistance required in the round's own status, got \"%s\"" % status_label.text)
+	_check(run_result_label.text.contains(_t("UI_RESOLUTION_TIER_ASSISTED")), "the third failure should make the separate run-result line say Assisted, got \"%s\"" % run_result_label.text)
+	_click_select_evidence(POOL_LOST_PROPERTY_SHEET)
+	_check(_button("PresentButton").disabled, "Present Evidence must be disabled until assistance is acknowledged — even with the right evidence selected")
+	_check(prototype_a.get_node("%ResolutionActionsRow").visible and _button("AcceptAssistanceButton").visible and not _button("PartnerResolveButton").visible, "the footer should offer Accept Assistance (and not partner resolution yet)")
+	_check(not prototype_a.get_node("%AssistancePanel").visible, "assistance content must not show before it is acknowledged")
+
+	_button("AcceptAssistanceButton").pressed.emit()
+	_check(prototype_a.get_node("%AssistancePanel").visible and _label("AssistanceText").text != "", "acknowledging assistance should show the partner's pointer")
+	_check(not _label("AssistanceText").text.contains(correct_name), "assistance must never name the exact evidence")
+	var focus_marked := false
+	for row in (prototype_a.get_node("%StatementList") as VBoxContainer).get_children():
+		if ((row as HBoxContainer).get_child(0) as Label).text.contains(_t("UI_PROTOTYPE_A_PARTNER_FOCUS_LABEL")):
+			focus_marked = true
+	_check(focus_marked, "the focused statement should be marked in text, not only by color")
+	_check(not _button("PresentButton").disabled, "presenting should re-enable after assistance (the correct item is still selected)")
+	_check(status_label.text.contains("2/2"), "Assisted Mode should show its own attempt budget, got \"%s\"" % status_label.text)
+
+	for pool_index in [POOL_WINDOW_LATCH, POOL_TRAM_TAP]:
+		_present_and_continue(pool_index)
+	_click_select_evidence(POOL_LOST_PROPERTY_SHEET)
+	_check(_button("PresentButton").disabled, "blind presenting must be closed after two assisted failures")
+	_check(_button("PartnerResolveButton").visible and not _button("AcceptAssistanceButton").visible, "the footer should now offer Resolve with Partner")
+
+	_button("PartnerResolveButton").pressed.emit()
+	_check(_label("FeedbackHeadline").text == _t("UI_RESOLUTION_PARTNER_HEADLINE"), "partner resolution should be clearly labeled, got \"%s\"" % _label("FeedbackHeadline").text)
+	_check(_label("FeedbackPartnerNote").visible and _label("FeedbackPartnerNote").text.contains(correct_name), "the partner note should explain which evidence exposed the lie")
+	_check(_label("FeedbackExplanation").text != "", "partner resolution must still explain the contradiction")
+	_continue_after_feedback()
+	_check(prototype_a.get_node("%PlayArea").visible and (prototype_a.get_node("%ProgressLabel") as Label).text.contains("2"), "the run continues to part 2 — no game over, no replay")
+	# Milestone 1.14.1's core regression check: part 1 finished Assisted (via
+	# partner resolution), but part 2's OWN status must read as a completely
+	# fresh challenge — full credibility, no mention of Assisted — while the
+	# run result stays Assisted on its own, separate, explicitly-worded line.
+	_check(status_label.text == _t("UI_PROTOTYPE_A_CREDIBILITY") % [3, 3], "part 2 must start at full credibility and read as a fresh round, never itself \"Assisted\", got \"%s\"" % status_label.text)
+	_check(run_result_label.text == _t("UI_RESOLUTION_RUN_RESULT_FROM_EARLIER") % _t("UI_RESOLUTION_TIER_ASSISTED"), "the run result must still separately read Assisted, explicitly noting it was reached in an earlier challenge, got \"%s\"" % run_result_label.text)
+	_check(not prototype_a.get_node("%AssistancePanel").visible, "part 2 must not carry over part 1's assistance panel")
+	prototype_a.close()
+
+
+func _test_partner_completion_summary() -> void:
+	_launch_and_start()
+	_exhaust_round_1_budget()
+	_button("PartnerResolveButton").pressed.emit()
+	_continue_after_feedback()
+	_button("NextButton").pressed.emit()  # st_oren_break_in
+	_present_and_continue(POOL_FORCED_WINDOW)
+	_check(prototype_a.get_node("%CompletionPanel").visible, "a partner-resolved part followed by a solved part should complete the prototype")
+	var lines: Array[String] = []
+	for child in (prototype_a.get_node("%StatsList") as VBoxContainer).get_children():
+		lines.append((child as Label).text)
+	_check(lines.size() == 8, "the completion summary should show 8 lines, got %s" % [lines])
+	_check(lines.has(_t("UI_RESOLUTION_STATS_TIER") % _t("UI_RESOLUTION_TIER_ASSISTED")), "the summary should report the Assisted tier, got %s" % [lines])
+	_check(lines.has(_t("UI_RESOLUTION_STATS_PARTNER") % _t("UI_RESOLUTION_YES")) and lines.has(_t("UI_RESOLUTION_STATS_ASSISTANCE") % _t("UI_RESOLUTION_YES")), "the summary should report assistance and partner resolution, got %s" % [lines])
+	_check(lines.has(_t("UI_RESOLUTION_STATS_FAILED_COMMITS") % 5) and lines.has(_t("UI_RESOLUTION_STATS_FORMAL_COMMITS") % 6), "the summary should count 6 formal commits with 5 failures (partner resolution is not a player commit), got %s" % [lines])
+	prototype_a.close()
+
+
+func _test_attempts_survive_locale_f1_and_cancel_then_restart_is_recorded() -> void:
+	deduction_lab.open()
+	(deduction_lab.get_node("%LaunchPrototypeAButton") as Button).pressed.emit()
+	_select_case_option(CASE_ID)
+	_button("RecorderStartButton").pressed.emit()
+	_start_case(CASE_ID)
+	_button("NextButton").pressed.emit()
+	_button("NextButton").pressed.emit()
+	_present_and_continue(POOL_WING_CAMERA)
+	var status_label: Label = _label("ResolutionStatusLabel")
+	_check(status_label.text.contains("2/3"), "sanity — one failure costs one credibility")
+
+	locale_manager.set_locale("en")
+	_check(status_label.text.contains("Credibility: 2/3"), "switching locale must re-render, never reset, the attempt count, got \"%s\"" % status_label.text)
+	locale_manager.set_locale("vi")
+	debug_panel.close()
+	debug_panel.open()
+	deduction_lab.open()
+	_check(status_label.text.contains("2/3"), "F1 hide/show must preserve the attempt count")
+
+	_button("RestartButton").pressed.emit()  # dialog pops; not confirming is a cancel
+	_check(status_label.text.contains("2/3"), "cancelling a restart must preserve the attempt count")
+	(prototype_a.get_node("%ConfirmDialog") as ConfirmationDialog).confirmed.emit()
+	_check(status_label.text.contains("3/3") and not status_label.text.contains(_t("UI_RESOLUTION_TIER_INDEPENDENT")), "a confirmed restart starts a fresh round with full credibility, got \"%s\"" % status_label.text)
+	_check(_label("RunResultLabel").text.contains(_t("UI_RESOLUTION_TIER_INDEPENDENT")), "a confirmed restart's separate run-result line should say Independent, got \"%s\"" % _label("RunResultLabel").text)
+
+	_button("RecorderExportButton").pressed.emit()
+	var export_status: String = (prototype_a.get_node("%StatusLabel") as Label).text
+	var exported_path: String = export_status.trim_prefix("Exported recording to ")
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(exported_path)) if FileAccess.file_exists(exported_path) else null
+	_check(typeof(parsed) == TYPE_DICTIONARY and parsed.get("schema_version") == 1 and parsed.get("event_schema_version") == 2, "the export should keep schema_version 1 and declare event_schema_version 2")
+	var types: Array = []
+	if typeof(parsed) == TYPE_DICTIONARY:
+		for event in (parsed.get("events", []) as Array):
+			types.append(event.get("type"))
+			_check(not JSON.stringify(event).contains(_t("UI_PROTOTYPE_A_REBUTTAL").left(6)), "recorded events must never carry localized feedback text")
+	for expected_type in ["formal_commit_started", "formal_commit_failed", "run_resolution_result_changed", "prototype_restarted"]:
+		_check(types.has(expected_type), "the export should contain \"%s\" (the v2 event vocabulary), got %s" % [expected_type, types])
+	_check(not types.has("resolution_tier_changed"), "the export must never emit the retired v1 event type resolution_tier_changed, got %s" % [types])
+	_button("RecorderStopButton").pressed.emit()
+	_button("RecorderClearButton").pressed.emit()
+	if FileAccess.file_exists(exported_path):
+		DirAccess.remove_absolute(exported_path)
+	prototype_a.close()
+
+
+## Milestone 1.14.1 (1280×720 accessibility): PRIMARY formal-commit actions —
+## not just the resolution actions — must live in the fixed Footer, never as
+## descendants of the scrolling %BodyScroll, so opening assistance/long
+## feedback can never push them offscreen.
+func _test_resolution_actions_live_in_fixed_footer() -> void:
+	var footer: Control = prototype_a.get_node("%Footer")
+	var body_scroll: ScrollContainer = prototype_a.get_node("%BodyScroll")
+	_check(prototype_a.get_node("%ResolutionActionsRow").get_parent() == footer, "Accept Assistance / Resolve with Partner must live in the fixed Footer")
+	_check(_is_descendant_of(prototype_a.get_node("%AssistancePanel"), body_scroll), "the (possibly long) assistance text must scroll inside BodyScroll")
+	_check(not _is_descendant_of(prototype_a.get_node("%ResolutionStatusLabel"), body_scroll), "the credibility status must stay in the fixed header")
+	_check(not _is_descendant_of(prototype_a.get_node("%RunResultLabel"), body_scroll), "the run-result line must stay in the fixed header, separate from the credibility status")
+	_check(_button("PresentButton").get_parent() == prototype_a.get_node("%ActionRow") and prototype_a.get_node("%ActionRow").get_parent() == footer, "Present Evidence — the primary formal commit — must live in the fixed Footer, never inside the scrolling body")
+	_check(not _is_descendant_of(_button("PresentButton"), body_scroll), "Present Evidence must NOT be a descendant of the scrolling BodyScroll")
+	_check(_button("HintButton").get_parent() == prototype_a.get_node("%ActionRow"), "Hint stays paired with Present Evidence in the fixed footer's ActionRow")
 
 
 func _is_descendant_of(node: Node, ancestor: Node) -> bool:

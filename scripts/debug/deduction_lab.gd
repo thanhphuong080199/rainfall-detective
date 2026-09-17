@@ -31,6 +31,13 @@ var _last_validation_errors: Array[String] = []
 var _last_validation_warnings: Array[String] = []
 var _pending_confirmed_action: Callable = Callable()
 
+## The Lab's OWN content (Milestone 1.14.1, "Prevent Deduction Lab
+## show-through") — hidden, not merely dimmed-behind, while any Prototype
+## overlay is open, so no Lab text/controls can bleed through visually or
+## receive mouse/keyboard input, and restored the instant the last open
+## prototype closes. See _set_own_content_visible()/_on_prototype_closed().
+@onready var dim_background: ColorRect = %DimBackground
+@onready var center_panel: PanelContainer = %CenterPanel
 @onready var non_canon_badge: Label = %NonCanonBadge
 @onready var close_button: Button = %CloseButton
 @onready var case_option_button: OptionButton = %CaseOptionButton
@@ -103,6 +110,10 @@ func _ready() -> void:
 	launch_prototype_c_button.pressed.connect(_on_launch_prototype_c_pressed)
 	launch_prototype_c_button.text = tr("UI_PROTOTYPE_C_LAUNCH_BUTTON")
 	confirm_dialog.confirmed.connect(_on_confirm_dialog_confirmed)
+
+	prototype_a.closed.connect(_on_prototype_closed)
+	prototype_b.closed.connect(_on_prototype_closed)
+	prototype_c.closed.connect(_on_prototype_closed)
 
 	evidence_search_edit.text_changed.connect(func(_text): _render_evidence())
 	evidence_filter_option.add_item("All", 0)
@@ -222,6 +233,26 @@ func _do_reset() -> void:
 	refresh()
 
 
+## Milestone 1.14.1 ("Prevent Deduction Lab show-through"): hides the Lab's
+## OWN content — %DimBackground and %CenterPanel, never the Prototype nodes
+## themselves — so a Prototype overlay's own opaque background is the only
+## thing drawn, and every Lab control underneath is both invisible AND
+## (Godot clears focus/hit-testing from a hidden Control automatically)
+## unreachable by mouse or keyboard. Restored by _on_prototype_closed() the
+## instant the open prototype returns.
+func _set_own_content_visible(value: bool) -> void:
+	dim_background.visible = value
+	center_panel.visible = value
+
+
+## Connected to every PrototypeX.closed signal. Only one prototype is ever
+## open at a time (the launch handlers below close the other two first), so
+## any one of them closing means it is safe to restore the Lab.
+func _on_prototype_closed() -> void:
+	_set_own_content_visible(true)
+	_refresh_if_visible()
+
+
 ## Launches Prototype A (Milestone 1.11) using the Lab's currently active
 ## case as a convenience default — the facilitator can still change it before
 ## pressing Start there. Uses a FRESH PrototypeAController/DeductionSession,
@@ -231,6 +262,7 @@ func _do_reset() -> void:
 func _on_launch_prototype_a_pressed() -> void:
 	prototype_b.close()  # avoid two prototype overlays visible at once; hiding never discards prototype_b's own progress
 	prototype_c.close()  # ditto for prototype_c's own progress
+	_set_own_content_visible(false)  # never show through prototype_a's own overlay — see _set_own_content_visible()
 	prototype_a.open(_controller.get_case_def() if _controller.get_session() != null else {})
 
 
@@ -242,6 +274,7 @@ func _on_launch_prototype_a_pressed() -> void:
 func _on_launch_prototype_b_pressed() -> void:
 	prototype_a.close()  # avoid two prototype overlays visible at once; hiding never discards prototype_a's own progress
 	prototype_c.close()  # ditto for prototype_c's own progress
+	_set_own_content_visible(false)
 	prototype_b.open(_controller.get_case_def() if _controller.get_session() != null else {})
 
 
@@ -254,6 +287,7 @@ func _on_launch_prototype_b_pressed() -> void:
 func _on_launch_prototype_c_pressed() -> void:
 	prototype_a.close()  # avoid two prototype overlays visible at once; hiding never discards prototype_a's own progress
 	prototype_b.close()  # ditto for prototype_b's own progress
+	_set_own_content_visible(false)
 	prototype_c.open(_controller.get_case_def() if _controller.get_session() != null else {})
 
 

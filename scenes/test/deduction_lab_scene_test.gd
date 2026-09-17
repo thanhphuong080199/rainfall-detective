@@ -35,6 +35,7 @@ func _initialize() -> void:
 
 	if OS.is_debug_build():
 		_test_open_close_and_debug_panel_integration()
+		_test_prototype_overlay_hides_lab_content()
 		_test_case_selection_and_modes()
 		_test_author_debug_actions()
 		_test_recorder_controls()
@@ -90,6 +91,63 @@ func _test_open_close_and_debug_panel_integration() -> void:
 	deduction_lab.close()
 	_check(not deduction_lab.visible, "close() should hide the Lab")
 	deduction_lab.open()
+
+
+## Milestone 1.14.1 ("Prevent Deduction Lab show-through"): opening any
+## Prototype overlay must hide the Lab's OWN content (%DimBackground,
+## %CenterPanel) — not merely dim it, and not merely rely on the overlay's
+## opaque background — so no Lab text or control can visibly bleed through
+## OR receive mouse/keyboard input while hidden, and returning restores the
+## Lab's session untouched. See scripts/debug/deduction_lab.gd,
+## _set_own_content_visible()/_on_prototype_closed().
+func _test_prototype_overlay_hides_lab_content() -> void:
+	var center_panel: Control = deduction_lab.get_node("%CenterPanel")
+	var dim_background: Control = deduction_lab.get_node("%DimBackground")
+	var close_button: Button = deduction_lab.get_node("%CloseButton")
+	var prototype_a: Control = deduction_lab.get_node("%PrototypeA")
+	var prototype_b: Control = deduction_lab.get_node("%PrototypeB")
+	var prototype_c: Control = deduction_lab.get_node("%PrototypeC")
+
+	deduction_lab.open()
+	_select_case("proto_x_archive_ledger")
+	_check(center_panel.visible and dim_background.visible, "sanity — the Lab's own content is visible before any prototype opens")
+
+	# Realistic scenario: the CloseButton already holds keyboard focus (as it
+	# would after a real click) BEFORE the overlay opens.
+	close_button.grab_focus()
+	_check(close_button.has_focus(), "sanity — grab_focus() should succeed on a visible, focusable control")
+
+	(deduction_lab.get_node("%LaunchPrototypeAButton") as Button).pressed.emit()
+	_check(prototype_a.visible, "Prototype A should be open")
+	_check(not center_panel.visible and not dim_background.visible, "opening Prototype A must hide the Lab's own content, not merely dim it")
+	_check(not close_button.is_visible_in_tree(), "the Lab's CloseButton must not be visible in the tree while hidden behind Prototype A")
+	_check(not close_button.has_focus(), "hiding the Lab's own content must release any keyboard focus a now-hidden Lab control held, so Enter/Space can never re-trigger it")
+	# Mouse: the overlay's own root blocks every click from ever reaching a
+	# hidden Lab control underneath, regardless of that control's own state.
+	_check(prototype_a.mouse_filter == Control.MOUSE_FILTER_STOP, "the open Prototype A overlay must consume every click over its full-rect area, never letting one reach a hidden Lab control beneath it")
+
+	# Opening a second prototype from the Lab must close the first (never
+	# leaving it interactable behind the new one) and keep the Lab hidden —
+	# never flash it visible in between.
+	(deduction_lab.get_node("%LaunchPrototypeBButton") as Button).pressed.emit()
+	_check(prototype_b.visible and not prototype_a.visible, "launching Prototype B must close Prototype A, never leave both open")
+	_check(not center_panel.visible and not dim_background.visible, "the Lab's own content must stay hidden while Prototype B is open")
+
+	prototype_b.close()
+	_check(not prototype_b.visible, "sanity — Prototype B closed")
+	_check(center_panel.visible and dim_background.visible, "returning from Prototype B must restore the Lab's own content")
+	var option: OptionButton = deduction_lab.get_node("%CaseOptionButton")
+	_check(String(option.get_item_metadata(maxi(option.selected, 0))) == "proto_x_archive_ledger", "the Lab's session (selected case) must be exactly as it was, never reset by hiding/restoring")
+
+	# F1 hide/show while a prototype is open must not disturb any of this.
+	(deduction_lab.get_node("%LaunchPrototypeCButton") as Button).pressed.emit()
+	_check(prototype_c.visible and not center_panel.visible, "sanity — Prototype C open, Lab content hidden")
+	debug_panel.close()
+	debug_panel.open()
+	deduction_lab.open()
+	_check(prototype_c.visible and not center_panel.visible and not dim_background.visible, "F1 hide/show must not restore the Lab's content while a prototype is still open")
+	prototype_c.close()
+	_check(center_panel.visible and dim_background.visible, "returning from Prototype C must restore the Lab's own content")
 
 
 func _test_case_selection_and_modes() -> void:

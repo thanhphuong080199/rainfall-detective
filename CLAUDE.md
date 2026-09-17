@@ -31,6 +31,7 @@ Verify changes headlessly — do this (at least the content-validation step) bef
   --script res://scenes/test/deduction_lab_controller_test.gd \
   --script res://scenes/test/deduction_lab_presenter_test.gd \
   --script res://scenes/test/deduction_lab_recorder_test.gd \
+  --script res://scenes/test/resolution_policy_test.gd \
   --script res://scenes/test/prototype_a_controller_test.gd \
   --script res://scenes/test/prototype_a_presenter_test.gd \
   --script res://scenes/test/prototype_a_content_test.gd \
@@ -59,6 +60,7 @@ Verify changes headlessly — do this (at least the content-validation step) bef
   --script res://scenes/test/deduction_lab_presenter_test.gd \
   --script res://scenes/test/deduction_lab_recorder_test.gd \
   --script res://scenes/test/deduction_lab_scene_test.gd \
+  --script res://scenes/test/resolution_policy_test.gd \
   --script res://scenes/test/prototype_a_controller_test.gd \
   --script res://scenes/test/prototype_a_presenter_test.gd \
   --script res://scenes/test/prototype_a_content_test.gd \
@@ -203,6 +205,69 @@ real evaluator accept is machine-proven (`prototype_c_content_test.gd`) to
 make that claim impossible, for all three cases. See `docs/prototype-c.md`
 for the full data contract, the candidate-time-slot domain design and its
 measured performance trade-off, and the universal-contradiction proof.
+
+### Resolution policy (Milestone 1.14; hardened in 1.14.1)
+
+Blind trial-and-error across all three prototypes is made an inferior
+strategy without hard game-over states. `ResolutionPolicy`
+(`scripts/deduction/resolution_policy.gd`) is a small, pure, autoload-free
+`RefCounted` that each prototype controller owns, one per run. It holds two
+explicitly separate, unambiguously named concepts (Milestone 1.14.1 renamed
+the accessors below from the original `get_tier()`/`get_phase()` after a
+review found those names ambiguous enough that a future call site could
+plausibly conflate them, even though the two concepts were always kept as
+separate internal fields):
+
+- a one-way, run-wide **result** (`get_run_resolution_result()`:
+  `independent` → `guided` → `assisted`), driven by run-wide failed formal
+  commits, hint levels 1–2 / 3–4, accepted assistance and partner
+  resolution — never reset by starting a new unit;
+- a per-unit **phase** machine (`get_current_unit_phase()`,
+  `get_current_unit_failures()`, `get_standard_attempts_remaining()`,
+  `get_assisted_attempts_remaining()`): 3 failed formal commits →
+  assistance must be acknowledged → 2 more → only "Resolve with Partner"
+  remains. `begin_next_unit()` resets ONLY this — a fresh unit always starts
+  with zero local failures and no active assistance, however elevated the
+  run-wide result already is.
+
+The limits live only in the policy. Controllers decide what counts as a
+formal commit — never an invalid UI action, a duplicate of an already-failed
+attempt, or a valid optional/alternate answer. They record the telemetry
+from the transitions the policy returns, and resolve with the partner only
+through the real `DeductionEvaluator` / `TimelineEvaluator`.
+`ResolutionPresenter.build_status()` returns the current unit's own state and
+the run-wide result as two SEPARATE strings (`current_status_text`/
+`run_result_text`) — every prototype scene renders them as two separate
+fixed-header `Label`s (`%ResolutionStatusLabel`/`%RunResultLabel`), never one
+merged line, so a fresh unit is never misread as itself Assisted just
+because an earlier unit used help.
+
+- Prototype A spends per-part "credibility" on Present Evidence.
+- Prototype B now drafts BOTH questions as unverified drafts and commits them
+  as one atomic theory; one invalid draft commits neither.
+- Prototype C gives progressive timeline feedback (category → one fact →
+  assistance) and requires a verdict plus a supporting fact
+  (`prototype_c.contradiction.supporting_constraint_refs`, validated by
+  `DeductionValidator.prototype_c_facts_ruling_out_claim()`).
+
+Each prototype's primary formal-commit button (Present Evidence / Commit
+Theory / Check Timeline / Submit Verdict) lives in the scene's fixed
+`%Footer`, a sibling placed AFTER the scrolling `%BodyScroll`, never inside
+it — so opening assistance or long feedback can never push it offscreen at
+the project's 1280×720 resolution. Opening any Prototype from the Deduction
+Lab hides the Lab's own content (`%CenterPanel`/`%DimBackground`), not just
+dims it, so nothing bleeds through and nothing underneath can receive mouse
+or keyboard input; returning restores it untouched.
+
+No production save, `GameState`, autoload or evaluator changes. The
+recorder's outer envelope `schema_version` stays 1; Milestone 1.14.1 added an
+explicit `event_schema_version` (now 2) for the event VOCABULARY, since
+Milestone 1.14 had already changed it (Prototype B's per-round events →
+theory-batch events) without a version field to say so — see
+`docs/deduction-lab.md`, "Recorder schema". `resolution_policy_test.gd` is
+pure and runs in both FAST and FULL. Read `docs/resolution-policy.md` first —
+it also records the deferred production-save requirement (persist
+formal-commit state before showing feedback).
 
 ### UI wiring
 

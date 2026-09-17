@@ -56,8 +56,12 @@ lifecycle". None of this makes the Lab
 itself mechanic-specific — Player Preview/Author Inspector are unchanged,
 and all three prototypes always start a **fresh** run of their own, never
 reusing or mutating the Lab's or each other's.
-See `docs/prototype-a.md`/`docs/prototype-b.md` for the mechanics
-themselves.
+See `docs/prototype-a.md`/`docs/prototype-b.md`/`docs/prototype-c.md` for
+the mechanics themselves. Since Milestone 1.14 all three share one
+resolution policy (`docs/resolution-policy.md`): limited formal commits,
+acknowledged assistance, partner resolution through the real evaluators, and
+no game over. The Lab's own Player Preview / Author Inspector are unchanged
+by it.
 
 ## Architecture — reuse, not a parallel system
 
@@ -288,11 +292,30 @@ auto-solved, a hint pulled from the Author tab, a session reset). This makes
 author-tool activity **unmistakably** distinguishable from real playtest
 behavior in the exported log.
 
-### Schema (`schema_version: 1`)
+### Schema (`schema_version: 1`, `event_schema_version: 2`)
+
+Two independent version numbers, deliberately never merged into one:
+
+- **`schema_version`** is the outer **envelope** — the top-level fields
+  (`session_id`/`case_id`/`prototype`/`locale`/`started_at_utc`/`events`) and
+  each event's own `sequence`/`elapsed_ms`/`type`/`source`/`payload` shape.
+  Unchanged since Milestone 1.10 and still `1` — nothing about that
+  structure has ever needed to change.
+- **`event_schema_version`** is the **event vocabulary** — which `type`
+  strings exist and what each one's `payload` keys mean. A consumer decides
+  how to parse a given event from THIS number, never from `schema_version`.
+  Added in Milestone 1.14.1 and set to `2`, because two real vocabulary
+  breaks had already shipped under an unchanged `1`: Milestone 1.14 replaced
+  Prototype B's per-round vocabulary with theory-batch events, and Milestone
+  1.14.1 itself renamed several resolution-policy payload keys and one event
+  type for clarity (see "v1 → v2 diff" below). A consumer that only checked
+  `schema_version` had no way to notice either change; `event_schema_version`
+  exists so it never has to guess again.
 
 ```json
 {
   "schema_version": 1,
+  "event_schema_version": 2,
   "session_id": "dbg-1234567890-42",
   "case_id": "proto_x_archive_ledger",
   "prototype": "deduction_lab",
@@ -308,13 +331,38 @@ behavior in the exported log.
 Recorded event `type`s: `session_started`, `mode_switched`,
 `evidence_opened`, `hint_revealed`, `proof_committed`, `claim_resolved`,
 `deduction_unlocked`, `case_solved`, `session_reset`, and (Author-only)
-`timeline_validated`. `sequence` strictly increases from 1; `elapsed_ms` is
-milliseconds since `start()`, from an injectable clock (default
-`Time.get_ticks_msec`, so non-decreasing exactly the way that function
-already is in production). No player/machine identity, filename, or network
-call appears anywhere — `session_id` is a locally generated, opaque token
-(`_default_session_id()`), and both the clock and the id generator are
-injectable for tests.
+`timeline_validated` — all unaffected by the event_schema_version bump.
+Every debug-only prototype (A/B/C) additionally emits the shared
+resolution-policy vocabulary documented in `docs/resolution-policy.md`,
+"Recorder events" — THAT vocabulary is what moved from v1 to v2. `sequence`
+strictly increases from 1; `elapsed_ms` is milliseconds since `start()`, from
+an injectable clock (default `Time.get_ticks_msec`, so non-decreasing exactly
+the way that function already is in production). No player/machine identity,
+filename, or network call appears anywhere — `session_id` is a locally
+generated, opaque token (`_default_session_id()`), and both the clock and the
+id generator are injectable for tests.
+
+#### v1 → v2 diff (resolution-policy vocabulary only)
+
+| v1 (Milestone 1.14) | v2 (Milestone 1.14.1) | Why |
+|---|---|---|
+| Event type `resolution_tier_changed` | `run_resolution_result_changed` | The old name never said *which* of the two independent concepts (the current unit's phase vs. the run-wide result) it described — only the run-wide result ever emits this event; see `docs/resolution-policy.md`. |
+| Payload keys `tier`, `tier_before`, `tier_after`, `tier_changed`, `previous_tier` | `run_resolution_result`, `run_resolution_result_before`, `run_resolution_result_after`, `run_resolution_result_changed`, `previous_run_resolution_result` | Same reason, applied to every event that carries the run result (`formal_commit_started`, `formal_commit_succeeded`, `formal_commit_failed`, `assistance_accepted`, `partner_resolution_used`, `prototype_restarted`, `round_completed`). |
+| Payload key `phase_after` | `current_unit_phase_after` | Names the CURRENT unit's own phase explicitly, never confusable with the run result above. |
+| Payload key `failure_count` (on `formal_commit_failed`, meaning the current unit's own failures) | `current_unit_failures` | Was easy to misread as a run-wide count; it was always local to the unit. |
+| Payload key `attempts_remaining` (Prototype B/C's `formal_commit_failed`; Prototype A already used its own `credibility_remaining` and is unchanged) | `standard_attempts_remaining` | Matches the renamed `ResolutionPolicy.get_standard_attempts_remaining()`. |
+| `assistance_offered`/`partner_resolution_offered` payload key `tier` | `run_resolution_result` | Same rename, applied consistently. |
+
+No event type was removed by this bump — every v1 resolution-policy event
+still exists, several with renamed payload keys as above. A consumer reading
+`event_schema_version == 1` should expect the OLD names; one reading `== 2`
+must use the NEW ones. Nothing here retains a v1-shaped alias: an analysis
+script that parsed `resolution_tier_changed`/`tier_before`/`tier_after`
+against a real export has to switch to the v2 names, exactly the same way
+Milestone 1.14's own switch from Prototype B's per-round events to
+theory-batch events required (that break shipped, in hindsight, without
+bumping any version number — this field exists so the next one doesn't
+repeat that mistake).
 
 **Controls:** Start (begins a fresh recording, itself logging
 `session_started`), Stop (pauses; keeps captured events), Clear (empties the

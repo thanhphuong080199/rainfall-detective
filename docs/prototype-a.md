@@ -29,8 +29,11 @@ placement, no final-theory construction — those are Prototypes B and C
 (`docs/deduction-playtest-plan.md`). Exactly one current statement, exactly
 one presented evidence item, relation `refutes`, statement-by-statement
 cross-examination. Not a courtroom system, not investigation/evidence
-acquisition (all evidence is available from the start), not a penalty/health
-mechanic (a punitive meter would confound the test of the core mechanic).
+acquisition (all evidence is available from the start). Since Milestone 1.14
+it has a bounded **credibility** budget per testimony part
+(`docs/resolution-policy.md`), but never a health bar that ends the run. A
+spent budget leads to acknowledged assistance and, at worst, partner
+resolution — never a game over.
 
 ## Architecture — reuse, not a parallel system
 
@@ -224,9 +227,11 @@ base `credential_misuse_v2` proof graph.
    below); **Continue** dismisses it and, only if every required refutation
    in the current round is now resolved, advances to the next round or (on
    the last round) completes the prototype.
-5. **Completion** — the authored `completion_text`, plus elapsed time, total
-   submissions, incorrect submissions, optional contradictions found, and
-   hints used — all numeric/authored text, never raw ids. Restart, Export
+5. **Completion** — the authored `completion_text`, plus the shared
+   resolution summary (elapsed time, formal commits, failed formal commits,
+   hints used, assistance used, resolution tier, partner resolution used —
+   `docs/resolution-policy.md`) and optional contradictions found. Everything
+   is localized; raw ids never appear. Restart, Export
    Recording and Return to Lab are all offered here too.
 
 ## Feedback mapping
@@ -242,6 +247,8 @@ whatever `PrototypeAController.present_evidence()` returned:
 | `insufficient_evidence` | Generic: "raises suspicion, but doesn't directly contradict this statement alone" |
 | `compatible_not_proof` | Generic: "consistent with the statement — doesn't actually contradict it" |
 | `invalid_input` (nothing selected, etc.) | Generic: "select a statement and one piece of evidence" — no session mutation happens for this case |
+| `invalid_input`, reason `duplicate_failed_attempt` (Milestone 1.14) | "You've already presented that evidence against this statement" — costs no credibility |
+| `invalid_input`, reason `submission_locked` (Milestone 1.14) | "Submissions are paused — accept assistance or resolve with your partner first" |
 
 The four generic messages are static `UI_PROTOTYPE_A_FEEDBACK_*` keys, never
 per-case content — only a genuine success reveals case-authored text.
@@ -250,6 +257,13 @@ Resubmitting an already-resolved claim reclassifies (via
 recommitting, so it never mutates the session, never increments the
 submission/incorrect counters, and never records a duplicate
 `attempt_submitted`/`contradiction_resolved` event.
+
+Since Milestone 1.14, every counted failure also shows a generic rebuttal
+(`UI_PROTOTYPE_A_REBUTTAL`, naming only the speaker) and its credibility/tier
+consequence (`ResolutionPresenter.build_commit_notice()`). A partner
+resolution is headed "Resolved with your partner" and names the evidence the
+partner presented (`UI_PROTOTYPE_A_PARTNER_NOTE`), alongside the authored
+explanation.
 
 ## Hints
 
@@ -281,9 +295,11 @@ own structural + content sweep methodology is mirrored in
 ## Recorder events
 
 Reuses `DeductionLabRecorder` (`scripts/deduction/deduction_lab_recorder.gd`)
-completely unmodified — same schema (`schema_version: 1`), same
+completely unmodified — same outer schema (`schema_version: 1`), same
 Start/Stop/Clear/Export controls, same safe-filename export, same
-off-by-default/local/no-network/no-PII stance
+off-by-default/local/no-network/no-PII stance. The resolution-policy event
+vocabulary below is `event_schema_version: 2` (Milestone 1.14.1 — see
+`docs/deduction-lab.md`, "Recorder schema", and `docs/resolution-policy.md`)
 (`docs/deduction-lab.md`, "Local playtest recorder"). `"prototype":
 "statement_contradiction"` distinguishes an export from the Lab's own
 `"deduction_lab"` recordings. Every event uses `SOURCE_PLAYER_PREVIEW` (no
@@ -318,6 +334,65 @@ Payloads carry internal ids/categories for analysis; the UI never renders a
 raw category or id from a recorded payload back to the player, and no full
 localized text is ever recorded (`prototype_a_scene_test.gd`'s recorder test
 spot-checks this against real translated names).
+
+## Resolution policy (Milestone 1.14)
+
+See `docs/resolution-policy.md` for the shared model. In Prototype A,
+"Present Evidence" is the formal commit of a high-stakes confrontation.
+
+- **Credibility.** The header's `%ResolutionStatusLabel` reads, in text,
+  "Credibility: 3/3" — the CURRENT part's own state only. The separate
+  `%RunResultLabel` reads "Run result so far: Independent" — the run-wide
+  result, never merged into the credibility line (Milestone 1.14.1; see
+  `docs/resolution-policy.md`, "Local unit state vs. run result"). Each
+  testimony part (round) is one resolution unit with a fresh 3-credibility
+  budget; the run-wide result never moves back down, and a fresh round is
+  never itself labeled Assisted just because an earlier round used help.
+- **What costs credibility:** only a genuinely evaluated failure
+  (irrelevant, insufficient, or compatible-but-not-proof).
+- **What never costs anything:**
+  - nothing selected;
+  - re-presenting a statement + evidence pair that already failed
+    (`is_known_failed_pair()`);
+  - an already-resolved statement;
+  - a locked policy;
+  - the valid optional innocent lie, or an accepted alternate refutation.
+- **A failure** costs one credibility and shows a generic rebuttal, the
+  category message and the consequence. It never reveals the correct
+  evidence and never resets testimony or selections.
+- **Third failure.** Present Evidence disables and the footer's
+  `%AcceptAssistanceButton` appears.
+  `PrototypeAController.accept_assistance()` pins the first unresolved
+  required statement of the part. The view's `assistance` block, absent
+  until then, names that statement ("Focus on what X said: …", also marked
+  "[Partner focus]" in the statement list). It also shows that statement's
+  own authored level-2 ladder text — a category hint that never names the
+  evidence. The current selection is preserved.
+- **Two assisted failures.** Blind presenting closes and
+  `%PartnerResolveButton` ("Resolve with Partner") calls
+  `resolve_with_partner()`. That commits the first authored single-evidence
+  `refutes` proof set, classified first, through
+  `DeductionEvaluator.commit_attempt()`. The feedback is labeled, names the
+  presented evidence and shows the authored explanation. The part is then
+  ready to continue — no game over, no replay.
+- **Hints** raise the run-wide result (levels 1–2 → Guided, 3–4 → Assisted)
+  and say so explicitly. The notice sits next to the Hint button.
+- **Restart** is a new, recorded run (`prototype_restarted`).
+- **Primary action in the fixed footer.** Present Evidence (and Hint) live
+  in `%Footer`'s `%ActionRow`, not inside the scrolling `%BodyScroll` — so
+  opening assistance or long feedback can never push them offscreen at
+  1280×720 (Milestone 1.14.1).
+
+Recorder additions:
+
+- new events: `formal_commit_started` / `formal_commit_failed` /
+  `formal_commit_succeeded`, `run_resolution_result_changed`,
+  `assistance_offered` / `assistance_accepted`,
+  `partner_resolution_offered` / `partner_resolution_used`,
+  `prototype_restarted`;
+- `contradiction_resolved` and `round_completed` carry `resolved_by`;
+- `prototype_started` carries `run`;
+- `prototype_completed` / `prototype_abandoned` carry a `resolution` summary.
 
 ## Validation
 
@@ -365,7 +440,11 @@ scrolling body's content is — the body clips and scrolls instead. Opening
 feedback resets `%BodyScroll.scroll_vertical` to 0 and calls
 `continue_button.grab_focus()`, so the headline is visible first and
 keyboard users land on Continue immediately (`prototype_a.gd`'s
-`_show_feedback()`). Prototype B (`docs/prototype-b.md`) uses the identical
+`_show_feedback()`). Milestone 1.14's windowed visual QA found that
+`%FeedbackPanel` sat *below* `%PlayArea` inside the body, so resetting the
+scroll showed the play area instead of the feedback. `%FeedbackPanel` is now
+the body's first section in all three prototype scenes, and each scene test
+asserts that order. Prototype B (`docs/prototype-b.md`) uses the identical
 structure in `PrototypeB.tscn` from the start, so it never reproduces this
 bug; the Deduction Lab's own screen (`DeductionLab.tscn`) was audited too
 and found NOT to have the same defect — its `%Tabs` (`TabContainer`) is
@@ -392,10 +471,10 @@ checked).
 
 | File | Covers |
 |---|---|
-| `scenes/test/prototype_a_controller_test.gd` | Fresh session per run, isolation from a `DeductionLabController`'s own session, statement/evidence navigation, one-evidence-only enforcement, required/optional/wrong-attempt classification through the real evaluator, idempotent resubmission, round/prototype completion via `acknowledge_feedback()`, hints, stats, abandonment, and a structural check that no `DeductionSession` mutator is ever called directly. Pure/autoload-free — a dedicated fixture, `deduction_fixtures.gd`'s `prototype_a_case()`. |
-| `scenes/test/prototype_a_presenter_test.gd` | The player view's exact allow-listed keys, a spoiler sweep against real X/Y/Z content, round-scoping (no future-round text), evidence text gated on opened, hint progression, and `build_feedback()`'s mapping for every evaluator category. |
+| `scenes/test/prototype_a_controller_test.gd` | Fresh session per run, isolation from a `DeductionLabController`'s own session, statement/evidence navigation, one-evidence-only enforcement, required/optional/wrong-attempt classification through the real evaluator, idempotent resubmission, round/prototype completion via `acknowledge_feedback()`, hints, stats, abandonment, and a structural check that no `DeductionSession` mutator is ever called directly. Pure/autoload-free — a dedicated fixture, `deduction_fixtures.gd`'s `prototype_a_case()`. Milestone 1.14 adds the resolution policy: credibility consumed only by genuinely evaluated failures, the optional lie/alternate refutation (fixture `e_alt`)/duplicates/locked presentations costing nothing, assistance after three failures, assisted success, partner resolution through `commit_attempt()`, hint tier changes, telemetry and restart recording. |
+| `scenes/test/prototype_a_presenter_test.gd` | The player view's exact allow-listed keys, a spoiler sweep against real X/Y/Z content, round-scoping (no future-round text), evidence text gated on opened, hint progression, and `build_feedback()`'s mapping for every evaluator category. Milestone 1.14 adds the `resolution_status` contract and localization, no raw policy ids, assistance/partner content gated by the policy on real X/Y/Z (never an accepted evidence name), the rebuttal/duplicate/locked/notice mapping, and the localized completion summary. |
 | `scenes/test/prototype_a_content_test.gd` | X/Y/Z walked once in structural-role terms: the true/incomplete/required×2/optional role coverage, each target solvable with one evidence item that's actually in the pool, every pool item available from the start, true/incomplete statements never refutable, translations resolve, and the Prototype A structural-signature shape matches across all three cases. |
-| `scenes/test/prototype_a_scene_test.gd` | **FULL-only** (needs a real scene tree, like `smoke_test.gd`/`deduction_lab_scene_test.gd`): launching from the Lab with/without an active Lab case, reading/selecting evidence via real buttons, wrong/correct/optional feedback, hint reveal, round transition and completion via real button clicks, restart/return confirmation (including that cancelling preserves the run exactly), recorder controls and the exported schema/event vocabulary, F1 hide/show session preservation, bilingual coverage, and (Milestone 1.12) `_test_continue_button_stays_reachable_with_long_feedback()` — the Continue-button layout regression: structural proof Continue lives outside the scrolling body, and behavioral proof it stays visible/focused with real-then-synthetic-long feedback text in both locales — see "Layout" above. |
+| `scenes/test/prototype_a_scene_test.gd` | **FULL-only** (needs a real scene tree, like `smoke_test.gd`/`deduction_lab_scene_test.gd`): launching from the Lab with/without an active Lab case, reading/selecting evidence via real buttons, wrong/correct/optional feedback, hint reveal, round transition and completion via real button clicks, restart/return confirmation (including that cancelling preserves the run exactly), recorder controls and the exported schema/event vocabulary, F1 hide/show session preservation, bilingual coverage, and (Milestone 1.12) `_test_continue_button_stays_reachable_with_long_feedback()` — the Continue-button layout regression: structural proof Continue lives outside the scrolling body, and behavioral proof it stays visible/focused with real-then-synthetic-long feedback text in both locales — see "Layout" above. Milestone 1.14 adds credibility → assistance → partner resolution through real buttons, the Assisted completion summary, attempts surviving locale/F1/cancelled restart, restart recording, and the resolution actions in the fixed footer. |
 
 All four are in FAST and FULL (`docs/testing.md`) — the three pure ones cost
 about a second together; the scene test needs the same real-scene-tree setup

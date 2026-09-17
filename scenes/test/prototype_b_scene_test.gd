@@ -1,17 +1,18 @@
 extends SceneTree
 ## Scene/integration tests for Prototype B — Clue Connection (Milestone 1.12
-## — see docs/prototype-b.md): instantiation as a DeductionLab child,
-## launching from the Lab (with/without an active Lab case, leaving both the
-## Lab and Prototype A untouched), reading evidence, placing/removing/
-## replacing clues via real buttons, Connect disabling until every slot is
-## filled, wrong/correct feedback, round transition and completion (D1 primary
-## AND alternate paths, D3 requiring all three clues), hints via the real
-## base API, restart/return confirmation, recorder controls, F1 hide/show
-## session preservation, bilingual coverage, and the Milestone 1.12 long-
-## feedback layout regression applied to this scene too. This is the
-## FULL-only counterpart to the FAST controller/presenter/content tests — it
-## exercises the real scene tree, which those pure-class tests deliberately
-## don't need. Run with:
+## — see docs/prototype-b.md; draft/batch model since Milestone 1.14 — see
+## docs/resolution-policy.md): instantiation as a DeductionLab child,
+## launching from the Lab (leaving the Lab and Prototype A untouched), reading
+## evidence, placing/removing clues per draft via real buttons, draft tabs that
+## retain their content, Save Draft costing nothing, Commit Theory disabled
+## until both drafts are complete, a one-correct-one-wrong batch revealing and
+## unlocking nothing, progressive non-oracular feedback, the D1 primary AND
+## alternate paths, hints, assistance and partner resolution through the
+## footer, the completion summary, restart/return confirmation with restart
+## recording, recorder export vocabulary, F1 hide/show and locale switches
+## preserving drafts and attempts, all three cases, and the Milestone 1.12
+## long-feedback layout regression. FULL-only — needs a real scene tree. Run
+## with:
 ##   godot --headless --path . -s res://scenes/test/prototype_b_scene_test.gd
 
 const CASE_ID := "proto_x_archive_ledger"
@@ -25,6 +26,7 @@ const POOL_FORCED_WINDOW := 4  # D3
 const POOL_LATCH_GUIDE := 5  # D3
 const POOL_WINDOW_LATCH := 6  # D3
 const POOL_LOST_PROPERTY_SHEET := 7  # distractor — irrelevant to D1/D3
+const POOL_BACK_DOOR_SIGHTING := 8  # distractor — irrelevant to D1/D3
 
 var main_instance: Node
 var debug_panel: Control
@@ -57,17 +59,19 @@ func _initialize() -> void:
 	if OS.is_debug_build():
 		_test_launch_without_lab_case_shows_picker()
 		_test_launch_prefills_lab_case_and_leaves_lab_and_prototype_a_untouched()
-		_test_evidence_open_place_remove_replace_via_buttons()
-		_test_connect_disabled_until_slots_full_then_wrong_then_correct_d1()
-		_test_alternate_d1_path()
-		_test_d3_requires_all_three_clues_then_completes()
+		_test_evidence_open_place_remove_via_buttons()
+		_test_draft_tabs_retain_content_and_save_costs_nothing()
+		_test_commit_disabled_until_both_drafts_complete()
+		_test_mixed_batch_commits_neither_and_feedback_is_progressive()
+		_test_primary_and_alternate_d1_paths_complete()
 		_test_hint_reveal_via_button()
-		_test_restart_confirmation_and_cancel_preserves_state()
+		_test_assistance_partner_and_completion_summary()
+		_test_restart_confirmation_cancel_preserves_and_restart_is_recorded()
 		_test_return_confirmation_and_abandon()
 		_test_recorder_controls()
-		_test_hide_show_preserves_session()
+		_test_hide_show_and_locale_preserve_drafts_and_attempts()
 		_test_translation_coverage()
-		_test_all_three_cases_launch_and_solve_one_round()
+		_test_all_three_cases_launch_and_solve_the_theory()
 		_test_continue_button_stays_reachable_with_long_feedback()
 	else:
 		print("(skipped interactive Prototype B checks — not a debug build; OS.is_debug_build() gate could not be exercised either way here, see docs/prototype-b.md's Known limitations)")
@@ -85,11 +89,19 @@ func _check(condition: bool, message: String) -> void:
 
 
 # ---------------------------------------------------------------------------
-# Small helpers driving the REAL controls, mirroring prototype_a_scene_test.gd's
-# own style — no internal state is poked directly.
+# Small helpers driving the REAL controls — no internal state is poked
+# directly.
+
+func _t(key: String) -> String:
+	return String(TranslationServer.translate(key))
+
 
 func _button(name: String) -> Button:
 	return prototype_b.get_node("%" + name) as Button
+
+
+func _label(name: String) -> Label:
+	return prototype_b.get_node("%" + name) as Label
 
 
 func _select_case_option(case_id: String) -> void:
@@ -106,12 +118,18 @@ func _start_case(case_id: String) -> void:
 	(prototype_b.get_node("%ConfirmDialog") as ConfirmationDialog).confirmed.emit()
 
 
+func _launch_and_start(case_id: String = CASE_ID) -> void:
+	deduction_lab.open()
+	(deduction_lab.get_node("%LaunchPrototypeBButton") as Button).pressed.emit()
+	_start_case(case_id)
+
+
 func _evidence_row(index: int) -> HBoxContainer:
-	var list: VBoxContainer = prototype_b.get_node("%EvidenceList")
-	return list.get_child(index) as HBoxContainer
+	return (prototype_b.get_node("%EvidenceList") as VBoxContainer).get_child(index) as HBoxContainer
 
 
-## The evidence row's last button is always the Place/Remove toggle.
+## The evidence row's last button is always the Place/Remove toggle (for the
+## ACTIVE draft).
 func _click_toggle_evidence(pool_index: int) -> void:
 	var row: HBoxContainer = _evidence_row(pool_index)
 	(row.get_child(row.get_child_count() - 1) as Button).pressed.emit()
@@ -123,16 +141,46 @@ func _click_open_evidence(pool_index: int) -> void:
 		(row.get_child(1) as Button).pressed.emit()
 
 
-func _connect() -> void:
-	_button("ConnectButton").pressed.emit()
+func _toggle_text(pool_index: int) -> String:
+	var row: HBoxContainer = _evidence_row(pool_index)
+	return (row.get_child(row.get_child_count() - 1) as Button).text
+
+
+func _tab(index: int) -> Button:
+	return (prototype_b.get_node("%DraftTabsRow") as HBoxContainer).get_child(index) as Button
+
+
+func _open_tab(index: int) -> void:
+	_tab(index).pressed.emit()
+
+
+func _place_all(pool_indices: Array) -> void:
+	for pool_index in pool_indices:
+		_click_toggle_evidence(pool_index)
+
+
+func _commit() -> void:
+	_button("CommitTheoryButton").pressed.emit()
 
 
 func _continue_after_feedback() -> void:
 	_button("ContinueButton").pressed.emit()
 
 
-func _hint() -> void:
-	_button("HintButton").pressed.emit()
+func _filled_slot_count() -> int:
+	var count := 0
+	for row in (prototype_b.get_node("%SlotsList") as VBoxContainer).get_children():
+		if (row as HBoxContainer).get_child_count() == 2:  # label + Remove
+			count += 1
+	return count
+
+
+## Question 1 = D1 primary path; question 2 = the given pool indices.
+func _draft_theory(second: Array) -> void:
+	_open_tab(0)
+	_place_all([POOL_DOOR_LOG, POOL_TRAM_TAP, POOL_ROUTE_NOTE])
+	_open_tab(1)
+	_place_all(second)
 
 
 # ---------------------------------------------------------------------------
@@ -144,8 +192,7 @@ func _test_launch_without_lab_case_shows_picker() -> void:
 	var option: OptionButton = prototype_b.get_node("%CaseOptionButton")
 	_check(option.get_item_count() >= 3, "the case picker should list every deduction case with Prototype B content")
 	for i in option.get_item_count():
-		var listed_id: String = String(option.get_item_metadata(i))
-		_check(typeof(content_db.get_deduction_case(listed_id).get("prototype_b")) == TYPE_DICTIONARY, "every listed case (%s) must actually declare prototype_b content" % listed_id)
+		_check(typeof(content_db.get_deduction_case(String(option.get_item_metadata(i))).get("prototype_b")) == TYPE_DICTIONARY, "every listed case must declare prototype_b content")
 	_check(not prototype_b.get_node("%PlayArea").visible, "no run should be active until Start is pressed")
 	prototype_b.close()
 
@@ -160,8 +207,6 @@ func _test_launch_prefills_lab_case_and_leaves_lab_and_prototype_a_untouched() -
 	(deduction_lab.get_node("%SelectCaseButton") as Button).pressed.emit()
 	_check(deduction_lab.get_node("%StatusLabel").text.contains(CASE_ID), "sanity — the Lab should now have proto_x active")
 
-	# Open Prototype A too, and give it a little real progress, so we can
-	# prove launching Prototype B afterward leaves IT untouched as well.
 	(deduction_lab.get_node("%LaunchPrototypeAButton") as Button).pressed.emit()
 	var pa_option: OptionButton = prototype_a.get_node("%CaseOptionButton")
 	for i in pa_option.get_item_count():
@@ -170,319 +215,342 @@ func _test_launch_prefills_lab_case_and_leaves_lab_and_prototype_a_untouched() -
 			break
 	(prototype_a.get_node("%StartButton") as Button).pressed.emit()
 	(prototype_a.get_node("%ConfirmDialog") as ConfirmationDialog).confirmed.emit()
-	var pa_evidence_list: VBoxContainer = prototype_a.get_node("%EvidenceList")
-	var pa_row: HBoxContainer = pa_evidence_list.get_child(0) as HBoxContainer
+	var pa_row: HBoxContainer = (prototype_a.get_node("%EvidenceList") as VBoxContainer).get_child(0) as HBoxContainer
 	(pa_row.get_child(1) as Button).pressed.emit()  # open the first evidence item
 
 	(deduction_lab.get_node("%LaunchPrototypeBButton") as Button).pressed.emit()
-	_check(not prototype_a.visible, "launching Prototype B should hide Prototype A (avoid two prototype overlays at once), never reset it")
+	_check(not prototype_a.visible, "launching Prototype B should hide Prototype A, never reset it")
 	var pb_option: OptionButton = prototype_b.get_node("%CaseOptionButton")
-	_check(String(pb_option.get_item_metadata(pb_option.selected)) == CASE_ID, "Prototype B's case picker should default to the Lab's currently active case")
+	_check(String(pb_option.get_item_metadata(pb_option.selected)) == CASE_ID, "Prototype B's case picker should default to the Lab's active case")
 
 	_start_case(CASE_ID)
-	_click_open_evidence(POOL_DOOR_LOG)
-	_click_toggle_evidence(POOL_DOOR_LOG)
-	_click_toggle_evidence(POOL_TRAM_TAP)
-	_click_toggle_evidence(POOL_ROUTE_NOTE)
-	_connect()
+	_draft_theory([POOL_FORCED_WINDOW, POOL_LATCH_GUIDE, POOL_WINDOW_LATCH])
+	_commit()
 	_continue_after_feedback()
+	_check(prototype_b.get_node("%CompletionPanel").visible, "a correct first theory completes the prototype")
 	prototype_b.close()
 
 	var overview_text := ""
 	for child in (deduction_lab.get_node("%OverviewList") as VBoxContainer).get_children():
 		if child is Label:
 			overview_text += String((child as Label).text)
-	_check(overview_text.contains("0/4") or overview_text.contains("IN PROGRESS"), "the Lab's own Overview must still show zero questions resolved — Prototype B resolving a deduction must never leak into the Lab's session: got \"%s\"" % overview_text)
+	_check(overview_text.contains("0/4") or overview_text.contains("IN PROGRESS"), "the Lab's own Overview must still show zero questions resolved: got \"%s\"" % overview_text)
+	_check((prototype_a.get_node("%EvidenceList") as VBoxContainer).get_child(0).get_child_count() == 2, "Prototype A's own progress must survive a Prototype B run untouched")
 
-	_check(is_instance_valid(prototype_a.get_node("%EvidenceList")) and (prototype_a.get_node("%EvidenceList") as VBoxContainer).get_child(0).get_child_count() == 2, "Prototype A's own progress (its first evidence item opened) must survive a Prototype B run untouched")
 
-
-func _test_evidence_open_place_remove_replace_via_buttons() -> void:
-	deduction_lab.open()
-	(deduction_lab.get_node("%LaunchPrototypeBButton") as Button).pressed.emit()
-	_start_case(CASE_ID)
-
-	var row: HBoxContainer = _evidence_row(POOL_DOOR_LOG)
-	_check(row.get_child_count() == 3, "an unopened evidence row should show a label, an Open button and a Place/Remove toggle")
+func _test_evidence_open_place_remove_via_buttons() -> void:
+	_launch_and_start()
+	_check(_evidence_row(POOL_DOOR_LOG).get_child_count() == 3, "an unopened evidence row shows a label, Open and Place")
 	_click_open_evidence(POOL_DOOR_LOG)
-	var reopened_row: HBoxContainer = _evidence_row(POOL_DOOR_LOG)
-	_check(reopened_row.get_child_count() == 2, "an opened evidence row should no longer show an Open button")
-
+	_check(_evidence_row(POOL_DOOR_LOG).get_child_count() == 2, "an opened row no longer shows Open")
 	_click_toggle_evidence(POOL_DOOR_LOG)
-	var slots_list: VBoxContainer = prototype_b.get_node("%SlotsList")
-	_check(slots_list.get_child_count() == 3, "sanity — round 1 has three slot rows")
-	_check(not _button("ConnectButton").disabled == false, "Connect should still be disabled with only one of three slots filled")
-
-	_click_toggle_evidence(POOL_TRAM_TAP)
-	_click_toggle_evidence(POOL_LOST_PROPERTY_SHEET)  # fills all 3 slots, with a wrong item in the 3rd
-	_check(not _button("ConnectButton").disabled, "Connect should enable once every slot is filled, even with a wrong clue placed")
-
-	# Remove the wrong clue and replace it with the correct one.
-	_click_toggle_evidence(POOL_LOST_PROPERTY_SHEET)  # now selected -> toggle removes it
-	_check(_button("ConnectButton").disabled, "Connect should disable again once a slot is emptied")
-	_click_toggle_evidence(POOL_ROUTE_NOTE)
-	_check(not _button("ConnectButton").disabled, "Connect should re-enable once the replacement fills the last slot")
+	_check((prototype_b.get_node("%SlotsList") as VBoxContainer).get_child_count() == 3 and _filled_slot_count() == 1, "question 1 has three slots, one filled")
+	_check(_toggle_text(POOL_DOOR_LOG) == _t("UI_PROTOTYPE_B_REMOVE_BUTTON"), "a placed clue offers Remove")
+	_click_toggle_evidence(POOL_DOOR_LOG)
+	_check(_filled_slot_count() == 0 and _toggle_text(POOL_DOOR_LOG) == _t("UI_PROTOTYPE_B_PLACE_BUTTON"), "Remove empties the slot")
 	prototype_b.close()
 
 
-func _test_connect_disabled_until_slots_full_then_wrong_then_correct_d1() -> void:
-	deduction_lab.open()
-	(deduction_lab.get_node("%LaunchPrototypeBButton") as Button).pressed.emit()
-	_start_case(CASE_ID)
+func _test_draft_tabs_retain_content_and_save_costs_nothing() -> void:
+	_launch_and_start()
+	var status: Label = _label("ResolutionStatusLabel")
+	var tabs: HBoxContainer = prototype_b.get_node("%DraftTabsRow")
+	_check(tabs.get_child_count() == 2 and _tab(0).disabled and not _tab(1).disabled, "both questions are tabs; the current one is marked (disabled)")
+	_check(_tab(0).text.contains(_t("UI_PROTOTYPE_B_DRAFT_TAB_CURRENT")), "the current tab is marked in words, not only by color")
+	_check(_label("DraftStatusLabel").text.contains(_t("UI_PROTOTYPE_B_DRAFT_STATUS") % [0, 3]), "the draft is labeled as an Unverified Draft, got \"%s\"" % _label("DraftStatusLabel").text)
 
-	_check(_button("ConnectButton").disabled, "Connect must start disabled with no clues placed")
-	_click_toggle_evidence(POOL_DOOR_LOG)
-	_click_toggle_evidence(POOL_LOST_PROPERTY_SHEET)
-	_click_toggle_evidence(POOL_FORCED_WINDOW)  # 3 wrong-for-D1 (but real, in-pool) items
-	_check(not _button("ConnectButton").disabled, "Connect should enable once 3 slots are filled, however wrong the combination")
-	_connect()
-	_check(prototype_b.get_node("%FeedbackPanel").visible, "submitting a wrong connection should still show feedback")
-	var wrong_text: String = (prototype_b.get_node("%FeedbackExplanation") as Label).text
-	_check(wrong_text != "" and not wrong_text.to_lower().contains("valid_") and not wrong_text.to_lower().contains("irrelevant_evidence"), "wrong-connection feedback must be a localized message, never a raw category enum name: got \"%s\"" % wrong_text)
-	_continue_after_feedback()
-	_check(prototype_b.get_node("%PlayArea").visible, "a wrong connection must not complete the round or hide the play area")
-
-	# The three wrong clues must still be placed — a failed attempt must never
-	# clear the board. Each unopened row is [label, Open, toggle]; the toggle
-	# reads "Remove" only while that item is still placed in a slot.
-	for pool_index in [POOL_DOOR_LOG, POOL_LOST_PROPERTY_SHEET, POOL_FORCED_WINDOW]:
-		var row: HBoxContainer = _evidence_row(pool_index)
-		var toggle: Button = row.get_child(row.get_child_count() - 1) as Button
-		_check(toggle.text == String(TranslationServer.translate("UI_PROTOTYPE_B_REMOVE_BUTTON")), "after a failed attempt, pool item %d must remain placed (its row should still offer Remove, not Place)" % pool_index)
-
-	# Reconsider: swap the two wrong items for the real D1 primary path.
-	_click_toggle_evidence(POOL_LOST_PROPERTY_SHEET)
+	_place_all([POOL_DOOR_LOG, POOL_TRAM_TAP])
+	_open_tab(1)
+	_check((prototype_b.get_node("%SlotsList") as VBoxContainer).get_child_count() == 3 and _filled_slot_count() == 0, "question 2 shows its own empty slots")
+	_check(_toggle_text(POOL_DOOR_LOG) == _t("UI_PROTOTYPE_B_PLACE_BUTTON"), "clues placed in question 1 are not placed in question 2")
 	_click_toggle_evidence(POOL_FORCED_WINDOW)
-	_click_toggle_evidence(POOL_TRAM_TAP)
-	_click_toggle_evidence(POOL_ROUTE_NOTE)
-	_connect()
-	_check((prototype_b.get_node("%FeedbackHeadline") as Label).text != "", "the correct D1 primary path should show a success headline")
-	var deduction_text: String = (prototype_b.get_node("%FeedbackDeductionText") as Label).text
-	var explanation: String = (prototype_b.get_node("%FeedbackExplanation") as Label).text
-	_check(deduction_text != "" and explanation != "", "a correct connection should reveal both the deduction's own text and the round's authored explanation")
-	_continue_after_feedback()
-	_check(prototype_b.get_node("%PlayArea").visible, "completing round 1 should move to round 2, not finish the prototype")
+	_open_tab(0)
+	_check(_filled_slot_count() == 2 and _toggle_text(POOL_TRAM_TAP) == _t("UI_PROTOTYPE_B_REMOVE_BUTTON"), "switching back retains question 1's draft exactly")
+
+	_button("SaveDraftButton").pressed.emit()
+	_check(_label("StatusLabel").text == _t("UI_PROTOTYPE_B_DRAFT_SAVED_STATUS"), "saving confirms the draft stays unverified")
+	_check(_label("DraftStatusLabel").text.contains(_t("UI_PROTOTYPE_B_DRAFT_SAVED_LABEL")), "the draft now shows as saved")
+	_check(status.text.contains("3/3") and not status.text.contains(_t("UI_RESOLUTION_TIER_INDEPENDENT")), "saving and switching never consume an attempt, and the current-unit status never mentions the run result, got \"%s\"" % status.text)
+	_check(_label("RunResultLabel").text.contains(_t("UI_RESOLUTION_TIER_INDEPENDENT")), "the separate run-result line should say Independent, got \"%s\"" % _label("RunResultLabel").text)
+	_check(not prototype_b.get_node("%FeedbackPanel").visible, "saving never produces correctness feedback")
 	prototype_b.close()
 
 
-func _test_alternate_d1_path() -> void:
-	deduction_lab.open()
-	(deduction_lab.get_node("%LaunchPrototypeBButton") as Button).pressed.emit()
-	_start_case(CASE_ID)
-	_click_toggle_evidence(POOL_DOOR_LOG)
-	_click_toggle_evidence(POOL_HARBOR_PHOTO)  # the ALTERNATE alibi, not the primary
-	_click_toggle_evidence(POOL_ROUTE_NOTE)
-	_connect()
-	_check((prototype_b.get_node("%FeedbackHeadline") as Label).text != "", "the D1 ALTERNATE path (photo alibi) must also validly connect")
-	_continue_after_feedback()
-	_check(prototype_b.get_node("%PlayArea").visible, "sanity — round 1 complete, round 2 not yet")
-	prototype_b.close()
-
-
-func _test_d3_requires_all_three_clues_then_completes() -> void:
-	deduction_lab.open()
-	(deduction_lab.get_node("%LaunchPrototypeBButton") as Button).pressed.emit()
-	_start_case(CASE_ID)
-	_click_toggle_evidence(POOL_DOOR_LOG)
-	_click_toggle_evidence(POOL_TRAM_TAP)
-	_click_toggle_evidence(POOL_ROUTE_NOTE)
-	_connect()
-	_continue_after_feedback()  # round 2 now
-
-	_check(_button("ConnectButton").disabled, "round 2 should also start with an empty, disabled Connect")
-	_click_toggle_evidence(POOL_FORCED_WINDOW)
-	_click_toggle_evidence(POOL_LATCH_GUIDE)
-	_check(_button("ConnectButton").disabled, "Connect must stay disabled with only 2 of round 2's 3 slots filled — a single missing clue is enough to block submission")
+func _test_commit_disabled_until_both_drafts_complete() -> void:
+	_launch_and_start()
+	_check(_button("CommitTheoryButton").disabled, "Commit Theory starts disabled")
+	_place_all([POOL_DOOR_LOG, POOL_TRAM_TAP, POOL_ROUTE_NOTE])
+	_check(_button("CommitTheoryButton").disabled, "one complete draft is not enough to commit")
+	_open_tab(1)
+	_place_all([POOL_FORCED_WINDOW, POOL_LATCH_GUIDE])
+	_check(_button("CommitTheoryButton").disabled, "question 2 with 2 of 3 clues still blocks committing")
 	_click_toggle_evidence(POOL_WINDOW_LATCH)
-	_check(not _button("ConnectButton").disabled, "Connect should enable once all 3 of round 2's slots are filled")
-	_connect()
-	_check((prototype_b.get_node("%FeedbackHeadline") as Label).text != "", "the correct 3-clue D3 connection should show a success headline")
-	_continue_after_feedback()
-
-	_check(not prototype_b.get_node("%PlayArea").visible, "completing both rounds should hide the play area")
-	_check(prototype_b.get_node("%CompletionPanel").visible, "completing both rounds should show the completion panel")
-	_check((prototype_b.get_node("%CompletionTextLabel") as Label).text != "", "the completion panel should show the authored completion text")
-	var stats_list: VBoxContainer = prototype_b.get_node("%StatsList")
-	_check(stats_list.get_child_count() == 6, "the completion panel should show all six stat lines")
+	_check(not _button("CommitTheoryButton").disabled, "Commit Theory enables once every slot of every draft is filled")
 	prototype_b.close()
+
+
+func _test_mixed_batch_commits_neither_and_feedback_is_progressive() -> void:
+	_launch_and_start()
+	_draft_theory([POOL_FORCED_WINDOW, POOL_LATCH_GUIDE, POOL_LOST_PROPERTY_SHEET])  # D1 right, D3 wrong
+	var status: Label = _label("ResolutionStatusLabel")
+	var q1: String = _t("DED_PROTO_X_PROTOB_Q1")
+	var q2: String = _t("DED_PROTO_X_PROTOB_Q2")
+	var d1_text: String = _t("DED_PROTO_X_DED_BADGE_MISUSED_TEXT")
+
+	_commit()
+	_check(prototype_b.get_node("%FeedbackPanel").visible, "a rejected theory shows feedback")
+	_check(_label("FeedbackExplanation").text == _t("UI_PROTOTYPE_B_FEEDBACK_THEORY_REJECTED"), "the first rejection is generic — it must not say which draft failed, got \"%s\"" % _label("FeedbackExplanation").text)
+	_check(not _label("FeedbackDeductionText").visible and not _label("FeedbackHeadline").visible, "a rejected theory reveals no deduction headline or text")
+	_check(not JSON.stringify([_label("FeedbackExplanation").text, _label("FeedbackResolutionNotice").text]).contains(d1_text), "the correct draft's deduction must not unlock either")
+	_continue_after_feedback()
+	_check(prototype_b.get_node("%PlayArea").visible and not prototype_b.get_node("%CompletionPanel").visible, "a rejected theory completes nothing")
+	_check(status.text.contains("2/3"), "one failed theory should cost one commit, got \"%s\"" % status.text)
+	_check(_label("RunResultLabel").text.contains(_t("UI_RESOLUTION_TIER_GUIDED")), "one failed theory should make the separate run-result line say Guided, got \"%s\"" % _label("RunResultLabel").text)
+	_open_tab(0)
+	_check(_filled_slot_count() == 3, "the correct draft is preserved exactly after a rejection")
+	_open_tab(1)
+	_check(_filled_slot_count() == 3 and _toggle_text(POOL_LOST_PROPERTY_SHEET) == _t("UI_PROTOTYPE_B_REMOVE_BUTTON"), "the wrong draft is preserved too, so the player can reconsider one clue")
+	_check(_button("CommitTheoryButton").disabled, "the identical failed theory cannot be re-committed")
+
+	_click_toggle_evidence(POOL_LATCH_GUIDE)
+	_click_toggle_evidence(POOL_BACK_DOOR_SIGHTING)  # still wrong
+	_check(not _button("CommitTheoryButton").disabled, "a changed theory can be committed again")
+	_commit()
+	var guided: String = _label("FeedbackExplanation").text
+	_check(guided.contains(q2) and not guided.contains(q1), "the second rejection names only the affected question, got \"%s\"" % guided)
+	_check(not guided.contains(_t("DED_PROTO_X_E_WINDOW_LATCH_NAME")) and not guided.contains(_t("DED_PROTO_X_E_LATCH_GUIDE_NAME")), "guided feedback must never name a needed clue")
+	_continue_after_feedback()
+	prototype_b.close()
+
+
+func _test_primary_and_alternate_d1_paths_complete() -> void:
+	for d1 in [[POOL_DOOR_LOG, POOL_TRAM_TAP, POOL_ROUTE_NOTE], [POOL_DOOR_LOG, POOL_HARBOR_PHOTO, POOL_ROUTE_NOTE]]:
+		_launch_and_start()
+		_open_tab(0)
+		_place_all(d1)
+		_open_tab(1)
+		_place_all([POOL_WINDOW_LATCH, POOL_FORCED_WINDOW, POOL_LATCH_GUIDE])  # order never matters
+		_commit()
+		_check(_label("FeedbackHeadline").text == _t("UI_PROTOTYPE_B_FEEDBACK_SUCCESS_HEADLINE"), "D1 path %s + D3 should be accepted" % [d1])
+		_check(_label("FeedbackDeductionText").text.contains(_t("DED_PROTO_X_DED_BADGE_MISUSED_TEXT")) and _label("FeedbackDeductionText").text.contains(_t("DED_PROTO_X_DED_BREAK_IN_STAGED_TEXT")), "an accepted theory reveals BOTH deductions")
+		_continue_after_feedback()
+		_check(prototype_b.get_node("%CompletionPanel").visible and (prototype_b.get_node("%StatsList") as VBoxContainer).get_child_count() == 10, "completion shows the 10-line summary")
+		prototype_b.close()
 
 
 func _test_hint_reveal_via_button() -> void:
-	deduction_lab.open()
-	(deduction_lab.get_node("%LaunchPrototypeBButton") as Button).pressed.emit()
-	_start_case(CASE_ID)
-
+	_launch_and_start()
 	var hint_list: VBoxContainer = prototype_b.get_node("%HintList")
-	_check(hint_list.get_child_count() == 0, "no hint should be revealed yet")
-	_hint()
-	_check(hint_list.get_child_count() == 1, "one hint reveal should show exactly one hint line")
+	_check(hint_list.get_child_count() == 0 and _label("HintNoticeLabel").text == _t("UI_RESOLUTION_HINT_NOTICE"), "no hint yet, and the tier effect of hints is stated up front")
+	_button("HintButton").pressed.emit()
+	_check(hint_list.get_child_count() == 1, "one reveal shows one line")
+	_check(_label("StatusLabel").text == _t("UI_RESOLUTION_NOTICE_TIER_CHANGED") % _t("UI_RESOLUTION_TIER_GUIDED"), "a hint that raises the tier says so explicitly")
 	for i in 3:
-		_hint()
-	_check(hint_list.get_child_count() == 4, "revealing every level should show exactly 4 hint lines")
-	_check(_button("HintButton").disabled, "the Hint button should disable once the ladder is exhausted")
+		_button("HintButton").pressed.emit()
+	_check(hint_list.get_child_count() == 4 and _button("HintButton").disabled, "all four levels, then the Hint button disables")
+	_open_tab(1)
+	_check(hint_list.get_child_count() == 0 and not _button("HintButton").disabled, "question 2 has its own ladder")
 	prototype_b.close()
 
 
-func _test_restart_confirmation_and_cancel_preserves_state() -> void:
+func _test_assistance_partner_and_completion_summary() -> void:
+	_launch_and_start()
+	_draft_theory([POOL_FORCED_WINDOW, POOL_LATCH_GUIDE, POOL_LOST_PROPERTY_SHEET])
+	var status: Label = _label("ResolutionStatusLabel")
+	# Every change keeps question 2 wrong and never repeats a failed theory.
+	var actions_row: Control = prototype_b.get_node("%ResolutionActionsRow")
+	# Question 2 drafts: {forced, latch guide, lost property} -> {forced, lost
+	# property, window latch} -> {lost property, window latch, latch guide}.
+	var edits: Array = [[], [POOL_LATCH_GUIDE, POOL_WINDOW_LATCH], [POOL_FORCED_WINDOW, POOL_LATCH_GUIDE]]
+	for edit in edits:
+		_place_all(edit)
+		_commit()
+		_check(not actions_row.visible, "resolution actions stay hidden while feedback is open")
+		_continue_after_feedback()
+	_check(status.text.contains(_t("UI_RESOLUTION_STATUS_ASSISTANCE_REQUIRED")), "three failures require assistance, got \"%s\"" % status.text)
+	_check(actions_row.visible and _button("AcceptAssistanceButton").visible and not _button("PartnerResolveButton").visible, "the footer offers Accept Assistance")
+	_click_toggle_evidence(POOL_LOST_PROPERTY_SHEET)
+	_click_toggle_evidence(POOL_FORCED_WINDOW)  # now the CORRECT D3 trio
+	_check(_button("CommitTheoryButton").disabled, "committing is locked until assistance is acknowledged — even for a correct theory")
+	_click_toggle_evidence(POOL_FORCED_WINDOW)
+	_click_toggle_evidence(POOL_LOST_PROPERTY_SHEET)  # back to the third failed theory
+
+	_open_tab(0)
+	_button("AcceptAssistanceButton").pressed.emit()
+	_check(_tab(1).disabled, "assistance opens the affected question's draft")
+	_check(prototype_b.get_node("%AssistancePanel").visible and _label("AssistanceText").text.contains(_t("DED_PROTO_X_PROTOB_Q2")), "the assistance panel names the affected question")
+	_check(_label("AssistanceText").text.contains(_t("DED_PROTO_X_HINT_STAGED_2")) and not _label("AssistanceText").text.contains(_t("DED_PROTO_X_HINT_STAGED_3")), "assistance reuses the ladder's category level, never the evidence group")
+	_check(_filled_slot_count() == 3, "assistance never inserts or removes a clue")
+
+	# -> {window latch, latch guide, back door} -> {window latch, back door, forced}.
+	for edit in [[POOL_LOST_PROPERTY_SHEET, POOL_BACK_DOOR_SIGHTING], [POOL_LATCH_GUIDE, POOL_FORCED_WINDOW]]:
+		_place_all(edit)
+		_commit()
+		_continue_after_feedback()
+	_check(actions_row.visible and _button("PartnerResolveButton").visible and _button("CommitTheoryButton").disabled, "two assisted failures close blind commits and offer the partner")
+
+	_button("PartnerResolveButton").pressed.emit()
+	_check(_label("FeedbackHeadline").text == _t("UI_RESOLUTION_PARTNER_HEADLINE"), "partner resolution is clearly labeled")
+	_check(_label("FeedbackPartnerNote").visible and _label("FeedbackPartnerNote").text.contains(_t("DED_PROTO_X_E_WINDOW_LATCH_NAME")), "the partner note explains the connection it made")
+	_check(_label("FeedbackDeductionText").text.contains(_t("DED_PROTO_X_DED_BREAK_IN_STAGED_TEXT")), "partner resolution still reveals and explains the deductions")
+	_continue_after_feedback()
+	_check(prototype_b.get_node("%CompletionPanel").visible, "partner resolution completes the prototype — no hard failure")
+	var lines: Array = []
+	for child in (prototype_b.get_node("%StatsList") as VBoxContainer).get_children():
+		lines.append((child as Label).text)
+	_check(lines.size() == 10, "the completion summary shows 10 lines, got %s" % [lines])
+	_check(lines.has(_t("UI_RESOLUTION_STATS_TIER") % _t("UI_RESOLUTION_TIER_ASSISTED")) and lines.has(_t("UI_RESOLUTION_STATS_PARTNER") % _t("UI_RESOLUTION_YES")), "the summary reports Assisted and partner resolution, got %s" % [lines])
+	_check(lines.has(_t("UI_RESOLUTION_STATS_FORMAL_COMMITS") % 5) and lines.has(_t("UI_RESOLUTION_STATS_FAILED_COMMITS") % 5), "the partner's commit is never counted as the player's, got %s" % [lines])
+	prototype_b.close()
+
+
+func _test_restart_confirmation_cancel_preserves_and_restart_is_recorded() -> void:
 	deduction_lab.open()
 	(deduction_lab.get_node("%LaunchPrototypeBButton") as Button).pressed.emit()
+	_select_case_option(CASE_ID)
+	_button("RecorderStartButton").pressed.emit()
 	_start_case(CASE_ID)
-	_click_open_evidence(POOL_DOOR_LOG)
-	var confirm_dialog: ConfirmationDialog = prototype_b.get_node("%ConfirmDialog")
+	_draft_theory([POOL_FORCED_WINDOW, POOL_LATCH_GUIDE, POOL_LOST_PROPERTY_SHEET])
+	_commit()
+	_continue_after_feedback()
+	var status: Label = _label("ResolutionStatusLabel")
 
-	_button("RestartButton").pressed.emit()
-	var row_after_cancel: HBoxContainer = _evidence_row(POOL_DOOR_LOG)
-	_check(row_after_cancel.get_child_count() == 2, "cancelling a restart confirmation must preserve the run — the opened evidence should still show no Open button")
+	_button("RestartButton").pressed.emit()  # not confirming is a cancel
+	_check(status.text.contains("2/3") and _filled_slot_count() == 3, "cancelling a restart preserves the drafts and attempts")
+	(prototype_b.get_node("%ConfirmDialog") as ConfirmationDialog).confirmed.emit()
+	_check(status.text.contains("3/3") and _filled_slot_count() == 0, "confirming Restart starts a fresh run")
 
-	confirm_dialog.confirmed.emit()
-	var fresh_row: HBoxContainer = _evidence_row(POOL_DOOR_LOG)
-	_check(fresh_row.get_child_count() == 3, "confirming Restart should discard progress — the evidence should be unopened again")
+	var types: Array = _export_event_types()
+	_check(types.has("prototype_restarted") and types.has("theory_batch_rejected"), "the export records the rejected batch and the restart, got %s" % [types])
 	prototype_b.close()
 
 
 func _test_return_confirmation_and_abandon() -> void:
-	deduction_lab.open()
-	(deduction_lab.get_node("%LaunchPrototypeBButton") as Button).pressed.emit()
-	_start_case(CASE_ID)
-	(_button("RecorderStartButton")).pressed.emit()
-	_click_toggle_evidence(POOL_DOOR_LOG)
-	_click_toggle_evidence(POOL_LOST_PROPERTY_SHEET)
-	_click_toggle_evidence(POOL_FORCED_WINDOW)
-	_connect()  # a real (wrong) attempt — genuine progress
-
+	_launch_and_start()
+	_click_toggle_evidence(POOL_DOOR_LOG)  # an unsubmitted draft is real progress
 	_button("ReturnButton").pressed.emit()
-	_check(prototype_b.visible, "returning with meaningful progress must require confirmation, not close immediately")
+	_check(prototype_b.visible, "returning with a drafted clue must require confirmation")
 	(prototype_b.get_node("%ConfirmDialog") as ConfirmationDialog).confirmed.emit()
-	_check(not prototype_b.visible, "confirming Return to Lab should close Prototype B")
-
+	_check(not prototype_b.visible, "confirming Return closes Prototype B")
 	(deduction_lab.get_node("%LaunchPrototypeBButton") as Button).pressed.emit()
 	_start_case(CASE_ID)
 	_button("ReturnButton").pressed.emit()
-	_check(not prototype_b.visible, "returning with no progress at all should close immediately without a confirmation")
+	_check(not prototype_b.visible, "returning with no progress closes immediately")
 
 
 func _test_recorder_controls() -> void:
 	deduction_lab.open()
 	(deduction_lab.get_node("%LaunchPrototypeBButton") as Button).pressed.emit()
 	_select_case_option(CASE_ID)
-
 	var status_label: Label = prototype_b.get_node("%RecorderStatusLabel")
 	_button("RecorderStartButton").pressed.emit()
-	_check(status_label.text.contains("Recording: ON"), 'starting a recording BEFORE the run begins should show "Recording: ON", got "%s"' % status_label.text)
-
+	_check(status_label.text.contains("Recording: ON"), "recording can start before the run")
 	_start_case(CASE_ID)
-	_click_toggle_evidence(POOL_DOOR_LOG)
-	_click_toggle_evidence(POOL_TRAM_TAP)
-	_click_toggle_evidence(POOL_ROUTE_NOTE)
-	_connect()
+	_draft_theory([POOL_WINDOW_LATCH, POOL_LATCH_GUIDE, POOL_FORCED_WINDOW])
+	_button("SaveDraftButton").pressed.emit()
+	_commit()
 
 	_button("RecorderStopButton").pressed.emit()
-	_check(status_label.text.contains("Recording: OFF"), "stopping should show Recording: OFF")
-	_check(not status_label.text.contains(" 0 event(s)"), "events captured before Stop should still be reported, got \"%s\"" % status_label.text)
-
+	_check(status_label.text.contains("Recording: OFF") and not status_label.text.contains(" 0 event(s)"), "stopping keeps captured events")
 	_button("RecorderExportButton").pressed.emit()
-	var export_status: String = (prototype_b.get_node("%StatusLabel") as Label).text
-	_check(export_status.contains("Exported recording to"), 'a successful export should report its path, got "%s"' % export_status)
-
+	var export_status: String = _label("StatusLabel").text
 	var exported_path: String = export_status.trim_prefix("Exported recording to ")
-	_check(FileAccess.file_exists(exported_path), "the exported file should actually exist")
-	var file: FileAccess = FileAccess.open(exported_path, FileAccess.READ)
-	var parsed: Variant = JSON.parse_string(file.get_as_text())
-	file.close()
-	_check(typeof(parsed) == TYPE_DICTIONARY and parsed.get("prototype") == "clue_connection", "the exported recording should be tagged with the Prototype B prototype id, got %s" % [parsed.get("prototype") if typeof(parsed) == TYPE_DICTIONARY else parsed])
-	var event_types: Array = []
+	_check(export_status.begins_with("Exported recording to") and FileAccess.file_exists(exported_path), "a successful export reports an existing path")
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(exported_path))
+	_check(typeof(parsed) == TYPE_DICTIONARY and parsed.get("prototype") == "clue_connection" and parsed.get("schema_version") == 1 and parsed.get("event_schema_version") == 2, "the export keeps the clue_connection id, schema_version 1 and declares event_schema_version 2")
+	var types: Array = []
 	for event in (parsed.get("events", []) as Array):
-		event_types.append(event.get("type"))
-	for expected_type in ["prototype_started", "round_started", "clue_selected", "connection_submitted", "connection_result", "deduction_unlocked"]:
-		_check(event_types.has(expected_type), "the exported recording should contain a \"%s\" event, got types %s" % [expected_type, event_types])
-	for event in (parsed.get("events", []) as Array):
+		types.append(event.get("type"))
 		var payload_json: String = JSON.stringify(event)
-		_check(not payload_json.contains("Oren") and not payload_json.contains("Mara"), "recorded events must never contain full localized text (a translated name leaking in the payload)")
-		if String(event.get("type", "")) == "connection_submitted":
-			var evidence_ids: Array = (event.get("payload", {}) as Dictionary).get("evidence_ids", [])
-			var sorted_copy: Array = evidence_ids.duplicate()
-			sorted_copy.sort()
-			_check(evidence_ids == sorted_copy, "connection_submitted's evidence_ids must be normalized (sorted) for deterministic exported payloads")
-
+		_check(not payload_json.contains("Oren") and not payload_json.contains("Mara"), "recorded events never contain localized text")
+		if String(event.get("type", "")) == "theory_batch_submitted":
+			for draft in (event.get("payload", {}) as Dictionary).get("drafts", []):
+				var ids: Array = draft.get("evidence_ids", [])
+				var sorted_copy: Array = ids.duplicate()
+				sorted_copy.sort()
+				_check(ids == sorted_copy, "theory_batch_submitted evidence_ids are normalized (sorted)")
+	for expected_type in ["prototype_started", "clue_selected", "draft_selected", "draft_saved", "formal_commit_started", "theory_batch_submitted", "theory_batch_accepted", "formal_commit_succeeded", "deduction_unlocked"]:
+		_check(types.has(expected_type), "the export should contain \"%s\", got %s" % [expected_type, types])
+	for retired_v1_type in ["round_started", "connection_submitted", "connection_result", "round_completed", "resolution_tier_changed"]:
+		_check(not types.has(retired_v1_type), "the export must never emit the retired v1 event type \"%s\", got %s" % [retired_v1_type, types])
 	_button("RecorderClearButton").pressed.emit()
-	_check(status_label.text.contains("0 event(s)"), "Clear should empty the recorded event list")
-	_button("RecorderStopButton").pressed.emit()
+	_check(status_label.text.contains("0 event(s)"), "Clear empties the log")
 	if FileAccess.file_exists(exported_path):
 		DirAccess.remove_absolute(exported_path)
 	prototype_b.close()
 
 
-func _test_hide_show_preserves_session() -> void:
-	deduction_lab.open()
-	(deduction_lab.get_node("%LaunchPrototypeBButton") as Button).pressed.emit()
-	_start_case(CASE_ID)
-	_click_open_evidence(POOL_DOOR_LOG)
-	_click_toggle_evidence(POOL_TRAM_TAP)
+func _test_hide_show_and_locale_preserve_drafts_and_attempts() -> void:
+	_launch_and_start()
+	_draft_theory([POOL_FORCED_WINDOW, POOL_LATCH_GUIDE, POOL_LOST_PROPERTY_SHEET])
+	_commit()
+	_continue_after_feedback()
+	var status: Label = _label("ResolutionStatusLabel")
 
 	debug_panel.close()
-	_check(not debug_panel.visible, "closing DebugPanel (F1) should hide it")
-	_check(prototype_b.visible, "Prototype B's OWN visible flag must be untouched by DebugPanel.close() — invisibility here is purely inherited from the hidden ancestor")
+	_check(prototype_b.visible, "Prototype B's own visible flag is untouched by DebugPanel.close()")
 	debug_panel.open()
 	deduction_lab.open()
-	_check(prototype_b.visible, "reopening should show Prototype B exactly as it was left")
-	_check(_evidence_row(POOL_DOOR_LOG).get_child_count() == 2, "the same evidence must still be marked opened after an F1 hide/show round trip")
-	_check(prototype_b.get_node("%SlotsList").get_child_count() == 3, "sanity — slots list still rendered after the round trip")
+	_check(status.text.contains("2/3") and _filled_slot_count() == 3, "F1 hide/show preserves drafts and attempts")
+
+	locale_manager.set_locale("en")
+	_check(status.text.contains("Formal commits before assistance: 2/3"), "a locale switch re-renders without resetting attempts, got \"%s\"" % status.text)
+	locale_manager.set_locale("vi")
+	_check(status.text.contains("2/3"), "switching back keeps the attempt count")
 	prototype_b.close()
 
 
 func _test_translation_coverage() -> void:
-	deduction_lab.open()
-	(deduction_lab.get_node("%LaunchPrototypeBButton") as Button).pressed.emit()
-	_start_case(CASE_ID)
-
+	_launch_and_start()
 	locale_manager.set_locale("en")
-	prototype_b.refresh()
-	var en_title: String = (prototype_b.get_node("%TitleLabel") as Label).text
-	var en_connect: String = _button("ConnectButton").text
+	var en_title: String = _label("TitleLabel").text
+	var en_commit: String = _button("CommitTheoryButton").text
+	var en_tab: String = _tab(0).text
 	locale_manager.set_locale("vi")
-	prototype_b.refresh()
-	var vi_title: String = (prototype_b.get_node("%TitleLabel") as Label).text
-	var vi_connect: String = _button("ConnectButton").text
-	_check(en_title == "Prototype B — Clue Connection", 'the English title should read the translated string, got "%s"' % en_title)
-	_check(vi_title != "" and vi_title != en_title, "the Vietnamese title should be non-empty and differ from English")
-	_check(vi_connect != "" and vi_connect != en_connect, "the Connect Clues button should also be retranslated")
+	_check(en_title == "Prototype B — Clue Connection" and en_commit == "Commit Theory", "EN title/commit read the translated strings, got \"%s\" / \"%s\"" % [en_title, en_commit])
+	_check(_label("TitleLabel").text != en_title and _button("CommitTheoryButton").text != en_commit and _tab(0).text != en_tab, "VI retranslates the title, commit button and draft tabs")
+	_check(_button("SaveDraftButton").text == _t("UI_PROTOTYPE_B_SAVE_DRAFT") and _label("CommitHelpLabel").text == _t("UI_PROTOTYPE_B_COMMIT_HELP"), "save/commit help are localized")
 	prototype_b.close()
 
 
-## All three cases (X/Y/Z) share one data-driven scene — quickly solve
-## round 1 on Y and Z too, proving the launch/pick/place/connect wiring
-## works generically, not just for X.
-func _test_all_three_cases_launch_and_solve_one_round() -> void:
-	for entry in [
-		{"case_id": "proto_y_lab_sample", "pool_indices": [0, 1, 3]},  # cold_room_log, gym_scan, shuttle_note
-		{"case_id": "proto_z_customs_parcel", "pool_indices": [0, 1, 3]},  # seal_registry, ferry_gate, port_map_note
-	]:
-		deduction_lab.open()
-		(deduction_lab.get_node("%LaunchPrototypeBButton") as Button).pressed.emit()
-		_start_case(str(entry["case_id"]))
-		for pool_index in (entry["pool_indices"] as Array):
-			_click_toggle_evidence(int(pool_index))
-		_connect()
-		_check((prototype_b.get_node("%FeedbackHeadline") as Label).text != "", "%s: round 1 should be solvable with its own D1 primary path" % entry["case_id"])
+## All three cases (X/Y/Z) share one data-driven scene — solve the whole
+## theory on Y and Z too.
+func _test_all_three_cases_launch_and_solve_the_theory() -> void:
+	for case_id in ["proto_y_lab_sample", "proto_z_customs_parcel"]:
+		_launch_and_start(case_id)
+		_open_tab(0)
+		_place_all([0, 1, 3])
+		_open_tab(1)
+		_place_all([4, 5, 6])
+		_commit()
+		_check(_label("FeedbackHeadline").text == _t("UI_PROTOTYPE_B_FEEDBACK_SUCCESS_HEADLINE"), "%s: the D1 primary + D3 theory should be accepted" % case_id)
 		_continue_after_feedback()
-		_check(prototype_b.get_node("%PlayArea").visible, "%s: round 1 complete, round 2 not yet" % entry["case_id"])
+		_check(prototype_b.get_node("%CompletionPanel").visible, "%s: completes" % case_id)
 		prototype_b.close()
 
 
-## Milestone 1.12 regression, applied to Prototype B from the start (it never
-## reproduces Prototype A's original bug) — see prototype_a_scene_test.gd's
-## own equivalent test for the full rationale on why this checks STRUCTURE
-## and BEHAVIOR rather than raw pixel geometry.
+## Milestone 1.12 regression, applied to Prototype B from the start — see
+## prototype_a_scene_test.gd's equivalent for why this checks STRUCTURE and
+## BEHAVIOR rather than raw pixel geometry.
 func _test_continue_button_stays_reachable_with_long_feedback() -> void:
 	var footer: Control = prototype_b.get_node("%Footer")
 	var body_scroll: ScrollContainer = prototype_b.get_node("%BodyScroll")
 	var continue_button: Button = _button("ContinueButton")
-
-	_check(continue_button.get_parent() == footer, "ContinueButton must live directly in the fixed Footer, never inside the scrolling body")
-	_check(footer.get_parent() == body_scroll.get_parent() and footer.get_index() > body_scroll.get_index(), "Footer must be a LATER sibling than BodyScroll, so its minimum size is always honored ahead of the scrolling body")
-	for child_name in ["%PlayArea", "%FeedbackPanel", "%CompletionPanel"]:
-		var child: Control = prototype_b.get_node(child_name)
-		var current: Node = child.get_parent()
+	_check(continue_button.get_parent() == footer and prototype_b.get_node("%ResolutionActionsRow").get_parent() == footer, "Continue and the assistance/partner actions live in the fixed Footer")
+	_check(footer.get_parent() == body_scroll.get_parent() and footer.get_index() > body_scroll.get_index(), "Footer is a later sibling than BodyScroll")
+	# Milestone 1.14.1: Commit Theory — the primary formal commit — must also
+	# live in the fixed Footer, never inside the scrolling body.
+	_check(_button("CommitTheoryButton").get_parent() == prototype_b.get_node("%ActionRow") and prototype_b.get_node("%ActionRow").get_parent() == footer, "Commit Theory must live in the fixed Footer's ActionRow")
+	var current_action_row: Node = _button("CommitTheoryButton").get_parent()
+	var is_in_scroll := false
+	while current_action_row != null:
+		if current_action_row == body_scroll:
+			is_in_scroll = true
+			break
+		current_action_row = current_action_row.get_parent()
+	_check(not is_in_scroll, "Commit Theory must NOT be a descendant of the scrolling BodyScroll")
+	for child_name in ["%AssistancePanel", "%PlayArea", "%FeedbackPanel", "%CompletionPanel"]:
+		var current: Node = prototype_b.get_node(child_name).get_parent()
 		var is_descendant := false
 		while current != null:
 			if current == body_scroll:
@@ -490,34 +558,38 @@ func _test_continue_button_stays_reachable_with_long_feedback() -> void:
 				break
 			current = current.get_parent()
 		_check(is_descendant, "%s must live inside the scrolling BodyScroll" % child_name)
-	_check(body_scroll.get_v_scroll_bar() != null, "BodyScroll must be able to show a vertical scrollbar")
+	_check(prototype_b.get_node("%FeedbackPanel").get_index() < prototype_b.get_node("%PlayArea").get_index(), "FeedbackPanel must be the body's first section, so resetting the scroll shows the feedback — not the play area (Milestone 1.14 visual QA)")
 
-	deduction_lab.open()
-	(deduction_lab.get_node("%LaunchPrototypeBButton") as Button).pressed.emit()
-	_start_case(CASE_ID)
-	_click_toggle_evidence(POOL_DOOR_LOG)
-	_click_toggle_evidence(POOL_TRAM_TAP)
-	_click_toggle_evidence(POOL_ROUTE_NOTE)
-
-	var explanation_label: Label = prototype_b.get_node("%FeedbackExplanation")
-	var deduction_label: Label = prototype_b.get_node("%FeedbackDeductionText")
+	_launch_and_start()
+	_draft_theory([POOL_FORCED_WINDOW, POOL_LATCH_GUIDE, POOL_LOST_PROPERTY_SHEET])
 	var synthetic_long: String = "This synthetic sentence exists only to stress the feedback layout. ".repeat(80)
-
-	for locale in ["vi", "en"]:
-		locale_manager.set_locale(locale)
-		_connect()  # 2nd locale pass reclassifies an already-resolved target and still shows feedback
-		_check(prototype_b.get_node("%FeedbackPanel").visible, "feedback must show after connecting (%s)" % locale)
-		_check(continue_button.visible, "Continue must be visible with real feedback text (%s)" % locale)
-		_check(continue_button.has_focus(), "connecting must place keyboard focus on Continue (%s)" % locale)
-		_check(continue_button.focus_mode != Control.FOCUS_NONE, "Continue must stay keyboard-focusable (%s)" % locale)
-
-		explanation_label.text = synthetic_long
-		deduction_label.text = synthetic_long
+	var second_edits: Array = [[], [POOL_LATCH_GUIDE, POOL_WINDOW_LATCH]]
+	var locales: Array = ["vi", "en"]
+	for i in locales.size():
+		locale_manager.set_locale(locales[i])
+		_place_all(second_edits[i])
+		_commit()
+		_check(prototype_b.get_node("%FeedbackPanel").visible and continue_button.visible and continue_button.has_focus(), "feedback shows with Continue visible and focused (%s)" % locales[i])
+		_label("FeedbackExplanation").text = synthetic_long
+		_label("FeedbackResolutionNotice").text = synthetic_long
 		await process_frame
 		await process_frame
-
-		_check(continue_button.visible, "Continue must remain visible once feedback text grows far longer than anything authored (%s)" % locale)
-		_check(continue_button.get_parent() == footer, "Continue's parentage must not change just because body content grew (%s)" % locale)
-
+		_check(continue_button.visible and continue_button.get_parent() == footer, "Continue stays visible in the footer with far-too-long feedback (%s)" % locales[i])
+		_continue_after_feedback()
 	locale_manager.set_locale("vi")
 	prototype_b.close()
+
+
+func _export_event_types() -> Array:
+	_button("RecorderExportButton").pressed.emit()
+	var exported_path: String = _label("StatusLabel").text.trim_prefix("Exported recording to ")
+	var types: Array = []
+	if FileAccess.file_exists(exported_path):
+		var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(exported_path))
+		if typeof(parsed) == TYPE_DICTIONARY:
+			for event in (parsed.get("events", []) as Array):
+				types.append(event.get("type"))
+		DirAccess.remove_absolute(exported_path)
+	_button("RecorderStopButton").pressed.emit()
+	_button("RecorderClearButton").pressed.emit()
+	return types

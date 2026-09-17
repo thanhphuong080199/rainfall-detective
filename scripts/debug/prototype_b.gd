@@ -1,29 +1,37 @@
 extends Control
 ## Developer-only Prototype B — Clue Connection (Milestone 1.12 — see
-## docs/prototype-b.md): read an investigation question, place the clues that
-## jointly establish a deduction into a fixed number of connection slots, and
-## submit the connection. Launched from the Deduction Lab's "Launch
+## docs/prototype-b.md): read the investigation questions, draft which clues
+## jointly establish each deduction into a fixed number of connection slots,
+## and commit the whole theory. Launched from the Deduction Lab's "Launch
 ## Prototype B" button, never wired through Main.gd — same isolation stance
 ## as DebugPanel/DeductionLab/PrototypeA.
 ##
 ## Owns exactly one PrototypeBController (one fresh, isolated
 ## DeductionSession per run — NEVER the Deduction Lab's own session, NEVER a
 ## PrototypeAController's) and one DeductionLabRecorder (Milestone 1.10,
-## reused unmodified). Every submission goes through PrototypeBController,
-## which itself only ever calls the real DeductionEvaluator/DeductionSession
-## — no grading/validation logic is reimplemented here, only rendering, click
+## reused unmodified). Every commit goes through PrototypeBController, which
+## itself only ever calls the real DeductionEvaluator/DeductionSession — no
+## grading/validation logic is reimplemented here, only rendering, click
 ## routing and the Prototype B event vocabulary's recorder calls
 ## (docs/prototype-b.md, "Recorder events").
+##
+## Milestone 1.14 (docs/resolution-policy.md): one draft tab per question,
+## always labeled "Unverified Draft"; Save Draft and tab switching are free;
+## Commit Theory is the single formal commit (both drafts, atomically). The
+## header shows the commit budget and tier, the footer offers Accept
+## Assistance / Resolve with Partner once the policy allows them. Policy
+## state lives in the controller, so dialogs, locale switches and F1 hide/show
+## can never reset attempts.
 ##
 ## In a release export, OS.is_debug_build() is false and _ready() returns
 ## before doing anything else — the same isolation DebugPanel/DeductionLab/
 ## PrototypeA already use.
 ##
-## Layout: fixed header, a single expandable %BodyScroll (holding PlayArea/
-## FeedbackPanel/CompletionPanel), and a fixed %Footer sibling placed AFTER
-## it — the same Milestone 1.12 structure that fixed Prototype A's
-## Continue-button regression, applied here from the start so Prototype B
-## never reproduces it (see docs/prototype-a.md, "Layout").
+## Layout: fixed header, a single expandable %BodyScroll (holding
+## AssistancePanel/PlayArea/FeedbackPanel/CompletionPanel), and a fixed
+## %Footer sibling placed AFTER it — the same Milestone 1.12 structure that
+## fixed Prototype A's Continue-button regression, applied here from the start
+## so Prototype B never reproduces it (see docs/prototype-a.md, "Layout").
 ##
 ## Hide/show: a permanent child of DeductionLab, never freed or
 ## re-instantiated — so F1 hiding/showing DebugPanel, or closing/reopening
@@ -31,6 +39,10 @@ extends Control
 ## "Return to Lab" ends the run (recording prototype_abandoned if incomplete)
 ## and is gated behind a confirmation when there is progress, exactly like
 ## PrototypeA.gd's own Return button.
+
+## Milestone 1.14.1 ("Prevent Deduction Lab show-through"): lets DeductionLab
+## restore its own hidden content the instant this overlay actually closes.
+signal closed
 
 var _controller: PrototypeBController
 var _recorder: DeductionLabRecorder
@@ -46,13 +58,31 @@ var _pending_confirmed_action: Callable = Callable()
 @onready var question_label: Label = %QuestionLabel
 @onready var progress_label: Label = %ProgressLabel
 @onready var status_label: Label = %StatusLabel
+## The current question's own draft/commit state only (Milestone 1.14.1) —
+## never the run result; see %RunResultLabel.
+@onready var resolution_status_label: Label = %ResolutionStatusLabel
+## The run-wide resolution result only, always shown separately.
+@onready var run_result_label: Label = %RunResultLabel
 
 @onready var body_scroll: ScrollContainer = %BodyScroll
+@onready var assistance_panel: PanelContainer = %AssistancePanel
+@onready var assistance_headline: Label = %AssistanceHeadline
+@onready var assistance_text: Label = %AssistanceText
 @onready var play_area: HBoxContainer = %PlayArea
+@onready var draft_tabs_row: HBoxContainer = %DraftTabsRow
+@onready var draft_status_label: Label = %DraftStatusLabel
 @onready var slots_list: VBoxContainer = %SlotsList
 @onready var hint_list: VBoxContainer = %HintList
+@onready var hint_notice_label: Label = %HintNoticeLabel
+@onready var commit_help_label: Label = %CommitHelpLabel
+## Milestone 1.14.1: lives in the fixed %Footer now (moved out of the
+## scrolling %PlayArea/LeftColumn), so Commit Theory — the primary formal
+## commit — can never be pushed offscreen. Visibility tracks %PlayArea's own,
+## managed explicitly in refresh() since it is no longer PlayArea's descendant.
+@onready var action_row: HBoxContainer = %ActionRow
 @onready var hint_button: Button = %HintButton
-@onready var connect_button: Button = %ConnectButton
+@onready var save_draft_button: Button = %SaveDraftButton
+@onready var commit_theory_button: Button = %CommitTheoryButton
 @onready var case_file_label: Label = %CaseFileLabel
 @onready var evidence_list: VBoxContainer = %EvidenceList
 
@@ -60,6 +90,8 @@ var _pending_confirmed_action: Callable = Callable()
 @onready var feedback_headline: Label = %FeedbackHeadline
 @onready var feedback_deduction_text: Label = %FeedbackDeductionText
 @onready var feedback_explanation: Label = %FeedbackExplanation
+@onready var feedback_partner_note: Label = %FeedbackPartnerNote
+@onready var feedback_resolution_notice: Label = %FeedbackResolutionNotice
 
 @onready var completion_panel: PanelContainer = %CompletionPanel
 @onready var completion_title_label: Label = %CompletionTitleLabel
@@ -68,6 +100,9 @@ var _pending_confirmed_action: Callable = Callable()
 
 @onready var footer: VBoxContainer = %Footer
 @onready var continue_button: Button = %ContinueButton
+@onready var resolution_actions_row: HBoxContainer = %ResolutionActionsRow
+@onready var accept_assistance_button: Button = %AcceptAssistanceButton
+@onready var partner_resolve_button: Button = %PartnerResolveButton
 @onready var completion_buttons_row: HBoxContainer = %CompletionButtonsRow
 @onready var completion_restart_button: Button = %CompletionRestartButton
 @onready var completion_export_button: Button = %CompletionExportButton
@@ -97,8 +132,11 @@ func _ready() -> void:
 	start_button.pressed.connect(_on_start_pressed)
 	restart_button.pressed.connect(_on_restart_pressed)
 	hint_button.pressed.connect(_on_hint_pressed)
-	connect_button.pressed.connect(_on_connect_pressed)
+	save_draft_button.pressed.connect(_on_save_draft_pressed)
+	commit_theory_button.pressed.connect(_on_commit_theory_pressed)
 	continue_button.pressed.connect(_on_continue_pressed)
+	accept_assistance_button.pressed.connect(_on_accept_assistance_pressed)
+	partner_resolve_button.pressed.connect(_on_partner_resolve_pressed)
 	completion_restart_button.pressed.connect(_on_restart_pressed)
 	completion_export_button.pressed.connect(_on_recorder_export_pressed)
 	completion_return_button.pressed.connect(_on_return_pressed)
@@ -120,9 +158,14 @@ func _apply_static_text() -> void:
 	start_button.text = tr("UI_PROTOTYPE_B_START")
 	restart_button.text = tr("UI_PROTOTYPE_B_RESTART")
 	hint_button.text = tr("UI_PROTOTYPE_B_HINT")
-	connect_button.text = tr("UI_PROTOTYPE_B_CONNECT")
+	hint_notice_label.text = tr(ResolutionPresenter.HINT_NOTICE_KEY)
+	commit_help_label.text = tr("UI_PROTOTYPE_B_COMMIT_HELP")
+	save_draft_button.text = tr("UI_PROTOTYPE_B_SAVE_DRAFT")
+	commit_theory_button.text = tr("UI_PROTOTYPE_B_COMMIT_THEORY")
 	case_file_label.text = tr("UI_PROTOTYPE_B_CASE_FILE")
 	continue_button.text = tr("UI_PROTOTYPE_B_CONTINUE")
+	accept_assistance_button.text = tr("UI_RESOLUTION_ACCEPT_ASSISTANCE")
+	partner_resolve_button.text = tr("UI_RESOLUTION_RESOLVE_WITH_PARTNER")
 	completion_title_label.text = tr("UI_PROTOTYPE_B_COMPLETE_TITLE")
 	completion_restart_button.text = tr("UI_PROTOTYPE_B_RESTART")
 	completion_export_button.text = tr("UI_PROTOTYPE_B_RECORDER_EXPORT")
@@ -164,6 +207,7 @@ func open(preferred_case_def: Dictionary = {}) -> void:
 
 func close() -> void:
 	visible = false
+	closed.emit()
 
 
 func _refresh_if_visible() -> void:
@@ -222,8 +266,9 @@ func _on_restart_pressed() -> void:
 
 ## Deliberately does NOT stop an in-progress recording — matching
 ## prototype_a.gd's own rationale: a recording spanning "pressed Start
-## Recording" through "pressed Start" is how prototype_started/round_started
-## get captured at all.
+## Recording" through "pressed Start" is how prototype_started gets captured
+## at all. A second run on this controller is recorded as prototype_restarted
+## by the controller itself.
 func _start_run(case_def: Dictionary) -> void:
 	_recorder.set_current_source(DeductionLabRecorder.SOURCE_PLAYER_PREVIEW)
 	_controller.start(case_def, _recorder)
@@ -272,31 +317,91 @@ func refresh() -> void:
 	play_area.visible = started and not _controller.is_completed()
 	completion_panel.visible = started and _controller.is_completed()
 	completion_buttons_row.visible = completion_panel.visible
+	action_row.visible = play_area.visible and not feedback_panel.visible
 	if not started:
 		progress_label.text = ""
 		question_label.text = ""
+		resolution_status_label.text = ""
+		run_result_label.text = ""
+		assistance_panel.visible = false
+		resolution_actions_row.visible = false
+		action_row.visible = false
 		_render_recorder()
 		return
 
 	_last_view = PrototypeBPresenter.build_player_view(_controller.get_case_def(), _controller)
 	var view: Dictionary = _last_view.get("view", {})
 	var badge: String = ("  [%s]" % tr("UI_DEDUCTION_LAB_NON_CANON_BADGE")) if view.get("non_canon", false) else ""
-	progress_label.text = "%s%s — %s" % [
-		view.get("case_title", ""), badge,
-		tr("UI_PROTOTYPE_B_ROUND_LABEL") % [int(view.get("round_index", 0)) + 1, view.get("round_count", 1)],
-	]
+	progress_label.text = "%s%s" % [view.get("case_title", ""), badge]
+	var status: Dictionary = view.get("resolution_status", {})
+	resolution_status_label.text = status.get("current_status_text", "")
+	run_result_label.text = status.get("run_result_text", "")
+	_render_assistance(view)
+	_render_resolution_actions(view)
 
 	if _controller.is_completed():
+		question_label.text = ""
+		action_row.visible = false
 		_render_completion(view)
 		_render_recorder()
 		return
 
-	question_label.text = "%s: %s" % [tr("UI_PROTOTYPE_B_QUESTION_LABEL"), view.get("question", "")]
+	var active: Dictionary = _find_by_handle(view.get("drafts", []), view.get("active_draft_handle", ""))
+	question_label.text = "%s %d: %s" % [tr("UI_PROTOTYPE_B_QUESTION_LABEL"), int(active.get("number", 1)), view.get("question", "")]
+	_render_draft_tabs(view)
+	var saved_text: String = tr("UI_PROTOTYPE_B_DRAFT_SAVED_LABEL") if active.get("saved", false) else tr("UI_PROTOTYPE_B_DRAFT_UNSAVED_LABEL")
+	draft_status_label.text = "%s (%s)" % [tr("UI_PROTOTYPE_B_DRAFT_STATUS") % [int(active.get("filled_count", 0)), int(active.get("slot_count", 0))], saved_text]
 	_render_slots(view)
 	_render_evidence(view)
 	_render_hints(view)
-	connect_button.disabled = not view.get("can_submit", false)
+	commit_theory_button.disabled = not view.get("can_commit", false)
+	save_draft_button.disabled = view.get("theory_accepted", false)
 	_render_recorder()
+
+
+func _render_assistance(view: Dictionary) -> void:
+	var assistance: Dictionary = view.get("assistance", {})
+	assistance_panel.visible = not assistance.is_empty()
+	if assistance.is_empty():
+		return
+	assistance_headline.text = assistance.get("headline", "")
+	var lines: Array[String] = [String(assistance.get("focus", ""))]
+	if String(assistance.get("category_hint", "")) != "":
+		lines.append(String(assistance.get("category_hint", "")))
+	assistance_text.text = "\n".join(lines)
+
+
+## Hidden while feedback is open so Continue stays the single, focused next
+## step.
+func _render_resolution_actions(view: Dictionary) -> void:
+	var status: Dictionary = view.get("resolution_status", {})
+	var assistance_required: bool = status.get("assistance_required", false)
+	var partner_available: bool = status.get("partner_available", false) and not view.get("theory_accepted", false)
+	accept_assistance_button.visible = assistance_required
+	partner_resolve_button.visible = partner_available
+	resolution_actions_row.visible = not _controller.is_completed() and not feedback_panel.visible \
+		and (assistance_required or partner_available)
+
+
+## One button per question draft. The label says which draft is current and
+## how many slots are filled — in words, never only by color — and never
+## anything about correctness.
+func _render_draft_tabs(view: Dictionary) -> void:
+	UiUtil.clear_children(draft_tabs_row)
+	var focus_handle: String = String((view.get("assistance", {}) as Dictionary).get("draft_handle", ""))
+	for draft in view.get("drafts", []):
+		var button := Button.new()
+		var parts: Array[String] = [tr("UI_PROTOTYPE_B_DRAFT_TAB") % int(draft.get("number", 0))]
+		parts.append(tr("UI_PROTOTYPE_B_DRAFT_FILLED") % [int(draft.get("filled_count", 0)), int(draft.get("slot_count", 0))])
+		if draft.get("active", false):
+			parts.append(tr("UI_PROTOTYPE_B_DRAFT_TAB_CURRENT"))
+		if focus_handle != "" and draft.get("handle", "") == focus_handle:
+			parts.append(tr("UI_PROTOTYPE_A_PARTNER_FOCUS_LABEL"))
+		button.text = " · ".join(parts)
+		button.disabled = draft.get("active", false)
+		var handle: String = draft.get("handle", "")
+		button.pressed.connect(func(): _on_draft_tab_pressed(handle))
+		draft_tabs_row.add_child(button)
 
 
 func _render_slots(view: Dictionary) -> void:
@@ -315,10 +420,11 @@ func _render_slots(view: Dictionary) -> void:
 			var item: Dictionary = evidence_by_handle.get(evidence_handle, {})
 			label.text = "%s: %s" % [slot_prefix, item.get("name", "")]
 			row.add_child(label)
-			var remove_button := Button.new()
-			remove_button.text = tr("UI_PROTOTYPE_B_REMOVE_BUTTON")
-			remove_button.pressed.connect(func(): _on_remove_evidence_pressed(evidence_handle))
-			row.add_child(remove_button)
+			if not view.get("theory_accepted", false):
+				var remove_button := Button.new()
+				remove_button.text = tr("UI_PROTOTYPE_B_REMOVE_BUTTON")
+				remove_button.pressed.connect(func(): _on_remove_evidence_pressed(evidence_handle))
+				row.add_child(remove_button)
 		else:
 			label.text = "%s: %s" % [slot_prefix, tr("UI_PROTOTYPE_B_SLOT_EMPTY")]
 			row.add_child(label)
@@ -327,6 +433,7 @@ func _render_slots(view: Dictionary) -> void:
 
 func _render_evidence(view: Dictionary) -> void:
 	UiUtil.clear_children(evidence_list)
+	var accepted: bool = view.get("theory_accepted", false)
 	for item in view.get("evidence", []):
 		var row := HBoxContainer.new()
 		var label := Label.new()
@@ -352,21 +459,38 @@ func _render_evidence(view: Dictionary) -> void:
 		var toggle_button := Button.new()
 		if selected:
 			toggle_button.text = tr("UI_PROTOTYPE_B_REMOVE_BUTTON")
+			toggle_button.disabled = accepted
 			toggle_button.pressed.connect(func(): _on_remove_evidence_pressed(handle))
 		else:
 			toggle_button.text = tr("UI_PROTOTYPE_B_PLACE_BUTTON")
-			toggle_button.disabled = not _controller.has_room()
+			toggle_button.disabled = accepted or not _controller.has_room()
 			toggle_button.pressed.connect(func(): _on_select_evidence_pressed(handle))
 		row.add_child(toggle_button)
 		evidence_list.add_child(row)
 
 
-## Opaque-handle resolution: the real evidence id is looked up in the
-## presenter's private handle_map ONLY here, at the moment a production API
-## is actually called — never carried by the rendered widgets themselves.
-## See scripts/deduction/prototype_b_presenter.gd's class doc.
+func _find_by_handle(entries: Array, handle: String) -> Dictionary:
+	for entry in entries:
+		if entry.get("handle", "") == handle:
+			return entry
+	return {}
+
+
+## Opaque-handle resolution: the real evidence id (or draft index) is looked
+## up in the presenter's private handle_map ONLY here, at the moment a
+## production API is actually called — never carried by the rendered widgets
+## themselves. See scripts/deduction/prototype_b_presenter.gd's class doc.
 func _resolve(handle: String) -> String:
 	return String((_last_view.get("handle_map", {}) as Dictionary).get(handle, ""))
+
+
+func _on_draft_tab_pressed(handle: String) -> void:
+	var real_index: String = _resolve(handle)
+	if not real_index.is_valid_int():
+		return
+	_recorder.set_current_source(DeductionLabRecorder.SOURCE_PLAYER_PREVIEW)
+	_controller.select_draft(real_index.to_int())
+	refresh()
 
 
 func _on_open_evidence_pressed(handle: String) -> void:
@@ -407,15 +531,42 @@ func _render_hints(view: Dictionary) -> void:
 		hint_list.add_child(label)
 
 
+## A hint that raises the run's tier says so explicitly in the status line.
 func _on_hint_pressed() -> void:
 	_recorder.set_current_source(DeductionLabRecorder.SOURCE_PLAYER_PREVIEW)
-	_controller.reveal_next_hint()
+	var result: Dictionary = _controller.reveal_next_hint()
+	var notice: String = ResolutionPresenter.build_run_result_notice(result.get("resolution", {}))
+	if notice != "":
+		_set_status(notice)
 	refresh()
 
 
-func _on_connect_pressed() -> void:
+## Saving never evaluates anything — the status line says so.
+func _on_save_draft_pressed() -> void:
 	_recorder.set_current_source(DeductionLabRecorder.SOURCE_PLAYER_PREVIEW)
-	var result: Dictionary = _controller.submit_connection()
+	if _controller.save_draft():
+		_set_status(tr("UI_PROTOTYPE_B_DRAFT_SAVED_STATUS"))
+	refresh()
+
+
+func _on_commit_theory_pressed() -> void:
+	_recorder.set_current_source(DeductionLabRecorder.SOURCE_PLAYER_PREVIEW)
+	var result: Dictionary = _controller.commit_theory()
+	_show_feedback(result)
+	refresh()
+
+
+func _on_accept_assistance_pressed() -> void:
+	_recorder.set_current_source(DeductionLabRecorder.SOURCE_PLAYER_PREVIEW)
+	var result: Dictionary = _controller.accept_assistance()
+	_set_status(ResolutionPresenter.build_run_result_notice(result.get("resolution", {})))
+	body_scroll.scroll_vertical = 0
+	refresh()
+
+
+func _on_partner_resolve_pressed() -> void:
+	_recorder.set_current_source(DeductionLabRecorder.SOURCE_PLAYER_PREVIEW)
+	var result: Dictionary = _controller.resolve_with_partner()
 	_show_feedback(result)
 	refresh()
 
@@ -427,15 +578,20 @@ func _on_connect_pressed() -> void:
 ## Continue itself.
 func _show_feedback(result: Dictionary) -> void:
 	var feedback: Dictionary = PrototypeBPresenter.build_feedback(_controller.get_case_def(), _controller, result)
-	feedback_headline.text = feedback.get("headline", "")
-	feedback_headline.visible = String(feedback.get("headline", "")) != ""
-	feedback_deduction_text.text = feedback.get("deduction_text", "")
-	feedback_deduction_text.visible = String(feedback.get("deduction_text", "")) != ""
+	_set_label(feedback_headline, feedback.get("headline", ""))
+	_set_label(feedback_deduction_text, feedback.get("deduction_text", ""))
 	feedback_explanation.text = feedback.get("explanation", "")
+	_set_label(feedback_partner_note, feedback.get("partner_note", ""))
+	_set_label(feedback_resolution_notice, feedback.get("resolution_notice", ""))
 	feedback_panel.visible = true
 	continue_button.visible = true
 	body_scroll.scroll_vertical = 0
 	continue_button.grab_focus()
+
+
+func _set_label(label: Label, text: String) -> void:
+	label.text = text
+	label.visible = text != ""
 
 
 func _on_continue_pressed() -> void:
@@ -443,22 +599,16 @@ func _on_continue_pressed() -> void:
 	continue_button.visible = false
 	_controller.acknowledge_result()
 	refresh()
+	if accept_assistance_button.is_visible_in_tree():
+		accept_assistance_button.grab_focus()
+	elif partner_resolve_button.is_visible_in_tree():
+		partner_resolve_button.grab_focus()
 
 
 func _render_completion(view: Dictionary) -> void:
 	completion_text_label.text = view.get("completion_text", "")
 	UiUtil.clear_children(stats_list)
-	var stats: Dictionary = view.get("stats", {})
-	var total_seconds: int = int(float(stats.get("elapsed_ms", 0)) / 1000.0)
-	var time_text: String = "%d:%02d" % [total_seconds / 60, total_seconds % 60]
-	for line in [
-		tr("UI_PROTOTYPE_B_STATS_TIME") % time_text,
-		tr("UI_PROTOTYPE_B_STATS_ATTEMPTS") % int(stats.get("attempts", 0)),
-		tr("UI_PROTOTYPE_B_STATS_FAILED") % int(stats.get("failed", 0)),
-		tr("UI_PROTOTYPE_B_STATS_OPENED") % int(stats.get("opened", 0)),
-		tr("UI_PROTOTYPE_B_STATS_REPLACEMENTS") % int(stats.get("replacements", 0)),
-		tr("UI_PROTOTYPE_B_STATS_HINTS") % int(stats.get("hints_used", 0)),
-	]:
+	for line in view.get("completion_lines", []):
 		var label := Label.new()
 		label.text = line
 		stats_list.add_child(label)
@@ -478,8 +628,8 @@ func _render_recorder() -> void:
 
 ## Reads the case id from the PICKER, not from _controller.get_case_def() —
 ## deliberately, so the facilitator can start recording BEFORE pressing
-## Start, and still capture "prototype_started"/"round_started" (matches
-## prototype_a.gd's own rationale).
+## Start, and still capture "prototype_started" (matches prototype_a.gd's own
+## rationale).
 func _on_recorder_start_pressed() -> void:
 	if case_option_button.get_item_count() == 0:
 		_set_status(tr("UI_PROTOTYPE_B_NO_CASE_SELECTED"))

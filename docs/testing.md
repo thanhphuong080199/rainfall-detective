@@ -30,6 +30,7 @@ scenes/test/
 ├── deduction_lab_presenter_test.gd   Milestone 1.10: Player Preview spoiler boundary + Author Inspector contract
 ├── deduction_lab_recorder_test.gd    Milestone 1.10: local playtest recorder (start/stop/clear/export, schema)
 ├── deduction_lab_scene_test.gd       Milestone 1.10: the Lab scene + DebugPanel integration (FULL only, see below)
+├── resolution_policy_test.gd         Milestone 1.14: the shared ResolutionPolicy (tiers, failure limits, assistance/partner phases, serialization)
 ├── prototype_a_controller_test.gd    Milestone 1.11: PrototypeAController interaction state + real-evaluator classification
 ├── prototype_a_presenter_test.gd     Milestone 1.11: player-view spoiler boundary + feedback-category mapping
 ├── prototype_a_content_test.gd       Milestone 1.11: the prototype_a data layer on the three prototype cases, by structural role
@@ -129,6 +130,7 @@ boot if `.godot/` is already built):
   --script res://scenes/test/deduction_lab_controller_test.gd \
   --script res://scenes/test/deduction_lab_presenter_test.gd \
   --script res://scenes/test/deduction_lab_recorder_test.gd \
+  --script res://scenes/test/resolution_policy_test.gd \
   --script res://scenes/test/prototype_a_controller_test.gd \
   --script res://scenes/test/prototype_a_presenter_test.gd \
   --script res://scenes/test/prototype_a_content_test.gd \
@@ -163,6 +165,7 @@ checks `verify.sh` always does unless skipped:
   --script res://scenes/test/deduction_lab_presenter_test.gd \
   --script res://scenes/test/deduction_lab_recorder_test.gd \
   --script res://scenes/test/deduction_lab_scene_test.gd \
+  --script res://scenes/test/resolution_policy_test.gd \
   --script res://scenes/test/prototype_a_controller_test.gd \
   --script res://scenes/test/prototype_a_presenter_test.gd \
   --script res://scenes/test/prototype_a_content_test.gd \
@@ -503,7 +506,7 @@ reasoning — pure, autoload-free, no scene tree):
   referenced at all — the one prototype controller that owns no session.
   Uses its own fixture, `deduction_fixtures.gd`'s `prototype_c_case()`.
 - `prototype_c_presenter_test.gd` — the player view's exact allow-listed
-  keys (15 before acceptance); a content sweep proving no domain id/
+  keys (18 before acceptance since Milestone 1.14); a content sweep proving no domain id/
   structural role/raw constraint field ever reaches it, against real X/Y/Z
   content, both BEFORE and AFTER acceptance; the claim key's entire absence
   before acceptance and presence after; the resolution key's entire absence
@@ -534,11 +537,44 @@ locked with no buttons, select/place/move/remove through real buttons,
 Check disabled until complete then invalid-then-corrected with retained
 placements, an alternate valid timeline also accepted, fact inspection,
 hint reveal, the final claim phase (wrong then correct, with the
-interpolated time visible), completion with all seven stat lines, restart/
+interpolated time visible), completion with the 12-line resolution summary (Milestone 1.14), restart/
 return confirmation, recorder controls and the exported event vocabulary/
 schema, F1 hide/show session preservation, all three cases, bilingual
 coverage, and its own copy of the Milestone 1.12 Continue-button layout
 regression.
+
+### Resolution policy tests (Milestone 1.14)
+
+`docs/resolution-policy.md` is the source of truth. One new script joins
+FAST and FULL: `resolution_policy_test.gd`. It is pure and needs no content.
+It tests the policy alone:
+
+- the Independent start and the Guided/Assisted thresholds;
+- the third failure requiring assistance, then two assisted failures
+  offering partner resolution;
+- one-way tiers across units, with run-wide failure counting;
+- refused actions counting nothing;
+- the transition-event order controllers record;
+- result snapshots, strict `load_dict()` and determinism;
+- a source check that no prototype controller redefines the limits.
+
+The existing prototype suites were extended rather than duplicated:
+
+- **A:** credibility, duplicate/locked presentations, assistance, partner
+  resolution through `commit_attempt()`, telemetry and restart.
+- **B:** rewritten for two unverified drafts and the atomic batch commit —
+  one invalid draft commits neither, non-oracular feedback levels, partner
+  batch resolution.
+- **C:** progressive feedback, any-previous-failure blocking, an
+  evaluator-validated partner timeline, and the verdict + supporting-fact
+  claim. `prototype_c_content_test.gd` proves the supporting facts are
+  exactly the facts that rule the claim out on their own, and
+  `deduction_validation_test.gd` adds negative fixtures for that rule.
+
+Presenter tests assert assistance and partner content stays absent until the
+policy allows it, against real X/Y/Z. Scene tests drive the footer's Accept
+Assistance / Resolve with Partner buttons, the completion summaries, restart
+recording and attempt preservation across locale switches and F1 hide/show.
 
 Where new coverage goes: a new validation rule → a negative fixture in
 `deduction_validation_test.gd`; a new result category or constraint type →
