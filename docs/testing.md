@@ -31,6 +31,7 @@ scenes/test/
 ├── deduction_lab_recorder_test.gd    Milestone 1.10: local playtest recorder (start/stop/clear/export, schema)
 ├── deduction_lab_scene_test.gd       Milestone 1.10: the Lab scene + DebugPanel integration (FULL only, see below)
 ├── resolution_policy_test.gd         Milestone 1.14: the shared ResolutionPolicy (tiers, failure limits, assistance/partner phases, serialization)
+├── prototype_evaluation_summary_test.gd  Milestone 1.14.2A: PrototypeEvaluationSummary (run-splitting, submission/unique-candidate/duplicate-blocked counting) + real A/B/C recorder integration/non-leakage
 ├── prototype_a_controller_test.gd    Milestone 1.11: PrototypeAController interaction state + real-evaluator classification
 ├── prototype_a_presenter_test.gd     Milestone 1.11: player-view spoiler boundary + feedback-category mapping
 ├── prototype_a_content_test.gd       Milestone 1.11: the prototype_a data layer on the three prototype cases, by structural role
@@ -131,6 +132,7 @@ boot if `.godot/` is already built):
   --script res://scenes/test/deduction_lab_presenter_test.gd \
   --script res://scenes/test/deduction_lab_recorder_test.gd \
   --script res://scenes/test/resolution_policy_test.gd \
+  --script res://scenes/test/prototype_evaluation_summary_test.gd \
   --script res://scenes/test/prototype_a_controller_test.gd \
   --script res://scenes/test/prototype_a_presenter_test.gd \
   --script res://scenes/test/prototype_a_content_test.gd \
@@ -166,6 +168,7 @@ checks `verify.sh` always does unless skipped:
   --script res://scenes/test/deduction_lab_recorder_test.gd \
   --script res://scenes/test/deduction_lab_scene_test.gd \
   --script res://scenes/test/resolution_policy_test.gd \
+  --script res://scenes/test/prototype_evaluation_summary_test.gd \
   --script res://scenes/test/prototype_a_controller_test.gd \
   --script res://scenes/test/prototype_a_presenter_test.gd \
   --script res://scenes/test/prototype_a_content_test.gd \
@@ -575,6 +578,28 @@ Presenter tests assert assistance and partner content stays absent until the
 policy allows it, against real X/Y/Z. Scene tests drive the footer's Accept
 Assistance / Resolve with Partner buttons, the completion summaries, restart
 recording and attempt preservation across locale switches and F1 hide/show.
+
+### Prototype evaluation instrumentation tests (Milestone 1.14.2A)
+
+`docs/prototype-evaluation.md` is the source of truth. One new script joins
+FAST and FULL: `prototype_evaluation_summary_test.gd`. It is pure and needs
+no content for most of its coverage — `PrototypeEvaluationSummary` is tested
+from hand-built event-dict fixtures (empty/malformed exports, single-run
+counting, repeated-duplicate-does-not-inflate-unique-count, abandoned vs.
+completed vs. still-in-progress, multi-run splitting at a restart boundary
+without leakage, deterministic formatting, safe file export, purity) — plus
+a handful of real-controller integration tests (loading `deduction_fixtures.gd`
+and driving a real `PrototypeAController`/`PrototypeBController`/
+`PrototypeCController` through a real `DeductionLabRecorder`) proving the
+summarizer reads genuine recorder output correctly and that two
+independently-recorded runs never leak into each other's summary.
+
+The existing prototype controller suites were each extended with one new
+test proving the new `*_blocked_duplicate` telemetry (Milestone 1.14.2A) is
+observable AND inert — recorded exactly once with the repeated candidate's
+identity, and never changes what `present_evidence()`/`commit_theory()`/
+`submit_timeline()`/`answer_claim()` returns whether a recorder is attached
+or not (`JSON.stringify` equality against an unrecorded run).
 
 Where new coverage goes: a new validation rule → a negative fixture in
 `deduction_validation_test.gd`; a new result category or constraint type →

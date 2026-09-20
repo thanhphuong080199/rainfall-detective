@@ -385,6 +385,9 @@ func submit_timeline() -> Dictionary:
 	if not _policy.can_submit():
 		return _uncounted_timeline_result(REASON_SUBMISSION_LOCKED)
 	if not can_resubmit():
+		# Milestone 1.14.2A: observational only — see PrototypeAController's
+		# identical attempt_blocked_duplicate comment.
+		_record("timeline_blocked_duplicate", {"placements": _normalized_placements()})
 		var blocked: Dictionary = _last_result.duplicate(true)
 		blocked["accepted"] = false
 		blocked["blocked_duplicate"] = true
@@ -782,6 +785,9 @@ func answer_claim(chose_impossible: bool, justification_id: String = "") -> Dict
 	var answer: String = ANSWER_IMPOSSIBLE if chose_impossible else ANSWER_FITS
 	var key: String = _claim_key(answer, justification_id)
 	if _failed_claim_keys.has(key):
+		# Milestone 1.14.2A: observational only — see PrototypeAController's
+		# identical attempt_blocked_duplicate comment.
+		_record("claim_blocked_duplicate", {"answer": answer, "justification_constraint_id": justification_id})
 		return _uncounted_claim_result(REASON_DUPLICATE_CLAIM)
 
 	_claim_attempts += 1

@@ -292,6 +292,11 @@ func present_evidence() -> Dictionary:
 		return _uncounted_result(claim_id, evidence_id, REASON_SUBMISSION_LOCKED)
 	var pair_key: String = _pair_key(claim_id, evidence_id)
 	if _failed_pairs.has(pair_key):
+		# Milestone 1.14.2A: observational only — never counted, never
+		# reaches the evaluator, never changes what is returned below. Makes
+		# "the same failed evidence presented again" visible to playtest
+		# analysis, which was previously silently dropped.
+		_record("attempt_blocked_duplicate", {"round": _round_index, "statement_id": claim_id, "evidence_id": evidence_id})
 		return _uncounted_result(claim_id, evidence_id, REASON_DUPLICATE_ATTEMPT)
 
 	_submission_count += 1

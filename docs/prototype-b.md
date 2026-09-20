@@ -453,6 +453,7 @@ and when to record; the shared resolution events are described in
 | `formal_commit_started` | Every counted Commit Theory |
 | `theory_batch_submitted` | Alongside it — payload `sequence`, `drafts` (each `draft`, `target`, normalized `evidence_ids`) |
 | `theory_batch_rejected` | A rejected theory — payload `sequence`, per-draft `draft_categories`, `invalid_drafts` (analysis only; never shown) |
+| `theory_blocked_duplicate` | Milestone 1.14.2A — committing a theory identical to one that already failed (previously silently dropped; see `docs/prototype-evaluation.md`) — payload `drafts` (the repeated normalized identity). Purely observational: never counted, never reaches the evaluator, never changes `commit_theory()`'s return value |
 | `formal_commit_failed` | Alongside a rejection — budget, `run_resolution_result_before`/`after` |
 | `theory_batch_accepted` / `formal_commit_succeeded` | An accepted theory — `resolved_by: "player"` |
 | `deduction_unlocked` | Each newly committed deduction — payload `target`, `draft`, `resolved_by` |

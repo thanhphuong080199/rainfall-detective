@@ -49,6 +49,7 @@ func _initialize() -> void:
 	_test_one_correct_one_incorrect_commits_neither()
 	_test_second_failure_names_only_an_affected_question()
 	_test_identical_failed_theory_is_blocked()
+	_test_duplicate_theory_telemetry_is_observable_and_inert()
 	_test_selection_order_does_not_matter()
 	_test_alternate_proof_path_is_accepted()
 	_test_successful_batch_commits_both_through_evaluator()
@@ -299,6 +300,29 @@ func _test_identical_failed_theory_is_blocked() -> void:
 	controller.select_draft(1)
 	controller.replace_evidence("e_noise", "e_e")
 	_check(controller.can_commit_theory(), "changing any connection re-enables Commit Theory")
+
+
+## Milestone 1.14.2A: the blocked duplicate is now OBSERVABLE (previously
+## silently dropped) — purely additive, and must never change the reason/
+## counted-ness a caller sees.
+func _test_duplicate_theory_telemetry_is_observable_and_inert() -> void:
+	var recorder = _new_recorder()
+	var controller = _started_controller(recorder)
+	_fill_correct_first(controller)
+	_fill_draft(controller, 1, ["e_d", "e_noise"])
+	controller.commit_theory()
+	var repeat: Dictionary = controller.commit_theory()
+
+	var blocked_events: Array = recorder.get_events().filter(func(e): return e.get("type") == "theory_blocked_duplicate")
+	_check(blocked_events.size() == 1, "the blocked duplicate theory should be recorded exactly once, got %d" % blocked_events.size())
+	_check((blocked_events[0].get("payload", {}).get("drafts", []) as Array).size() == 2, "the blocked-duplicate payload should carry every draft's normalized identity")
+
+	var unrecorded = _started_controller()
+	_fill_correct_first(unrecorded)
+	_fill_draft(unrecorded, 1, ["e_d", "e_noise"])
+	unrecorded.commit_theory()
+	var repeat_unrecorded: Dictionary = unrecorded.commit_theory()
+	_check(JSON.stringify(repeat_unrecorded) == JSON.stringify(repeat), "attaching a recorder must never change what commit_theory() returns for a blocked duplicate")
 
 
 func _test_selection_order_does_not_matter() -> void:

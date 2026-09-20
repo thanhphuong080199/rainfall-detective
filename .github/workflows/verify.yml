@@ -54,6 +54,7 @@ jobs:
             --script res://scenes/test/deduction_lab_recorder_test.gd \
             --script res://scenes/test/deduction_lab_scene_test.gd \
             --script res://scenes/test/resolution_policy_test.gd \
+            --script res://scenes/test/prototype_evaluation_summary_test.gd \
             --script res://scenes/test/prototype_a_controller_test.gd \
             --script res://scenes/test/prototype_a_presenter_test.gd \
             --script res://scenes/test/prototype_a_content_test.gd \

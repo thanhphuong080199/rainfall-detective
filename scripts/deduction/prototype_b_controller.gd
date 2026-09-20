@@ -354,6 +354,9 @@ func commit_theory() -> Dictionary:
 		return _uncounted_result(REASON_SUBMISSION_LOCKED)
 	var theory_key: String = _theory_key()
 	if _failed_theory_keys.has(theory_key):
+		# Milestone 1.14.2A: observational only — see PrototypeAController's
+		# identical attempt_blocked_duplicate comment.
+		_record("theory_blocked_duplicate", {"drafts": _draft_payloads()})
 		return _uncounted_result(REASON_DUPLICATE_THEORY)
 
 	_submission_count += 1
