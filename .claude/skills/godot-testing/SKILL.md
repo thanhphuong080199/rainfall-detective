@@ -128,6 +128,25 @@ minimum, because it's shared infrastructure. Match effort to blast radius.
        --script res://scenes/test/deduction_lab_presenter_test.gd \
        --script res://scenes/test/deduction_lab_recorder_test.gd \
        --script res://scenes/test/deduction_lab_scene_test.gd \
+       --script res://scenes/test/resolution_policy_test.gd \
+       --script res://scenes/test/prototype_evaluation_summary_test.gd \
+       --script res://scenes/test/prototype_a_controller_test.gd \
+       --script res://scenes/test/prototype_a_presenter_test.gd \
+       --script res://scenes/test/prototype_a_content_test.gd \
+       --script res://scenes/test/prototype_a_scene_test.gd \
+       --script res://scenes/test/prototype_b_controller_test.gd \
+       --script res://scenes/test/prototype_b_presenter_test.gd \
+       --script res://scenes/test/prototype_b_content_test.gd \
+       --script res://scenes/test/prototype_b_scene_test.gd \
+       --script res://scenes/test/prototype_c_controller_test.gd \
+       --script res://scenes/test/prototype_c_presenter_test.gd \
+       --script res://scenes/test/prototype_c_content_test.gd \
+       --script res://scenes/test/prototype_c_scene_test.gd \
+       --script res://scenes/test/core_loop_mechanics_test.gd \
+       --script res://scenes/test/core_loop_validation_test.gd \
+       --script res://scenes/test/core_loop_runtime_test.gd \
+       --script res://scenes/test/core_loop_save_test.gd \
+       --script res://scenes/test/core_loop_scene_test.gd \
        --script res://scenes/test/smoke_test.gd
      ```
    `validate_content.gd` is content-only and fast; every other script is
@@ -160,6 +179,7 @@ minimum, because it's shared infrastructure. Match effort to blast radius.
 | Debug tools (Case Debugger) | `scripts/debug/debug_panel.gd` | `_test_scene_instantiation`, `_test_case_debug_tools`, plus `explain_tree`/`find_*_producers`/`debug_reset_trigger` in `conditions_test.gd`/`dependency_analysis_test.gd`/`events_test.gd` |
 | Deduction foundation (Milestone 1.9) | `scripts/deduction/*.gd` (`DeductionEvaluator`, `TimelineEvaluator`, `DeductionValidator`, `DeductionSession`) + `data/deductions/` | `deduction_evaluator_test.gd`, `timeline_evaluator_test.gd`, `deduction_validation_test.gd`, `deduction_cases_test.gd` — see `docs/deduction-system.md` |
 | Deduction Lab (Milestone 1.10, debug-only) | `scripts/deduction/deduction_lab_*.gd` + `scripts/debug/deduction_lab.gd` | `deduction_lab_controller_test.gd`, `deduction_lab_presenter_test.gd`, `deduction_lab_recorder_test.gd`, `deduction_lab_scene_test.gd` — see `docs/deduction-lab.md` |
+| Core loop sandbox (Milestone 1.16) | `scripts/core_loop/*.gd` (`ChapterRuntime`, `CoreLoopUnit`, `CoreLoopValidator`, `CoreLoopPresenter`, `ChapterRunRecorder`, screens) + `data/chapters/*/` `core_loop` sections + `SaveManager` v2 | `core_loop_mechanics_test.gd`, `core_loop_validation_test.gd`, `core_loop_runtime_test.gd`, `core_loop_save_test.gd`, `core_loop_scene_test.gd` — see `docs/core-loop-sandbox.md` |
 
 Full detail per system — exactly what each `_test_*` function proves, and
 what a change to that system should add — is in `references/test-catalog.md`.
@@ -237,7 +257,12 @@ the sandbox's own worked traps (chapter 2 deliberately *not* reusing chapter
 
 ## Save/load: what actually round-trips
 
-`GameState.get_save_dict()`/`load_from_dict()` persist exactly five things:
+Milestone 1.16 added ONE more field, `chapter_run` — the production chapter
+run's opaque snapshot, owned and validated by `ChapterRuntime` (see
+`docs/core-loop-sandbox.md`, "Save / load"); `SaveManager` is at format v2,
+migrates v1, and validates the whole file before applying any of it. A
+core-loop save/load test belongs in `core_loop_save_test.gd`. Apart from
+that, `GameState.get_save_dict()`/`load_from_dict()` persist exactly five things:
 `current_location`, `visited_locations`, `evidence_inventory` (as `evidence`),
 `flags`, `variables` (includes `case_id`, `current_chapter`), and
 `seen_interactions` (the one array carrying `topic:`/`examine:`/`custom:`/

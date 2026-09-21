@@ -37,6 +37,17 @@ extends RefCounted
 ## unmodified) passed into start(). This class decides WHAT and WHEN to
 ## record for the Prototype A event vocabulary; the recorder itself carries
 ## no Prototype-A-specific code — see docs/prototype-a.md, "Recorder events".
+##
+## Milestone 1.16 (docs/core-loop-sandbox.md): start() also accepts an
+## optional production `context` — a SHARED DeductionSession owned by the
+## chapter run (instead of a fresh one), a subset of rounds, an evidence pool
+## limited to what the player actually acquired, and the help-only policy
+## mode. With an empty context (every debug caller) behavior is unchanged.
+## to_snapshot()/restore_snapshot() persist this controller's own interaction
+## state for the production save; the shared session is persisted by its
+## owner, never here.
+
+const SNAPSHOT_FORMAT := 1
 
 const RELATION_REFUTES := "refutes"
 const OUTCOME_REQUIRED := "required"
@@ -70,6 +81,12 @@ var _assistance_target_id: String = ""
 var _completed: bool = false
 var _clock_fn: Callable
 var _start_ticks: int = 0
+## Milestone 1.16 production context (see class doc). _round_ids is the
+## configured round subset ([] = every authored round); _pool_override, when
+## _has_pool_override, replaces prototype_a.evidence_pool.
+var _round_ids: Array[String] = []
+var _has_pool_override: bool = false
+var _pool_override: Array[String] = []
 
 
 ## `clock_fn` (no args, returns int/float monotonic milliseconds — defaults
@@ -92,22 +109,34 @@ func _init(clock_fn: Callable = Callable()) -> void:
 ## run's "prototype_started" — a restart is a new run, never a silent reset.
 ## `recorder`, if given, receives this run's telemetry (see docs/
 ## prototype-a.md, "Recorder events"); pass null to run unrecorded.
-func start(case_def: Dictionary, recorder: DeductionLabRecorder = null) -> bool:
+##
+## `context` (Milestone 1.16, all keys optional): "session" — a shared
+## DeductionSession for this case, used instead of a fresh one; "round_ids" —
+## only these authored rounds, in authored order (every id must exist);
+## "evidence_pool" — replaces prototype_a.evidence_pool (see
+## set_evidence_pool()); "failures_escalate_run_result" — the
+## ResolutionPolicy mode (default true, the debug semantics).
+func start(case_def: Dictionary, recorder: DeductionLabRecorder = null, context: Dictionary = {}) -> bool:
 	if typeof(case_def) != TYPE_DICTIONARY:
 		return false
 	var proto: Variant = case_def.get("prototype_a")
 	if typeof(proto) != TYPE_DICTIONARY:
 		return false
-	var rounds: Array[Dictionary] = DeductionEvaluator.dict_array(proto.get("rounds", []))
+	var rounds: Array[Dictionary] = PrototypeContext.scoped_rounds(proto, context)
 	if rounds.is_empty():
+		return false
+	var session: DeductionSession = PrototypeContext.session_for(case_def, context)
+	if session == null:
 		return false
 
 	var previous_run: Dictionary = _previous_run_payload(str(case_def.get("id", "")))
 	_case_def = case_def
 	_rounds = rounds
-	_session = DeductionSession.new(str(case_def.get("id", "")))
+	_round_ids = DeductionEvaluator.string_array(context.get("round_ids", []))
+	_session = session
 	_recorder = recorder
-	_policy = ResolutionPolicy.new()
+	_policy = ResolutionPolicy.new(PrototypeContext.failures_escalate(context))
+	_apply_pool_context(context)
 	_run_count += 1
 	_round_index = 0
 	_statement_index = 0
@@ -208,7 +237,21 @@ func previous_statement() -> bool:
 # Evidence — open (read) vs select (choose to present) are distinct actions.
 
 func get_evidence_pool_ids() -> Array[String]:
+	if _has_pool_override:
+		return _pool_override.duplicate()
 	return DeductionEvaluator.string_array(_case_def.get("prototype_a", {}).get("evidence_pool", []))
+
+
+## Milestone 1.16: replaces the authored pool with `evidence_ids` — the
+## production chapter run passes only the evidence the player has actually
+## acquired, refreshed whenever that changes. A selection that left the pool
+## is cleared (never presented behind the player's back). Free: never a
+## formal commit, never recorded.
+func set_evidence_pool(evidence_ids: Array[String]) -> void:
+	_has_pool_override = true
+	_pool_override = evidence_ids.duplicate()
+	if _selected_evidence_id != "" and not _pool_override.has(_selected_evidence_id):
+		_selected_evidence_id = ""
 
 
 ## Marks `evidence_id` opened in the session (the sanctioned public
@@ -351,6 +394,21 @@ func _all_required_resolved_in_current_round() -> bool:
 	for claim_id in DeductionEvaluator.string_array(get_current_round().get("required_refutations", [])):
 		if _session.get_claim_status(claim_id) != DeductionSession.STATUS_REFUTED:
 			return false
+	return true
+
+
+## Milestone 1.16: true once EVERY configured round's required refutations are
+## refuted in the session — the moment the formal commit (or partner
+## resolution) lands, never deferred to acknowledge_feedback()'s "Continue".
+## This is what the production chapter run treats as the unit's "resolved"
+## outcome; an optional innocent lie never contributes to it.
+func are_all_rounds_resolved() -> bool:
+	if _session == null or _rounds.is_empty():
+		return false
+	for pa_round in _rounds:
+		for claim_id in DeductionEvaluator.string_array(pa_round.get("required_refutations", [])):
+			if _session.get_claim_status(claim_id) != DeductionSession.STATUS_REFUTED:
+				return false
 	return true
 
 
@@ -585,7 +643,115 @@ func abandon() -> void:
 
 
 # ---------------------------------------------------------------------------
+# Snapshot (Milestone 1.16) — this controller's own interaction state, JSON
+# safe, for the production chapter-run save. The session is NOT included: in
+# production it is shared and persisted once by the chapter run.
+
+func to_snapshot() -> Dictionary:
+	return {
+		"format": SNAPSHOT_FORMAT,
+		"case_id": str(_case_def.get("id", "")),
+		"round_ids": _round_ids.duplicate(),
+		"run_count": _run_count,
+		"round_index": _round_index,
+		"statement_index": _statement_index,
+		"selected_evidence_id": _selected_evidence_id,
+		"submission_count": _submission_count,
+		"failed_attempt_count": _failed_attempt_count,
+		"failed_pairs": PrototypeContext.sorted_keys(_failed_pairs),
+		"resolved_optional": _resolved_optional.duplicate(),
+		"hint_levels": _hint_levels.duplicate(),
+		"viewed_statements": PrototypeContext.sorted_keys(_viewed_statements),
+		"assistance_target_id": _assistance_target_id,
+		"completed": _completed,
+		"policy": _policy.to_dict() if _policy != null else {},
+	}
+
+
+## Rebuilds a run from to_snapshot() output (possibly JSON round-tripped).
+## `context` is start()'s — its "session" must be the restored shared
+## session; its "round_ids" is ignored in favor of the snapshot's own.
+## Records NOTHING: restoring progress is not the progress happening again.
+## Rejects anything malformed as a whole (returns false, controller left
+## exactly as it was before the call).
+func restore_snapshot(case_def: Dictionary, snapshot: Variant, recorder: DeductionLabRecorder = null, context: Dictionary = {}) -> bool:
+	if typeof(snapshot) != TYPE_DICTIONARY or TimelineEvaluator.parse_minutes(snapshot.get("format"), -1) != SNAPSHOT_FORMAT:
+		return false
+	var proto: Variant = case_def.get("prototype_a")
+	if typeof(proto) != TYPE_DICTIONARY or str(snapshot.get("case_id", "")) != str(case_def.get("id", "")):
+		return false
+	var scoped: Dictionary = context.duplicate()
+	scoped["round_ids"] = snapshot.get("round_ids", [])
+	var rounds: Array[Dictionary] = PrototypeContext.scoped_rounds(proto, scoped)
+	var session: DeductionSession = PrototypeContext.session_for(case_def, scoped)
+	if rounds.is_empty() or session == null:
+		return false
+
+	var round_index: int = TimelineEvaluator.parse_minutes(snapshot.get("round_index"), -1)
+	if round_index < 0 or round_index >= rounds.size():
+		return false
+	var statement_count: int = DeductionEvaluator.string_array(rounds[round_index].get("statements", [])).size()
+	var statement_index: int = TimelineEvaluator.parse_minutes(snapshot.get("statement_index"), -1)
+	var counts: Array[int] = [
+		TimelineEvaluator.parse_minutes(snapshot.get("run_count"), -1),
+		TimelineEvaluator.parse_minutes(snapshot.get("submission_count"), -1),
+		TimelineEvaluator.parse_minutes(snapshot.get("failed_attempt_count"), -1),
+	]
+	if statement_index < 0 or statement_index >= statement_count or counts.has(-1):
+		return false
+	for key in ["failed_pairs", "resolved_optional", "viewed_statements", "round_ids"]:
+		if not PrototypeContext.is_string_list(snapshot.get(key, [])):
+			return false
+	var raw_hints: Variant = snapshot.get("hint_levels", {})
+	if typeof(raw_hints) != TYPE_DICTIONARY:
+		return false
+	var hint_levels: Dictionary = {}
+	for claim_id in raw_hints:
+		var level: int = TimelineEvaluator.parse_minutes(raw_hints[claim_id], -1)
+		if typeof(claim_id) != TYPE_STRING or level < 1:
+			return false
+		hint_levels[claim_id] = level
+	for key in ["selected_evidence_id", "assistance_target_id"]:
+		if typeof(snapshot.get(key, "")) != TYPE_STRING:
+			return false
+	if typeof(snapshot.get("completed", false)) != TYPE_BOOL:
+		return false
+	var policy := ResolutionPolicy.new(PrototypeContext.failures_escalate(context))
+	if not policy.load_dict(snapshot.get("policy")):
+		return false
+
+	_case_def = case_def
+	_rounds = rounds
+	_round_ids = DeductionEvaluator.string_array(snapshot.get("round_ids", []))
+	_session = session
+	_recorder = recorder
+	_policy = policy
+	_apply_pool_context(context)
+	_run_count = counts[0]
+	_round_index = round_index
+	_statement_index = statement_index
+	_selected_evidence_id = str(snapshot.get("selected_evidence_id", ""))
+	_submission_count = counts[1]
+	_failed_attempt_count = counts[2]
+	_failed_pairs = PrototypeContext.key_set(snapshot.get("failed_pairs", []))
+	_resolved_optional = DeductionEvaluator.string_array(snapshot.get("resolved_optional", []))
+	_hint_levels = hint_levels
+	_viewed_statements = PrototypeContext.key_set(snapshot.get("viewed_statements", []))
+	_assistance_target_id = str(snapshot.get("assistance_target_id", ""))
+	_completed = snapshot.get("completed", false) == true
+	_start_ticks = int(_clock_fn.call())
+	return true
+
+
+# ---------------------------------------------------------------------------
 # Private
+
+func _apply_pool_context(context: Dictionary) -> void:
+	_has_pool_override = false
+	_pool_override = []
+	if context.has("evidence_pool"):
+		set_evidence_pool(DeductionEvaluator.string_array(context.get("evidence_pool", [])))
+
 
 func _record(event_type: String, payload: Dictionary) -> void:
 	if _recorder != null:

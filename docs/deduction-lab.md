@@ -364,6 +364,18 @@ theory-batch events required (that break shipped, in hindsight, without
 bumping any version number — this field exists so the next one doesn't
 repeat that mistake).
 
+#### Production core-loop recordings (Milestone 1.16, additive — still v2)
+
+`ChapterRunRecorder` (a `DeductionLabRecorder` subclass, `prototype:
+"core_loop"`) records the production chapter run with the SAME envelope and
+versions. Its additions are purely additive — new event types and new payload
+keys, never a rename or a changed meaning — so neither version moves: every
+payload gains `run_id`/`chapter_id` (and `unit_id`/`mechanic` inside a
+mechanic, `transition` for events committed with a checkpoint), and the new
+chapter-level types are listed in `docs/core-loop-sandbox.md`, "Recorder". A
+consumer that only knows v2 prototype events can read a core-loop export
+unchanged and ignore the rest.
+
 **Controls:** Start (begins a fresh recording, itself logging
 `session_started`), Stop (pauses; keeps captured events), Clear (empties the
 log without changing whether recording is on), Export.

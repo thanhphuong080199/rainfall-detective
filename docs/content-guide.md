@@ -339,9 +339,12 @@ A case is what "New Game" resets to. Create `data/cases/<id>.json`:
 List every flag the case's content uses in `initial_flags`, even set to
 `false` — `GameState.get_flag()` would default to `false` anyway if it were
 missing, but listing them here makes the file self-documenting about what
-flags exist. `SaveManager.new_game("case_01_example")` (or edit the default
-argument in `scripts/save/save_manager.gd` / the call in
-`scripts/ui/title_screen.gd`) switches which case "New Game" boots into.
+flags exist. Which case the title screen's "New Game" boots into is data too
+(Milestone 1.16): the one case declaring `"new_game_entry": true` (at most one
+may — `ContentValidator` errors otherwise), else `case_00_sandbox`. A case may
+also carry `"metadata": {"canon": false, ...}` to mark non-canon sandbox
+content (the Milestone 1.16 sandbox case does; `CoreLoopValidator` requires it
+for a core-loop chapter built on a non-canon deduction case).
 
 **Optional: organize the case into Chapters.** Add `starting_chapter` and an
 ordered `chapters` array of chapter ids:
@@ -485,6 +488,33 @@ Three authoring rules that trip people up (Milestone 1.9.1):
   never enough. Document each alternative actor's elimination, and teach
   every physical rule in its own evidence item (see
   `docs/deduction-prototype-cases.md`, "Human audit checklist").
+
+## 12. Add a core-loop chapter (Milestone 1.16)
+
+A chapter becomes a playable production route — briefing, investigation,
+Prototype B/A/C mechanics, a narrative result — by adding a `core_loop`
+section to its JSON; no script changes. Full field reference, the outcome →
+consequence → phase mapping, what is saved, and the validation rules are in
+`docs/core-loop-sandbox.md`; the working example is
+`data/chapters/case_sbx_archive/sbx_chapter_01.json`. Checklist:
+
+1. A deduction case with the prototype layers your units use
+   (`prototype_b` rounds for `clue_connection`, `prototype_a` rounds for
+   `statement_contradiction`, `prototype_c` for `timeline_reconstruction`).
+2. Ordinary investigation content (locations, NPCs, examine points, dialogue)
+   whose effects `add_evidence` the items the mechanics need, plus a
+   `data/evidence/` entry for each and an `evidence_links` row mapping it to
+   the deduction case's evidence id.
+3. One unit per mechanic step, each with an `offer_condition` that holds only
+   once an accepted proof path is acquired, and a `resolved` consequence (C
+   also `timeline_accepted`) whose effects unlock the next step.
+4. `phases` in route order (optionally a `briefing` first); the last
+   phase's consequence must set what the chapter's `completion_event`
+   requires — and nothing earlier may.
+5. `"canon": false` for sandbox content; translation keys for every
+   briefing/result/title/summary/objective in both locales.
+6. Run content validation — `CoreLoopValidator` reports any unreachable,
+   unsolvable or out-of-order route as an error.
 
 ## Conditions reference
 

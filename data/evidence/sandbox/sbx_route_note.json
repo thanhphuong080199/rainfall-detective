@@ -1,0 +1,7 @@
+{
+  "id": "sbx_route_note",
+  "name": "DED_PROTO_X_E_ROUTE_NOTE_NAME",
+  "icon_color": "#6FA67A",
+  "short_description": "EVID_SBX_ROUTE_NOTE_SHORT",
+  "detailed_description": "DED_PROTO_X_E_ROUTE_NOTE_TEXT"
+}

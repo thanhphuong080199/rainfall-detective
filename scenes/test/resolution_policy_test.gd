@@ -252,7 +252,10 @@ func _test_constants_are_centralized() -> void:
 	_check(policy_script.STANDARD_FAILURE_LIMIT == 3 and policy_script.ASSISTED_FAILURE_LIMIT == 2, "the default limits should be 3 standard + 2 assisted failures")
 	for path in ["res://scripts/deduction/prototype_a_controller.gd", "res://scripts/deduction/prototype_b_controller.gd", "res://scripts/deduction/prototype_c_controller.gd"]:
 		var source: String = FileAccess.get_file_as_string(path)
-		_check(source.contains("ResolutionPolicy.new()"), "%s should own a ResolutionPolicy" % path)
+		# "ResolutionPolicy.new(" rather than "...new()": since Milestone 1.16 the
+		# controllers pass the policy mode (help-only in production) — still
+		# their own policy, constructed by them.
+		_check(source.contains("ResolutionPolicy.new("), "%s should own a ResolutionPolicy" % path)
 		_check(not source.contains("FAILURE_LIMIT :=") and not source.contains("FAILURE_LIMIT ="), "%s must not redefine the failure limits — they live only in ResolutionPolicy" % path)
 		_check(not source.contains("extends Node"), "%s must stay a pure RefCounted helper" % path)
 

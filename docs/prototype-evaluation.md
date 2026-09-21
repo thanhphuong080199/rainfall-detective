@@ -390,6 +390,18 @@ against introducing a shared framework preemptively:
   section is complete without duplicating their full rationale — see each
   one's own doc for that.
 
+## Milestone 1.16 additions (additive only)
+
+`PrototypeEvaluationSummary.summarize()` now also opens a run at
+`prototype_resumed` (a production unit restored into a new recording segment
+after Continue), tags each run with `unit_id`, `mechanic`, `chapter_run_id`
+and `resumed` (all empty/false for every debug-prototype export), and adds a
+`chapter` block — run ids, completion, phases entered, consequences applied,
+run help result, checkpoint/resume/restart counts, duration — when the export
+contains chapter events. Every existing field and every debug export's shape
+is unchanged (`prototype_evaluation_summary_test.gd` still passes untouched).
+See `docs/core-loop-sandbox.md`, "Recorder".
+
 ## Known limitations
 
 - **A summary is only as complete as the export it was computed from.** A

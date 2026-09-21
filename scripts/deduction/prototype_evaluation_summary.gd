@@ -52,6 +52,12 @@ const DUPLICATE_BLOCK_EVENT_TYPES: Array[String] = [
 	"attempt_blocked_duplicate", "theory_blocked_duplicate", "timeline_blocked_duplicate", "claim_blocked_duplicate",
 ]
 
+## Events that open a new run slice. "prototype_resumed" (Milestone 1.16) is
+## recorded when a production chapter run restores a still-unresolved unit into
+## a NEW recording segment (after Continue), so that unit's later attempts are
+## summarized instead of dropped as "before any run".
+const RUN_BOUNDARY_EVENT_TYPES: Array[String] = ["prototype_started", "prototype_resumed"]
+
 ## A free (never a formal commit) change to the current candidate — used for
 ## the "selections or candidate-solution changes" measurement.
 const SELECTION_CHANGE_EVENT_TYPES: Array[String] = [
@@ -74,7 +80,7 @@ static func summarize(export_dict: Dictionary) -> Dictionary:
 		if typeof(raw_event) != TYPE_DICTIONARY:
 			continue
 		var event: Dictionary = raw_event
-		var is_boundary: bool = str(event.get("type", "")) == "prototype_started"
+		var is_boundary: bool = RUN_BOUNDARY_EVENT_TYPES.has(str(event.get("type", "")))
 		if is_boundary and slice_has_started:
 			runs.append(_summarize_run(current_slice))
 			current_slice = []
@@ -95,12 +101,79 @@ static func summarize(export_dict: Dictionary) -> Dictionary:
 	for i in runs.size() - 1:
 		runs[i]["superseded_by_restart"] = not (runs[i]["completed"] or runs[i]["abandoned"])
 
-	return {
+	var summary: Dictionary = {
 		"prototype_type": str(export_dict.get("prototype", "")) if typeof(export_dict) == TYPE_DICTIONARY else "",
 		"session_id": str(export_dict.get("session_id", "")) if typeof(export_dict) == TYPE_DICTIONARY else "",
 		"total_runs": runs.size(),
 		"runs": runs,
 	}
+	var chapter: Dictionary = _summarize_chapter(events)
+	if not chapter.is_empty():
+		summary["chapter"] = chapter
+	return summary
+
+
+## Milestone 1.16: the chapter-level digest of a production core-loop export
+## (ChapterRunRecorder) — {} for any export without chapter events, so every
+## prototype export keeps its exact previous shape. Per-unit mechanic runs are
+## still the "runs" above (each unit's controller records its own
+## prototype_started/prototype_resumed).
+static func _summarize_chapter(events: Array) -> Dictionary:
+	var run_ids: Array[String] = []
+	var phases: Array[String] = []
+	var consequences: Array[String] = []
+	var counts: Dictionary = {"checkpoints_saved": 0, "checkpoints_failed": 0, "resumes": 0, "restarts": 0, "mechanic_opens": 0, "evidence_acquired": 0, "locations_visited": 0}
+	var completed := false
+	var abandoned := false
+	var help_result := ""
+	var saw_chapter := false
+	var last_elapsed_ms := 0
+	for raw_event in events:
+		if typeof(raw_event) != TYPE_DICTIONARY:
+			continue
+		var event_type: String = str(raw_event.get("type", ""))
+		var payload: Dictionary = raw_event.get("payload", {}) if typeof(raw_event.get("payload")) == TYPE_DICTIONARY else {}
+		last_elapsed_ms = maxi(last_elapsed_ms, int(raw_event.get("elapsed_ms", 0)))
+		var run_id: String = str(payload.get("run_id", ""))
+		if run_id != "" and not run_ids.has(run_id):
+			run_ids.append(run_id)
+		match event_type:
+			"chapter_started":
+				saw_chapter = true
+			"chapter_resumed":
+				saw_chapter = true
+				counts["resumes"] += 1
+			"chapter_restarted":
+				counts["restarts"] += 1
+			"chapter_completed":
+				completed = true
+			"chapter_abandoned":
+				abandoned = true
+			"phase_entered":
+				phases.append(str(payload.get("phase", "")))
+			"consequence_applied":
+				consequences.append(str(payload.get("consequence", "")))
+			"run_help_result_changed":
+				help_result = str(payload.get("to", ""))
+			"checkpoint_saved":
+				counts["checkpoints_saved"] += 1
+			"checkpoint_failed":
+				counts["checkpoints_failed"] += 1
+			"mechanic_opened":
+				counts["mechanic_opens"] += 1
+			"evidence_acquired":
+				counts["evidence_acquired"] += 1
+			"location_visited":
+				counts["locations_visited"] += 1
+	if not saw_chapter:
+		return {}
+	var chapter: Dictionary = {
+		"run_ids": run_ids, "completed": completed, "abandoned": abandoned, "phases_entered": phases,
+		"consequences_applied": consequences, "run_help_result": help_result if help_result != "" else ResolutionPolicy.TIER_INDEPENDENT,
+		"duration_ms": last_elapsed_ms,
+	}
+	chapter.merge(counts)
+	return chapter
 
 
 ## Convenience for the common developer need ("what did the run I just
@@ -132,7 +205,7 @@ static func _summarize_run(slice: Array[Dictionary]) -> Dictionary:
 		last_elapsed_ms = maxi(last_elapsed_ms, int(event.get("elapsed_ms", 0)))
 
 		match event_type:
-			"prototype_started":
+			"prototype_started", "prototype_resumed":
 				if started_payload.is_empty():
 					started_payload = payload
 			"prototype_completed":
@@ -187,6 +260,12 @@ static func _summarize_run(slice: Array[Dictionary]) -> Dictionary:
 		"max_hint_level": max_hint_level,
 		"partner_resolution_count": partner_resolution_count,
 		"run_resolution_result": str(resolution_summary.get("run_resolution_result", last_run_resolution_result)),
+		# Milestone 1.16 (additive): which production unit a run belongs to —
+		# "" for every debug-prototype export.
+		"unit_id": str(started_payload.get("unit_id", "")),
+		"mechanic": str(started_payload.get("mechanic", "")),
+		"chapter_run_id": str(started_payload.get("run_id", "")),
+		"resumed": slice.size() > 0 and str(slice[0].get("type", "")) == "prototype_resumed",
 	}
 
 

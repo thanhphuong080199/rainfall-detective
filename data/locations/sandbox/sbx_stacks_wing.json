@@ -1,0 +1,89 @@
+{
+  "id": "sbx_stacks_wing",
+  "name": "LOC_SBX_STACKS_WING_NAME",
+  "background_color": "#3B3346",
+  "npcs": [
+    {
+      "id": "sbx_oren",
+      "topics": [
+        {
+          "id": "greeting",
+          "label": "LOC_SBX_TOPIC_OREN_GREETING",
+          "dialogue_id": "sbx_oren_greeting"
+        },
+        {
+          "id": "badge",
+          "label": "LOC_SBX_TOPIC_OREN_BADGE",
+          "dialogue_id": "sbx_oren_badge",
+          "condition": {
+            "flag": "sbx_confrontation_unlocked"
+          }
+        }
+      ],
+      "present_responses": [
+        {
+          "dialogue_id": "sbx_oren_present_generic"
+        }
+      ]
+    }
+  ],
+  "examine_points": [
+    {
+      "id": "door_terminal",
+      "label": "LOC_SBX_EXAMINE_DOOR_TERMINAL",
+      "variants": [
+        {
+          "condition": {
+            "has_evidence": "sbx_door_log"
+          },
+          "dialogue_id": "sbx_examine_door_terminal_after"
+        },
+        {
+          "dialogue_id": "sbx_examine_door_terminal"
+        }
+      ]
+    },
+    {
+      "id": "forced_window",
+      "label": "LOC_SBX_EXAMINE_FORCED_WINDOW",
+      "variants": [
+        {
+          "condition": {
+            "has_evidence": "sbx_forced_window"
+          },
+          "dialogue_id": "sbx_examine_forced_window_after"
+        },
+        {
+          "dialogue_id": "sbx_examine_forced_window"
+        }
+      ]
+    },
+    {
+      "id": "window_latch",
+      "label": "LOC_SBX_EXAMINE_WINDOW_LATCH",
+      "variants": [
+        {
+          "condition": {
+            "has_evidence": "sbx_window_latch"
+          },
+          "dialogue_id": "sbx_examine_window_latch_after"
+        },
+        {
+          "condition": {
+            "flag": "sbx_window_inspection_unlocked"
+          },
+          "dialogue_id": "sbx_examine_window_latch"
+        },
+        {
+          "dialogue_id": "sbx_examine_window_latch_locked"
+        }
+      ]
+    }
+  ],
+  "destinations": [
+    {
+      "location_id": "sbx_archive_lobby",
+      "label": "LOC_SBX_DEST_LOBBY"
+    }
+  ]
+}

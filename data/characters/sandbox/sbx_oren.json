@@ -1,0 +1,9 @@
+{
+  "id": "sbx_oren",
+  "name": "DED_PROTO_X_SUS_OREN_NAME",
+  "expressions": {
+    "normal": "#8C6A4F",
+    "worried": "#B58A3C",
+    "angry": "#A8453C"
+  }
+}

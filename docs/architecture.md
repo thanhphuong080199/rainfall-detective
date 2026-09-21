@@ -89,6 +89,10 @@ Plus these stateless static helpers (`class_name`, not autoloads):
   object — the deduction-prototype foundation. They reference no autoload;
   `ContentValidator` runs `DeductionValidator` over `data/deductions/`. See
   "Deduction foundation" below and `docs/deduction-system.md`.
+- **`ChapterRuntime`** and its helpers (`scripts/core_loop/`, Milestone 1.16)
+  — the production chapter-run orchestrator. A `RefCounted` owned by
+  `Main.gd`, **not** an autoload; its durable state is `GameState.chapter_run`.
+  See "Core loop sandbox" below and `docs/core-loop-sandbox.md`.
 
 ### Why Investigation is separate from DialogueManager
 
@@ -333,6 +337,28 @@ built on. Full design in `docs/deduction-system.md`; summary:
   never mislabeled by an earlier one's result). It still adds no autoload
   and no persisted state; production save integration of formal-commit
   state is explicitly deferred.
+- Milestone 1.16 makes A/B/C playable through a production route — see
+  "Core loop sandbox" below. The prototype controllers accept an optional
+  production context (shared session, round scope, acquired-evidence pool,
+  help-only policy mode) and gained JSON snapshots; with no context they
+  behave exactly as before, and the debug Lab/prototype screens are unchanged.
+
+## Core loop sandbox (Milestone 1.16)
+
+A chapter whose JSON declares a `core_loop` section is played through
+normal screens: briefing → investigation → mechanics (B/A/C) in the
+content-defined phase order → narrative Result. `ChapterRuntime` owns the
+run's phase, its one shared `DeductionSession`, one `CoreLoopUnit` per opened
+resolution unit (each wrapping an existing prototype controller), the applied
+progression consequences (ordinary `EffectRunner` effect lists, applied once),
+the run help result, checkpoints and the `ChapterRunRecorder`. It reuses
+everything else: `ConditionEvaluator` gates unit availability, `CaseManager`
+still completes the chapter through its `completion_event`, the real
+evaluators grade every submission. Its snapshot lives in
+`GameState.chapter_run`, which `SaveManager` (format v2) persists with the
+rest of `GameState` in one atomic write. Full design:
+`docs/core-loop-sandbox.md`; contract:
+`docs/Milestone 1.15B - Technical Core Loop Contract.md`.
 
 ## Localization
 
@@ -368,13 +394,18 @@ elsewhere in this document is summarized here:
 ## UI scene tree
 
 ```
-TitleScreen.tscn  (Godot "Main Scene" — New Game / Continue / Quit)
+TitleScreen.tscn  (Godot "Main Scene" — New Game / Continue / Quit / language)
         │  New Game or Continue → change_scene_to_file
         ▼
-Main.tscn  (pure orchestrator — scripts/ui/main.gd)
+Main.tscn  (pure orchestrator — scripts/ui/main.gd; owns the ChapterRuntime)
  ├─ InvestigationView.tscn   (base layer: location, Examine/Talk/Move)
+ ├─ CoreLoopHud.tscn         (core-loop chapters: objective + offered mechanic)
  ├─ DialogueBox.tscn         (overlay, shown while DialogueManager.is_active)
  ├─ EvidenceInventory.tscn   (overlay: browse, or "select" mode for Present)
+ ├─ CaseFile.tscn            (core-loop overlay: evidence, findings, mechanic entry)
+ ├─ MechanicScreen.tscn      (core-loop overlay: B / A / C, one shared shell)
+ ├─ BriefingScreen.tscn      (core-loop: the chapter briefing)
+ ├─ ResultScreen.tscn        (core-loop: the narrative result)
  ├─ GameMenu.tscn            (overlay: Save / Load / New Game / Resume / Quit)
  └─ DebugPanel.tscn          (overlay, debug builds only — see "Developer tools")
 ```
@@ -756,6 +787,31 @@ hand. Verified sufficient for every case in the Milestone 0 demo flow
 present-response-variant paths). Extendable later — letting `next` optionally
 be a variant list — without a redesign, if a future case needs a silent
 mid-tree branch that isn't player-facing.
+```
+
+```
+DECISION: The production chapter runtime (ChapterRuntime, Milestone 1.16) is
+a RefCounted owned by the gameplay scene (Main.gd), not an autoload. Its
+durable truth is one opaque GameState field, chapter_run; the runtime
+rebuilds itself from it whenever GameState is replaced wholesale
+(GameState.state_replaced) and re-checks a "<run_id>#<revision>" key before
+every command.
+
+WHY: The run must survive the title -> gameplay scene change and be saved,
+but GameState (an autoload SaveManager already persists) already does both —
+the same "logic in one place, state in GameState" stance CaseManager takes.
+Nothing outside the gameplay scene needs the runtime itself (SaveManager only
+needs its static validate_snapshot()), so an autoload would add global
+mutable state for no capability.
+
+ALTERNATIVES: A ChapterRuntime autoload holding the live controllers —
+rejected: a second source of truth next to GameState, and an autoload other
+scenes could reach into. Storing the snapshot inside GameState.variables —
+rejected: no explicit schema/versioning, and variables are free-form debug-
+visible data.
+
+IMPACT: One new GameState field and save-format v2 (v1 migrates). Tests and
+tools build a ChapterRuntime directly; the Deduction Lab never touches it.
 ```
 
 ## Known limitations

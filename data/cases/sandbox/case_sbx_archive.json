@@ -1,0 +1,25 @@
+{
+  "id": "case_sbx_archive",
+  "display_name": "CASE_SBX_ARCHIVE_NAME",
+  "description": "CASE_SBX_ARCHIVE_DESC",
+  "version": 1,
+  "metadata": {
+    "canon": false,
+    "sandbox": true,
+    "milestone": "1.16",
+    "note": "NON-CANON technical sandbox for the Milestone 1.16 core loop (docs/core-loop-sandbox.md). Placeholder text around the reused dummy mystery proto_x_archive_ledger; not part of the story or world, do not reuse its names, places or events."
+  },
+  "new_game_entry": true,
+  "start_location": "sbx_archive_lobby",
+  "starting_chapter": "sbx_chapter_01",
+  "chapters": [
+    "sbx_chapter_01"
+  ],
+  "initial_flags": {
+    "sbx_confrontation_unlocked": false,
+    "sbx_window_inspection_unlocked": false,
+    "sbx_timeline_unlocked": false,
+    "sbx_timeline_accepted": false,
+    "sbx_final_claim_accepted": false
+  }
+}

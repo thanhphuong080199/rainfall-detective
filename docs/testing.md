@@ -44,6 +44,12 @@ scenes/test/
 ├── prototype_c_presenter_test.gd     Milestone 1.13: player-view spoiler boundary (before/after acceptance) + feedback-category mapping
 ├── prototype_c_content_test.gd       Milestone 1.13: the prototype_c data layer on the three prototype cases, incl. the universal-contradiction proof over the bounded candidate-slot domain
 ├── prototype_c_scene_test.gd         Milestone 1.13: the Prototype C scene + Deduction Lab launch wiring (FULL only, see below), incl. its own copy of the Continue-button layout regression
+├── core_loop_test_support.gd         Milestone 1.16: shared driving helpers + the sandbox's ids — not a runnable test
+├── core_loop_mechanics_test.gd       Milestone 1.16: the A/B/C controllers' production context + snapshots, ResolutionPolicy help-only mode (pure)
+├── core_loop_validation_test.gd      Milestone 1.16: CoreLoopValidator negative fixtures + real sandbox chapter clean
+├── core_loop_runtime_test.gd         Milestone 1.16: ChapterRuntime — the whole route, locks, consequences, duplicates, help/partner, restart, recorder
+├── core_loop_save_test.gd            Milestone 1.16: chapter-run save/load at every checkpoint, v1 migration, corrupt/half-applied saves
+├── core_loop_scene_test.gd           Milestone 1.16: title -> briefing -> investigation -> A/B/C -> result through the real screens/buttons (FULL only)
 └── smoke_test.gd                  the critical-path / integration fixture (see below)
 ```
 
@@ -141,7 +147,11 @@ boot if `.godot/` is already built):
   --script res://scenes/test/prototype_b_content_test.gd \
   --script res://scenes/test/prototype_c_controller_test.gd \
   --script res://scenes/test/prototype_c_presenter_test.gd \
-  --script res://scenes/test/prototype_c_content_test.gd
+  --script res://scenes/test/prototype_c_content_test.gd \
+  --script res://scenes/test/core_loop_mechanics_test.gd \
+  --script res://scenes/test/core_loop_validation_test.gd \
+  --script res://scenes/test/core_loop_runtime_test.gd \
+  --script res://scenes/test/core_loop_save_test.gd
 ```
 
 **FULL** — before finishing a milestone/refactor, and what CI runs on every
@@ -181,6 +191,11 @@ checks `verify.sh` always does unless skipped:
   --script res://scenes/test/prototype_c_presenter_test.gd \
   --script res://scenes/test/prototype_c_content_test.gd \
   --script res://scenes/test/prototype_c_scene_test.gd \
+  --script res://scenes/test/core_loop_mechanics_test.gd \
+  --script res://scenes/test/core_loop_validation_test.gd \
+  --script res://scenes/test/core_loop_runtime_test.gd \
+  --script res://scenes/test/core_loop_save_test.gd \
+  --script res://scenes/test/core_loop_scene_test.gd \
   --script res://scenes/test/smoke_test.gd
 ```
 
@@ -605,10 +620,62 @@ Where new coverage goes: a new validation rule → a negative fixture in
 `deduction_validation_test.gd`; a new result category or constraint type →
 the evaluator/timeline test; a new case sharing `credential_misuse_v2` → add
 its id to `deduction_cases_test.gd`'s `CASE_IDS` (structural equivalence is
-then validated automatically). Deduction progress is not persisted yet, so
-`save_load_regression_test.gd` is unchanged; `DeductionSession`'s JSON round
-trip is covered in `deduction_evaluator_test.gd` instead — see
-`docs/deduction-system.md`, "Save/load (deferred)".
+then validated automatically). Deduction progress in the DEBUG prototypes is
+still never persisted, so `save_load_regression_test.gd` is unchanged; the
+production chapter run's persistence (Milestone 1.16) is covered by
+`core_loop_save_test.gd` — see "Core loop tests" below.
+
+### Core loop tests (Milestone 1.16)
+
+`docs/core-loop-sandbox.md` is the source of truth. Four scripts join FAST
+and FULL — `core_loop_mechanics_test.gd` (pure: reads the real proto_x JSON
+directly, no autoloads), `core_loop_validation_test.gd`,
+`core_loop_runtime_test.gd` and `core_loop_save_test.gd` (autoloads, no scene
+tree, isolated save/settings files) — and `core_loop_scene_test.gd` is
+FULL-only, like the other scene tests. `core_loop_test_support.gd`
+(`CoreLoopTestSupport`) holds the driving helpers and is the only place outside
+`data/` that names the sandbox's ids; every step it takes goes through the
+same entry points a click reaches (Investigation's verbs, DialogueManager,
+`ChapterRuntime`).
+
+- **mechanics** — debug defaults unchanged (fresh session, every round,
+  authored pool, failure-escalating policy); the production context really
+  shares one session, scopes rounds and narrows the pool; help-only policy
+  semantics and serialization; B hint totals per own targets; JSON snapshot
+  round trips of A/B/C that continue exactly like the original; whole
+  rejection of malformed snapshots; restore records nothing.
+- **validation** — the real chapter is clean; one mutation per rule
+  (references, route order, resolution paths, acquisition routes, cycles,
+  completion, canon markers, debug paths, single New Game entry); errors reach
+  the `ContentValidator` report `validate_content.gd` exits non-zero on;
+  `evidence_alternatives()` expansion and its cap.
+- **runtime** — the full player route with each lock checked on both sides
+  (locked until the LAST dependency, then offered), consequences applied
+  exactly once and attributable, single-deduction B, duplicate candidates
+  free, failures never escalating the run help result, assistance/partner
+  without a hard lock, the alternate proof path, restart isolation, recorder
+  ordering/context/non-authority, the evaluation summary over a production
+  log, debug/production session isolation, a flat case leaving it inactive.
+- **save** — save at every checkpoint -> a NEW runtime -> load: identical
+  durable state, nothing replayed (no consequence, no "once" event, no
+  acquisition observation); exact draft/failure/feedback/Assisted/partner/
+  timeline/claim resume; repeated loads; v1 migration; unsupported/corrupt
+  files and nine half-applied snapshots rejected whole; atomic writes; a failed
+  checkpoint doesn't stop play.
+- **scene** — starts at `TitleScreen.tscn` and presses only visible, enabled
+  buttons (plus the DialogueBox's own click handler); Continue at several
+  checkpoints (investigation, between mechanics, mid-mechanic, Assisted Mode);
+  VI and EN; the fixed-footer layout at 1280x720 with overlong feedback; and a
+  scan of every visible string for ids, untranslated keys and run-result
+  labels (the scan proves it can fail before it is trusted).
+
+Where new coverage goes: a new rule of the chapter contract -> a fixture in
+`core_loop_validation_test.gd`; new runtime behavior -> `core_loop_runtime_test.gd`
+(and a resume check in `core_loop_save_test.gd` if it persists anything); a new
+screen or control -> `core_loop_scene_test.gd`. The debug prototype suites are
+unchanged apart from one structural check in `resolution_policy_test.gd`
+(`ResolutionPolicy.new(` instead of `ResolutionPolicy.new()` — the controllers
+now pass the policy mode).
 
 ## Test isolation
 

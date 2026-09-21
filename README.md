@@ -1,4 +1,4 @@
-# Rainfall Detective — Milestone 0 Sandbox
+# Rainfall Detective — Technical Sandbox
 
 A Godot 4 technical sandbox for a 2D narrative detective game. Everything in
 here is **placeholder content**: dummy characters ("Character A"), dummy
@@ -35,6 +35,11 @@ There is no story, no protagonist, and no Case 01 yet — and deliberately so.
   checked until committed, acknowledged assistance and partner resolution.
   There is no game over, and each run records whether it was solved
   Independently, Guided or Assisted.
+- `docs/core-loop-sandbox.md` — Milestone 1.16: the first production route.
+  **New Game** plays a non-canon sandbox chapter end to end — briefing,
+  investigation, clue connection (B), confrontation (A), a second B,
+  timeline reconstruction and a final claim (C), then a narrative result —
+  with save/Continue at every step and no debug tools involved.
 
 ## Requirements
 
@@ -59,7 +64,12 @@ Desktop only (mouse + keyboard). No controller or touch support yet.
 | Where | Input | Does |
 |---|---|---|
 | Anywhere | **Mouse click** | Activates whatever is under the cursor. Every action in the game is reachable by mouse alone. |
-| Title screen | **New Game** / **Continue** / **Quit** | Continue is greyed out until a save file exists. |
+| Title screen | **New Game** / **Continue** / **Quit** / **VI / EN** | New Game starts the core-loop sandbox chapter (confirmed first if it would replace a save). Continue is greyed out unless a readable save exists. |
+| Briefing | **Begin investigating** / **Main menu** / **VI / EN** | Leaves the briefing for the investigation. |
+| Investigation (sandbox chapter) | **Case File** button (top right) | Evidence you've found (read, pin), what you've established, the current objective, and the mechanic you can work on. |
+| Investigation (sandbox chapter) | **Work on it: …** (bottom-left panel) | Opens the deduction/confrontation/timeline the chapter currently offers; while it's locked the panel says to keep investigating. |
+| Mechanic screen | Buttons; the primary action and **Continue** sit in the fixed bottom bar | Your draft is kept when you leave (**Back to investigation** or **Esc**); only the bottom-bar action counts as an attempt. |
+| Result screen | **Restart chapter** / **Main menu** / **Export evaluation log** | Restart is confirmed first. |
 | Investigation view | Click a button in the right-hand list | Examine a point, open an NPC's menu, or open the destination list. `< Back` returns one level. |
 | Investigation view | **Evidence** button (top right) | Opens the evidence inventory in browse mode. |
 | Investigation view | **Menu** button (top right) | Save / Load / New Game / Resume / Quit to Title. |
@@ -112,10 +122,12 @@ trigger, not by this playthrough).
 
 This same content is also reachable as a two-chapter **Test Case**
 (`test_case`), proving the Case/Chapter organization layer (Milestone 1.6)
-without any real story content — see `docs/case-system.md`. "New Game" from
-the title screen still boots `case_00_sandbox` above; to try `test_case`,
+without any real story content — see `docs/case-system.md`. Since Milestone
+1.16, "New Game" from the title screen boots the core-loop sandbox chapter
+(the case marked `new_game_entry`), not `case_00_sandbox`; to play the demo
+flow above or `test_case`,
 press **F1** in a running debug build, open the **Case & Chapter** tab, type
-`test_case` into the case-id field, and press **Start Case**. Chapter 1 is steps 1-3 and
+`case_00_sandbox` or `test_case` into the case-id field, and press **Start Case**. Chapter 1 is steps 1-3 and
 5-6 above plus step 11-12's event-driven move, followed by talking to
 Character A in the hallway; Chapter 2 then activates a new talk topic on
 Character B ("Ask if there's anything else") — completing it completes the
@@ -139,7 +151,13 @@ godot --headless --path . -s res://scenes/test/validate_content.gd
 # The critical-path / integration fixture: the full demo flow plus the
 # two-chapter Test Case, end to end.
 godot --headless --path . -s res://scenes/test/smoke_test.gd
+
+# The Milestone 1.16 core loop through its real screens, title to result.
+godot --headless --path . -s res://scenes/test/core_loop_scene_test.gd
 ```
+
+The canonical FAST and FULL commands (and which scripts each includes) are in
+`CLAUDE.md` and `docs/testing.md`.
 
 Every test script is safe to run at any time; each that touches save/load
 uses its own throwaway `user://` file and never touches the real

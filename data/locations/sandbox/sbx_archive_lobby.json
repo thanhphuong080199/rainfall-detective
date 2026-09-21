@@ -1,0 +1,115 @@
+{
+  "id": "sbx_archive_lobby",
+  "name": "LOC_SBX_LOBBY_NAME",
+  "background_color": "#2F3B45",
+  "npcs": [
+    {
+      "id": "sbx_mara",
+      "topics": [
+        {
+          "id": "greeting",
+          "label": "LOC_SBX_TOPIC_MARA_GREETING",
+          "dialogue_id": "sbx_mara_greeting"
+        },
+        {
+          "id": "evening",
+          "label": "LOC_SBX_TOPIC_MARA_EVENING",
+          "dialogue_id": "sbx_mara_evening"
+        },
+        {
+          "id": "dinner_photo",
+          "label": "LOC_SBX_TOPIC_MARA_PHOTO",
+          "dialogue_id": "sbx_mara_photo",
+          "condition": {
+            "has_evidence": "sbx_tram_tap"
+          }
+        }
+      ],
+      "present_responses": [
+        {
+          "dialogue_id": "sbx_mara_present_generic"
+        }
+      ]
+    },
+    {
+      "id": "sbx_ilse",
+      "topics": [
+        {
+          "id": "greeting",
+          "label": "LOC_SBX_TOPIC_ILSE_GREETING",
+          "dialogue_id": "sbx_ilse_greeting"
+        },
+        {
+          "id": "left_early",
+          "label": "LOC_SBX_TOPIC_ILSE_LEFT_EARLY",
+          "dialogue_id": "sbx_ilse_left_early"
+        }
+      ],
+      "present_responses": [
+        {
+          "dialogue_id": "sbx_ilse_present_generic"
+        }
+      ]
+    }
+  ],
+  "examine_points": [
+    {
+      "id": "front_desk_log",
+      "label": "LOC_SBX_EXAMINE_FRONT_DESK_LOG",
+      "variants": [
+        {
+          "condition": {
+            "has_evidence": "sbx_lost_property_sheet"
+          },
+          "dialogue_id": "sbx_examine_front_desk_log_after"
+        },
+        {
+          "dialogue_id": "sbx_examine_front_desk_log"
+        }
+      ]
+    },
+    {
+      "id": "transit_map",
+      "label": "LOC_SBX_EXAMINE_TRANSIT_MAP",
+      "variants": [
+        {
+          "condition": {
+            "has_evidence": "sbx_route_note"
+          },
+          "dialogue_id": "sbx_examine_transit_map_after"
+        },
+        {
+          "dialogue_id": "sbx_examine_transit_map"
+        }
+      ]
+    },
+    {
+      "id": "noticeboard",
+      "label": "LOC_SBX_EXAMINE_NOTICEBOARD",
+      "variants": [
+        {
+          "condition": {
+            "has_evidence": "sbx_back_door_sighting"
+          },
+          "dialogue_id": "sbx_examine_noticeboard_after"
+        },
+        {
+          "dialogue_id": "sbx_examine_noticeboard"
+        }
+      ]
+    }
+  ],
+  "destinations": [
+    {
+      "location_id": "sbx_stacks_wing",
+      "label": "LOC_SBX_DEST_STACKS_WING"
+    },
+    {
+      "location_id": "sbx_maintenance_office",
+      "label": "LOC_SBX_DEST_MAINTENANCE_OFFICE",
+      "condition": {
+        "flag": "sbx_window_inspection_unlocked"
+      }
+    }
+  ]
+}

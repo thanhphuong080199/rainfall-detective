@@ -1,5 +1,14 @@
 # Prototype A — Statement Contradiction (Milestone 1.11)
 
+> **Milestone 1.16:** `PrototypeAController` also backs the production
+> confrontation of a core-loop chapter (`docs/core-loop-sandbox.md`), started
+> with a production context — the chapter run's shared `DeductionSession`, only
+> the rounds the chapter assigns, only acquired evidence, and the help-only
+> `ResolutionPolicy` — and persisted through `to_snapshot()`/
+> `restore_snapshot()`. The debug screen below and its Deduction Lab launch
+> are unchanged; with no context the controller behaves exactly as described
+> here.
+
 The first genuinely playable deduction interaction, built on the Milestone
 1.9/1.9.1 deduction foundation (`docs/deduction-system.md`) and reusing the
 Milestone 1.10 Deduction Lab's recorder unchanged (`docs/deduction-lab.md`).

@@ -103,6 +103,15 @@ const EVENT_PARTNER_RESOLUTION_OFFERED := "partner_resolution_offered"
 const EVENT_PARTNER_RESOLUTION_USED := "partner_resolution_used"
 const EVENT_PROTOTYPE_RESTARTED := "prototype_restarted"
 
+## Milestone 1.16 (docs/core-loop-sandbox.md, "Run help result"): whether
+## failed formal commits raise the run result at all. true is the original
+## Milestone 1.14 debug-prototype semantics (one failure -> Guided, three ->
+## Assisted, and reaching the assistance gate -> Assisted). The production
+## chapter runtime passes false: the 1.15B contract locks the run result to
+## "the highest help level actually used" — hints, acknowledged assistance,
+## partner resolution — with failures kept as separate budget/telemetry data.
+## A construction-time setting, never changed by _reset().
+var _failures_escalate_run_result: bool = true
 ## The run-wide result — see the class doc's "RUN_RESOLUTION_RESULT" above.
 ## Never reset by begin_next_unit().
 var _run_resolution_result: String = TIER_INDEPENDENT
@@ -121,8 +130,17 @@ var _assistance_count: int = 0
 var _partner_count: int = 0
 
 
+func _init(failures_escalate_run_result: bool = true) -> void:
+	_failures_escalate_run_result = failures_escalate_run_result
+
+
 # ---------------------------------------------------------------------------
 # Queries
+
+## false in production (help-only run result) — see the field doc above.
+func failures_escalate_run_result() -> bool:
+	return _failures_escalate_run_result
+
 
 ## The run-wide result (TIER_INDEPENDENT/GUIDED/ASSISTED) — how the WHOLE RUN
 ## was solved so far, for reporting and completion statistics ONLY. Never
@@ -254,12 +272,14 @@ func register_failed_commit() -> Dictionary:
 		_unit_standard_failures += 1
 		if _unit_standard_failures >= STANDARD_FAILURE_LIMIT:
 			_current_unit_phase = PHASE_ASSISTANCE_REQUIRED
-			_raise_run_resolution_result(TIER_ASSISTED)
+			if _failures_escalate_run_result:
+				_raise_run_resolution_result(TIER_ASSISTED)
 	else:
 		_unit_assisted_failures += 1
 		if _unit_assisted_failures >= ASSISTED_FAILURE_LIMIT:
 			_current_unit_phase = PHASE_PARTNER_AVAILABLE
-	_raise_run_resolution_result(_run_resolution_result_for_failed_commits(_failed_commits))
+	if _failures_escalate_run_result:
+		_raise_run_resolution_result(_run_resolution_result_for_failed_commits(_failed_commits))
 	return _transition(result_before, phase_before, REASON_FAILED_COMMIT)
 
 
@@ -381,11 +401,16 @@ static func transition_events(transition: Dictionary) -> Array[Dictionary]:
 
 
 # ---------------------------------------------------------------------------
-# Serialization — prototype snapshots and tests only; no production save.
+# Serialization — prototype snapshots and tests, and (Milestone 1.16) each
+# production resolution unit's slice of the chapter-run save snapshot.
+# "failures_escalate_run_result" is an additive key: a dictionary without it
+# restores with the original (true) semantics, so every earlier to_dict()
+# output still loads unchanged.
 
 func to_dict() -> Dictionary:
 	return {
 		"version": FORMAT_VERSION,
+		"failures_escalate_run_result": _failures_escalate_run_result,
 		"run_resolution_result": _run_resolution_result,
 		"current_unit_phase": _current_unit_phase,
 		"unit_index": _unit_index,
@@ -413,7 +438,10 @@ func load_dict(data: Variant) -> bool:
 	var phase: Variant = data.get("current_unit_phase")
 	var resolved_by: Variant = data.get("unit_resolved_by", "")
 	var assistance_accepted: Variant = data.get("unit_assistance_accepted", false)
+	var escalates: Variant = data.get("failures_escalate_run_result", true)
 	if not (result is String and TIERS.has(result)) or not (phase is String and PHASES.has(phase)):
+		return false
+	if typeof(escalates) != TYPE_BOOL:
 		return false
 	if not (resolved_by is String and ["", RESOLVED_BY_PLAYER, RESOLVED_BY_PARTNER].has(resolved_by)) or typeof(assistance_accepted) != TYPE_BOOL:
 		return false
@@ -430,7 +458,9 @@ func load_dict(data: Variant) -> bool:
 	if (phase == PHASE_RESOLVED) != (resolved_by != ""):
 		return false
 
-	var minimum_rank: int = run_resolution_result_rank(_run_resolution_result_for_failed_commits(counts["failed_commits"]))
+	var minimum_rank: int = run_resolution_result_rank(TIER_INDEPENDENT)
+	if escalates:
+		minimum_rank = run_resolution_result_rank(_run_resolution_result_for_failed_commits(counts["failed_commits"]))
 	if counts["max_hint_level"] >= ASSISTED_HINT_LEVEL or counts["assistance_count"] > 0 or counts["partner_resolution_count"] > 0:
 		minimum_rank = run_resolution_result_rank(TIER_ASSISTED)
 	elif counts["max_hint_level"] >= GUIDED_HINT_LEVEL:
@@ -438,6 +468,7 @@ func load_dict(data: Variant) -> bool:
 	if run_resolution_result_rank(result) < minimum_rank:
 		return false
 
+	_failures_escalate_run_result = escalates
 	_run_resolution_result = result
 	_current_unit_phase = phase
 	_unit_index = counts["unit_index"]

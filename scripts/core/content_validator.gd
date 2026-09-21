@@ -40,6 +40,7 @@ static func validate() -> Dictionary:
 	_validate_cases(errors, warnings)
 	_validate_events(errors, warnings)
 	_validate_deduction_cases(errors, warnings)
+	_validate_core_loops(errors, warnings)
 	_validate_dependency_reachability(warnings)
 
 	return {"errors": errors, "warnings": warnings}
@@ -466,6 +467,28 @@ static func _validate_cases(errors: Array[String], warnings: Array[String]) -> v
 				if typeof(initial_flags[flag_name]) != TYPE_BOOL:
 					errors.append('Case "%s" initial flag "%s" must be true or false, got %s' % [case_id, flag_name, initial_flags[flag_name]])
 		_validate_case_chapters(case_id, data, errors)
+		_validate_case_markers(case_id, data, errors)
+	var entries: Array[String] = []
+	for case_id in cases:
+		if (cases[case_id] as Dictionary).get("new_game_entry", false) == true:
+			entries.append(String(case_id))
+	if entries.size() > 1:
+		entries.sort()
+		errors.append('More than one case declares "new_game_entry": true (%s) — New Game can only start one' % ", ".join(entries))
+
+
+## Milestone 1.16: the optional markers a case may carry — "new_game_entry"
+## (the title screen's New Game starts this case, see
+## SaveManager.get_new_game_case_id()) and metadata.canon (false marks
+## non-canon sandbox content; CoreLoopValidator cross-checks it).
+static func _validate_case_markers(case_id: String, data: Dictionary, errors: Array[String]) -> void:
+	if data.has("new_game_entry") and typeof(data.get("new_game_entry")) != TYPE_BOOL:
+		errors.append('Case "%s" new_game_entry must be true or false' % case_id)
+	var metadata: Variant = data.get("metadata", {})
+	if typeof(metadata) != TYPE_DICTIONARY:
+		errors.append('Case "%s" metadata must be an object' % case_id)
+	elif (metadata as Dictionary).has("canon") and typeof(metadata.get("canon")) != TYPE_BOOL:
+		errors.append('Case "%s" metadata.canon must be true or false' % case_id)
 
 
 ## Chapter fields are entirely opt-in — a case with no (or an empty)
@@ -651,6 +674,39 @@ static func _validate_deduction_cases(errors: Array[String], warnings: Array[Str
 
 
 # ---------------------------------------------------------------------------
+# Core-loop chapters (Milestone 1.16) — a chapter's optional "core_loop"
+# section (docs/core-loop-sandbox.md). The shared vocabulary checks stay here
+# (offer conditions through _validate_condition, consequence effects through
+# _validate_effects, text keys through _validate_translatable); everything
+# specific to the chapter-run contract lives in CoreLoopValidator, the same
+# split _validate_deduction_cases uses with DeductionValidator.
+
+static func _validate_core_loops(errors: Array[String], warnings: Array[String]) -> void:
+	var base_flags: Dictionary = {}
+	var base_evidence: Dictionary = {}
+	var base_interactions: Dictionary = {}
+	_collect_effect_targets_everywhere(base_flags, base_evidence, base_interactions, false)
+	var base_producers: Dictionary = {"flags": base_flags, "evidence": base_evidence, "interactions": base_interactions}
+	var chapters: Dictionary = ContentDB.get_all_chapters()
+	var chapter_ids: Array = chapters.keys()
+	chapter_ids.sort()
+	for chapter_id in chapter_ids:
+		var chapter: Dictionary = chapters[chapter_id]
+		var loop: Variant = chapter.get("core_loop")
+		if typeof(loop) != TYPE_DICTIONARY:
+			if loop != null:
+				errors.append('Chapter "%s" core_loop must be an object' % chapter_id)
+			continue
+		for unit in DeductionEvaluator.dict_array((loop as Dictionary).get("units", [])):
+			_validate_condition(unit.get("offer_condition"), 'Chapter "%s" core_loop unit "%s" offer_condition' % [chapter_id, unit.get("id", "")], errors)
+		for entry in CoreLoopValidator.consequences_of(chapter):
+			_validate_effects((entry["consequence"] as Dictionary).get("effects", []), 'Chapter "%s" core_loop unit "%s" consequence "%s"' % [chapter_id, entry["unit"], entry["outcome"]], errors, warnings)
+		for entry in CoreLoopValidator.collect_text_keys(String(chapter_id), chapter):
+			_validate_translatable(entry[0], entry[1], errors)
+		CoreLoopValidator.validate_chapter(String(chapter_id), chapter, base_producers, errors)
+
+
+# ---------------------------------------------------------------------------
 # Dependency reachability (Milestone 1.7) — cheap, best-effort static checks,
 # NOT a solver. See docs/architecture.md's "Known limitations" and
 # docs/testing.md's "Soft-lock safety philosophy": this does not prove a case
@@ -702,7 +758,12 @@ static func _validate_dependency_reachability(warnings: Array[String]) -> void:
 ## recorded when some effect sets it to true (a set_flag ... value:false
 ## can't satisfy a plain {"flag": "x"} requirement — see the calling
 ## function's "equals:false" note below).
-static func _collect_effect_targets_everywhere(flags_out: Dictionary, evidence_out: Dictionary, interactions_out: Dictionary) -> void:
+##
+## `include_core_loop` (Milestone 1.16) also counts every core-loop chapter's
+## progression consequences as producers — they are ordinary effect lists run
+## through EffectRunner. CoreLoopValidator asks for the set WITHOUT them, to
+## tell "produced by normal play" apart from "produced by a later phase".
+static func _collect_effect_targets_everywhere(flags_out: Dictionary, evidence_out: Dictionary, interactions_out: Dictionary, include_core_loop: bool = true) -> void:
 	for dialogue_id in ContentDB.get_all_dialogues():
 		var tree: Dictionary = ContentDB.get_all_dialogues()[dialogue_id]
 		var nodes: Dictionary = tree.get("nodes", {})
@@ -720,6 +781,9 @@ static func _collect_effect_targets_everywhere(flags_out: Dictionary, evidence_o
 
 	for chapter_id in ContentDB.get_all_chapters():
 		_collect_effect_targets(ContentDB.get_all_chapters()[chapter_id].get("entry_effects", []), flags_out, evidence_out, interactions_out)
+		if include_core_loop:
+			for entry in CoreLoopValidator.consequences_of(ContentDB.get_all_chapters()[chapter_id]):
+				_collect_effect_targets((entry["consequence"] as Dictionary).get("effects", []), flags_out, evidence_out, interactions_out)
 
 
 ## Pure function (no ContentDB access) so it's directly unit-testable — see
@@ -777,6 +841,14 @@ static func _collect_condition_requirements_everywhere(flags_out: Dictionary, ev
 
 	for event_id in ContentDB.get_all_events():
 		_collect_condition_requirements(ContentDB.get_all_events()[event_id].get("conditions"), flags_out, evidence_out, interactions_out)
+
+	# Milestone 1.16: a core-loop unit's offer_condition gates required
+	# progression exactly like a topic's condition gates a topic.
+	for chapter_id in ContentDB.get_all_chapters():
+		var loop: Variant = ContentDB.get_all_chapters()[chapter_id].get("core_loop")
+		if typeof(loop) == TYPE_DICTIONARY:
+			for unit in DeductionEvaluator.dict_array((loop as Dictionary).get("units", [])):
+				_collect_condition_requirements(unit.get("offer_condition"), flags_out, evidence_out, interactions_out)
 
 
 ## Pure function (no ContentDB access) so it's directly unit-testable — see
@@ -856,6 +928,10 @@ static func _collect_effects_with_sources() -> Array[Dictionary]:
 
 	for chapter_id in ContentDB.get_all_chapters():
 		_append_effect_sources(ContentDB.get_chapter(chapter_id).get("entry_effects", []), 'chapter "%s" entry_effects' % chapter_id, entries)
+		# Milestone 1.16: progression consequences are attributable producers
+		# too — "which outcome unlocked this?" (1.15B, "attributable").
+		for entry in CoreLoopValidator.consequences_of(ContentDB.get_chapter(chapter_id)):
+			_append_effect_sources((entry["consequence"] as Dictionary).get("effects", []), 'chapter "%s" core_loop unit "%s" consequence "%s" (%s)' % [chapter_id, entry["unit"], (entry["consequence"] as Dictionary).get("id", ""), entry["outcome"]], entries)
 
 	return entries
 

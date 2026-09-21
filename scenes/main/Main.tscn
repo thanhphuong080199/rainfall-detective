@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/main.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/investigation/InvestigationView.tscn" id="2"]
@@ -6,6 +6,11 @@
 [ext_resource type="PackedScene" path="res://scenes/evidence/EvidenceInventory.tscn" id="4"]
 [ext_resource type="PackedScene" path="res://scenes/ui/GameMenu.tscn" id="5"]
 [ext_resource type="PackedScene" path="res://scenes/debug/DebugPanel.tscn" id="6"]
+[ext_resource type="PackedScene" path="res://scenes/core_loop/CoreLoopHud.tscn" id="7"]
+[ext_resource type="PackedScene" path="res://scenes/core_loop/CaseFile.tscn" id="8"]
+[ext_resource type="PackedScene" path="res://scenes/core_loop/MechanicScreen.tscn" id="9"]
+[ext_resource type="PackedScene" path="res://scenes/core_loop/BriefingScreen.tscn" id="10"]
+[ext_resource type="PackedScene" path="res://scenes/core_loop/ResultScreen.tscn" id="11"]
 
 [node name="Main" type="Control"]
 layout_mode = 3
@@ -20,11 +25,31 @@ script = ExtResource("1")
 unique_name_in_owner = true
 layout_mode = 1
 
+[node name="CoreLoopHud" parent="." instance=ExtResource("7")]
+unique_name_in_owner = true
+layout_mode = 1
+
 [node name="DialogueBox" parent="." instance=ExtResource("3")]
 unique_name_in_owner = true
 layout_mode = 1
 
 [node name="EvidenceInventory" parent="." instance=ExtResource("4")]
+unique_name_in_owner = true
+layout_mode = 1
+
+[node name="CaseFile" parent="." instance=ExtResource("8")]
+unique_name_in_owner = true
+layout_mode = 1
+
+[node name="MechanicScreen" parent="." instance=ExtResource("9")]
+unique_name_in_owner = true
+layout_mode = 1
+
+[node name="BriefingScreen" parent="." instance=ExtResource("10")]
+unique_name_in_owner = true
+layout_mode = 1
+
+[node name="ResultScreen" parent="." instance=ExtResource("11")]
 unique_name_in_owner = true
 layout_mode = 1
 

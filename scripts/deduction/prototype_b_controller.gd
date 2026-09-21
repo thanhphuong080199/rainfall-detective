@@ -42,6 +42,15 @@ extends RefCounted
 ## unmodified) passed into start(). This class decides WHAT and WHEN to
 ## record for the Prototype B event vocabulary; the recorder itself carries
 ## no Prototype-B-specific code — see docs/prototype-b.md, "Recorder events".
+##
+## Milestone 1.16 (docs/core-loop-sandbox.md): start() accepts the same
+## optional production `context` as PrototypeAController — shared session,
+## round subset, acquired-evidence pool, help-only policy mode. The production
+## chapter run always scopes a unit to exactly ONE round, which makes "Commit
+## Theory" a single-deduction commit: the 1.15B contract's B, never a batch.
+## The debug prototype (empty context) still batches every authored round.
+
+const SNAPSHOT_FORMAT := 1
 
 ## commit_theory() result categories (never shown raw — PrototypeBPresenter
 ## maps them). An uncounted action uses DeductionEvaluator.INVALID_INPUT.
@@ -82,6 +91,10 @@ var _theory_accepted: bool = false
 var _completed: bool = false
 var _clock_fn: Callable
 var _start_ticks: int = 0
+## Milestone 1.16 production context — see PrototypeAController's fields.
+var _round_ids: Array[String] = []
+var _has_pool_override: bool = false
+var _pool_override: Array[String] = []
 
 
 ## `clock_fn` (no args, returns int/float monotonic milliseconds — defaults
@@ -100,23 +113,28 @@ func _init(clock_fn: Callable = Callable()) -> void:
 ## isolated DeductionSession and ResolutionPolicy — recorded as
 ## "prototype_restarted" before the new run's "prototype_started".
 ## `recorder`, if given, receives this run's telemetry; pass null to run
-## unrecorded.
-func start(case_def: Dictionary, recorder: DeductionLabRecorder = null) -> bool:
+## unrecorded. `context`: see PrototypeAController.start() (Milestone 1.16).
+func start(case_def: Dictionary, recorder: DeductionLabRecorder = null, context: Dictionary = {}) -> bool:
 	if typeof(case_def) != TYPE_DICTIONARY:
 		return false
 	var proto: Variant = case_def.get("prototype_b")
 	if typeof(proto) != TYPE_DICTIONARY:
 		return false
-	var rounds: Array[Dictionary] = DeductionEvaluator.dict_array(proto.get("rounds", []))
+	var rounds: Array[Dictionary] = PrototypeContext.scoped_rounds(proto, context)
 	if rounds.is_empty():
+		return false
+	var session: DeductionSession = PrototypeContext.session_for(case_def, context)
+	if session == null:
 		return false
 
 	var previous_run: Dictionary = _previous_run_payload(str(case_def.get("id", "")))
 	_case_def = case_def
 	_rounds = rounds
-	_session = DeductionSession.new(str(case_def.get("id", "")))
+	_round_ids = DeductionEvaluator.string_array(context.get("round_ids", []))
+	_session = session
 	_recorder = recorder
-	_policy = ResolutionPolicy.new()
+	_policy = ResolutionPolicy.new(PrototypeContext.failures_escalate(context))
+	_apply_pool_context(context)
 	_run_count += 1
 	_drafts = []
 	for _i in _rounds.size():
@@ -248,7 +266,26 @@ func _can_edit() -> bool:
 # actions, mirroring PrototypeAController's own evidence handling.
 
 func get_evidence_pool_ids() -> Array[String]:
+	if _has_pool_override:
+		return _pool_override.duplicate()
 	return DeductionEvaluator.string_array(_case_def.get("prototype_b", {}).get("evidence_pool", []))
+
+
+## Milestone 1.16: replaces the authored pool — see
+## PrototypeAController.set_evidence_pool(). Placed clues are never removed
+## behind the player's back here: in production the pool only ever grows
+## (acquired evidence stays acquired), and select_evidence() already refuses
+## anything outside the current pool.
+func set_evidence_pool(evidence_ids: Array[String]) -> void:
+	_has_pool_override = true
+	_pool_override = evidence_ids.duplicate()
+
+
+func _apply_pool_context(context: Dictionary) -> void:
+	_has_pool_override = false
+	_pool_override = []
+	if context.has("evidence_pool"):
+		set_evidence_pool(DeductionEvaluator.string_array(context.get("evidence_pool", [])))
 
 
 ## Marks `evidence_id` opened in the session (the sanctioned public
@@ -599,13 +636,16 @@ func get_stats() -> Dictionary:
 
 
 ## Reads DeductionSession's own hint-level snapshot rather than tracking a
-## second count — see the class doc's "Hints" section.
+## second count — see the class doc's "Hints" section. Only THIS run's round
+## targets count (Milestone 1.16): with a shared session the same snapshot
+## also holds other units' hints; with the debug prototype's own fresh
+## session the two sums are identical.
 func _hints_used_total() -> int:
 	if _session == null:
 		return 0
 	var total := 0
-	for level in _session.get_hint_levels().values():
-		total += int(level)
+	for round_def in _rounds:
+		total += _session.get_hint_level(str(round_def.get("target", "")))
 	return total
 
 
@@ -616,6 +656,132 @@ func abandon() -> void:
 	if _completed or _recorder == null or not has_progress():
 		return
 	_record("prototype_abandoned", _stats_with_resolution())
+
+
+# ---------------------------------------------------------------------------
+# Snapshot (Milestone 1.16) — see PrototypeAController.to_snapshot(). The
+# shared session (placed clues' opened state, hint levels, resolved claims)
+# is persisted by its owner, never here.
+
+func to_snapshot() -> Dictionary:
+	var drafts: Array = []
+	for draft in _drafts:
+		drafts.append((draft as Array[String]).duplicate())
+	var saved: Dictionary = {}
+	for index in _saved_drafts:
+		saved[str(index)] = (_saved_drafts[index] as Array[String]).duplicate()
+	return {
+		"format": SNAPSHOT_FORMAT,
+		"case_id": str(_case_def.get("id", "")),
+		"round_ids": _round_ids.duplicate(),
+		"run_count": _run_count,
+		"drafts": drafts,
+		"saved_drafts": saved,
+		"active_index": _active_index,
+		"submission_count": _submission_count,
+		"failed_attempt_count": _failed_attempt_count,
+		"replacement_count": _replacement_count,
+		"drafts_saved_count": _drafts_saved_count,
+		"failed_theory_keys": PrototypeContext.sorted_keys(_failed_theory_keys),
+		"last_invalid_indices": _last_invalid_indices.duplicate(),
+		"assistance_draft_index": _assistance_draft_index,
+		"partner_draft_indices": _partner_draft_indices.duplicate(),
+		"theory_accepted": _theory_accepted,
+		"completed": _completed,
+		"policy": _policy.to_dict() if _policy != null else {},
+	}
+
+
+## Rebuilds a run from to_snapshot() output — same contract as
+## PrototypeAController.restore_snapshot(): records nothing, and rejects
+## anything malformed as a whole without touching the controller.
+func restore_snapshot(case_def: Dictionary, snapshot: Variant, recorder: DeductionLabRecorder = null, context: Dictionary = {}) -> bool:
+	if typeof(snapshot) != TYPE_DICTIONARY or PrototypeContext.count(snapshot.get("format")) != SNAPSHOT_FORMAT:
+		return false
+	var proto: Variant = case_def.get("prototype_b")
+	if typeof(proto) != TYPE_DICTIONARY or str(snapshot.get("case_id", "")) != str(case_def.get("id", "")):
+		return false
+	var scoped: Dictionary = context.duplicate()
+	scoped["round_ids"] = snapshot.get("round_ids", [])
+	var rounds: Array[Dictionary] = PrototypeContext.scoped_rounds(proto, scoped)
+	var session: DeductionSession = PrototypeContext.session_for(case_def, scoped)
+	if rounds.is_empty() or session == null or not PrototypeContext.is_string_list(snapshot.get("round_ids", [])):
+		return false
+
+	var raw_drafts: Variant = snapshot.get("drafts")
+	if typeof(raw_drafts) != TYPE_ARRAY or (raw_drafts as Array).size() != rounds.size():
+		return false
+	var drafts: Array = []
+	for i in rounds.size():
+		var draft: Variant = (raw_drafts as Array)[i]
+		if not PrototypeContext.is_string_list(draft) or (draft as Array).size() > int(rounds[i].get("slot_count", 0)):
+			return false
+		drafts.append(DeductionEvaluator.string_array(draft))
+	var raw_saved: Variant = snapshot.get("saved_drafts", {})
+	if typeof(raw_saved) != TYPE_DICTIONARY:
+		return false
+	var saved: Dictionary = {}
+	for key in raw_saved:
+		var index: int = str(key).to_int() if str(key).is_valid_int() else -1
+		if index < 0 or index >= rounds.size() or not PrototypeContext.is_string_list(raw_saved[key]):
+			return false
+		saved[index] = DeductionEvaluator.string_array(raw_saved[key])
+	var counts: Dictionary = {}
+	for key in ["run_count", "active_index", "submission_count", "failed_attempt_count", "replacement_count", "drafts_saved_count"]:
+		counts[key] = PrototypeContext.count(snapshot.get(key))
+		if counts[key] < 0:
+			return false
+	if counts["active_index"] >= rounds.size():
+		return false
+	var assistance_index: int = int(snapshot.get("assistance_draft_index", -1)) if typeof(snapshot.get("assistance_draft_index", -1)) in [TYPE_INT, TYPE_FLOAT] else -2
+	if assistance_index < -1 or assistance_index >= rounds.size():
+		return false
+	var last_invalid: Array[int] = _index_list(snapshot.get("last_invalid_indices", []), rounds.size())
+	var partner_indices: Array[int] = _index_list(snapshot.get("partner_draft_indices", []), rounds.size())
+	if last_invalid.has(-1) or partner_indices.has(-1) or not PrototypeContext.is_string_list(snapshot.get("failed_theory_keys", [])):
+		return false
+	if typeof(snapshot.get("theory_accepted", false)) != TYPE_BOOL or typeof(snapshot.get("completed", false)) != TYPE_BOOL:
+		return false
+	var policy := ResolutionPolicy.new(PrototypeContext.failures_escalate(context))
+	if not policy.load_dict(snapshot.get("policy")):
+		return false
+
+	_case_def = case_def
+	_rounds = rounds
+	_round_ids = DeductionEvaluator.string_array(snapshot.get("round_ids", []))
+	_session = session
+	_recorder = recorder
+	_policy = policy
+	_apply_pool_context(context)
+	_run_count = counts["run_count"]
+	_drafts = drafts
+	_saved_drafts = saved
+	_active_index = counts["active_index"]
+	_submission_count = counts["submission_count"]
+	_failed_attempt_count = counts["failed_attempt_count"]
+	_replacement_count = counts["replacement_count"]
+	_drafts_saved_count = counts["drafts_saved_count"]
+	_failed_theory_keys = PrototypeContext.key_set(snapshot.get("failed_theory_keys", []))
+	_last_invalid_indices = last_invalid
+	_assistance_draft_index = assistance_index
+	_partner_draft_indices = partner_indices
+	_theory_accepted = snapshot.get("theory_accepted", false) == true
+	_completed = snapshot.get("completed", false) == true
+	_start_ticks = int(_clock_fn.call())
+	return true
+
+
+## Draft indices from snapshot data; any out-of-range/malformed entry becomes
+## -1 so the caller can reject the whole snapshot.
+static func _index_list(value: Variant, limit: int) -> Array[int]:
+	var out: Array[int] = []
+	if typeof(value) != TYPE_ARRAY:
+		out.append(-1)
+		return out
+	for entry in value:
+		var index: int = PrototypeContext.count(entry)
+		out.append(index if index < limit else -1)
+	return out
 
 
 # ---------------------------------------------------------------------------

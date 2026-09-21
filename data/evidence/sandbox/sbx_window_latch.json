@@ -1,0 +1,7 @@
+{
+  "id": "sbx_window_latch",
+  "name": "DED_PROTO_X_E_WINDOW_LATCH_NAME",
+  "icon_color": "#9A9A9A",
+  "short_description": "EVID_SBX_WINDOW_LATCH_SHORT",
+  "detailed_description": "DED_PROTO_X_E_WINDOW_LATCH_TEXT"
+}

@@ -3,6 +3,10 @@ extends Control
 
 signal closed()
 signal quit_to_title_requested()
+## Milestone 1.16: the player confirmed "New Game" — Main.gd decides what that
+## means (a core-loop chapter restarts through its runtime; any other case
+## starts over), so this menu no longer calls SaveManager.new_game() itself.
+signal new_game_requested()
 
 @onready var save_button: Button = %SaveButton
 @onready var load_button: Button = %LoadButton
@@ -13,6 +17,7 @@ signal quit_to_title_requested()
 @onready var vi_button: Button = %ViButton
 @onready var en_button: Button = %EnButton
 @onready var status_label: Label = %StatusLabel
+@onready var confirm_dialog: ConfirmationDialog = %ConfirmDialog
 
 
 func _ready() -> void:
@@ -25,6 +30,7 @@ func _ready() -> void:
 	quit_button.pressed.connect(func(): quit_to_title_requested.emit())
 	vi_button.pressed.connect(func(): LocaleManager.set_locale("vi"))
 	en_button.pressed.connect(func(): LocaleManager.set_locale("en"))
+	confirm_dialog.confirmed.connect(_on_new_game_confirmed)
 	LocaleManager.locale_changed.connect(func(_locale): _apply_static_labels())
 	_apply_static_labels()
 
@@ -47,13 +53,17 @@ func _apply_static_labels() -> void:
 	en_button.set_pressed_no_signal(current_locale == "en")
 	vi_button.disabled = current_locale == "vi"
 	en_button.disabled = current_locale == "en"
+	confirm_dialog.dialog_text = tr("UI_MENU_CONFIRM_NEW_GAME")
+	confirm_dialog.get_ok_button().text = tr("UI_CORE_LOOP_CONFIRM")
+	confirm_dialog.get_cancel_button().text = tr("UI_CORE_LOOP_CANCEL")
 
 
 func open() -> void:
 	status_label.text = ""
-	load_button.disabled = not SaveManager.has_save()
+	load_button.disabled = not SaveManager.has_resumable_save()
 	_apply_static_labels()
 	visible = true
+	resume_button.grab_focus()
 
 
 func close() -> void:
@@ -77,13 +87,18 @@ func _on_load_pressed() -> void:
 		status_label.text = tr("UI_LOAD_FAILED")
 
 
+## Starting over replaces the current progress, so it is confirmed first.
 func _on_new_game_pressed() -> void:
-	SaveManager.new_game()
+	confirm_dialog.popup_centered()
+
+
+func _on_new_game_confirmed() -> void:
+	new_game_requested.emit()
 	status_label.text = tr("UI_STARTED_NEW_GAME")
 	close()
 
 
 func _input(event: InputEvent) -> void:
-	if visible and event.is_action_pressed("ui_cancel"):
+	if visible and not confirm_dialog.visible and event.is_action_pressed("ui_cancel"):
 		close()
 		get_viewport().set_input_as_handled()
