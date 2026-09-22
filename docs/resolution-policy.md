@@ -361,6 +361,27 @@ payload keys/event type shown in the table above (`tier*` →
 missing version field. No v1-shaped alias is kept: a consumer must read
 `event_schema_version` and use the matching column above, not guess.
 
+## Help-only mode and production persistence (Milestone 1.16)
+
+`ResolutionPolicy.new(failures_escalate_run_result := true)`. The default is
+everything above. The production chapter run (`docs/core-loop-sandbox.md`)
+passes `false`, because 1.15B locks the run result to the highest help
+actually used: failed commits then never raise it — not the first, not the
+third, not reaching the assistance gate — while hints (1–2 Guided, 3–4
+Assisted), accepted assistance and partner resolution still do. The local
+3 + 2 budget, the phases and every event are unchanged. The mode is
+serialized (`"failures_escalate_run_result"`, an additive key — a dictionary
+without it restores with the original semantics) and `load_dict()`'s
+"result lower than its counts imply" check honors it. In production each
+unit owns its own policy; the chapter's run help result is the maximum over
+them, stored in the save and the recording, never shown to the player.
+
+Production persistence follows the rule stated below: the formal outcome,
+its policy snapshot, failed-candidate keys and the session are written in ONE
+atomic checkpoint before the feedback is shown, and the pending feedback
+itself is part of the snapshot — quitting on the feedback screen neither
+refunds the attempt nor loses the message.
+
 ## Persistence (prototype-only)
 
 Policy state lives in the controller the scene owns, so within a debug

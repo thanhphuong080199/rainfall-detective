@@ -130,6 +130,14 @@ namespacing):
 | `CASE_<id>_NAME` / `_DESC` | A case's `display_name` (or legacy `title`) / `description`. |
 | `CHAPTER_<id>_NAME` | A chapter's `display_name`. |
 | `DED_<CASE>_…` | A deduction case's text fields (Milestone 1.9), e.g. `DED_PROTO_X_E_DOOR_LOG_TEXT`, `DED_PROTO_X_HINT_MISUSED_2` — see `docs/deduction-system.md`. |
+| `UI_CORE_LOOP_` | Production core-loop chrome (Milestone 1.16) — HUD, Case File, mechanic screen, briefing, result, confirmations (`docs/core-loop-sandbox.md`). Never a run-result label. |
+| `CL_<CHAPTER>_…` | A chapter's `core_loop` text — briefing/result title and text, unit titles, consequence summaries, phase objectives (e.g. `CL_SBX_FINDING_B1`). |
+
+The file uses CRLF line endings throughout (so `git diff --check` flags every
+added row as "trailing whitespace" — the CR — exactly as it did for every
+earlier milestone's additions; keep new rows CRLF for consistency). Keep each
+field on one line: a raw newline inside a quoted field would become part of
+the translated text.
 
 Every key referenced from `data/` must have both an `en` and a `vi` entry —
 `ContentValidator` enforces this (see "Content validation" below).

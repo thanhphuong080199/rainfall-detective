@@ -444,6 +444,15 @@ optional field in this project (locations, cases, events) — this doc calls
 it out once because a chapter is the one place in this pass where "the last
 one" needing an explicit absence is common enough to get it wrong.
 
+## Core-loop chapters (Milestone 1.16)
+
+A chapter may add a `core_loop` section, which makes it playable through the
+production route (briefing → investigation → B/A/C mechanics → narrative
+result) under `ChapterRuntime`. Nothing in this document changes for it:
+the chapter still completes through its `completion_event`, which the
+section's FINAL consequence must produce (validated), and `CaseManager` still
+owns completion. See `docs/core-loop-sandbox.md`.
+
 ## Known limitations
 
 - **A chapter's completion event firing out of turn isn't fully prevented,

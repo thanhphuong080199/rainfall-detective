@@ -30,6 +30,10 @@ var _mode_npc_id: String = ""
 ## being picked up) silently handed the player a fresh set of *enabled*
 ## buttons while the dialogue was still on screen.
 var _is_interactive: bool = true
+## Milestone 1.16: which translation key labels the top-bar evidence button —
+## "Evidence" normally, "Case File" when Main.gd routes it to a core-loop
+## chapter's Case File instead of the plain inventory.
+var _evidence_label_key: String = "UI_EVIDENCE_BUTTON"
 
 
 func _ready() -> void:
@@ -47,8 +51,24 @@ func _ready() -> void:
 
 
 func _apply_static_labels() -> void:
-	evidence_button.text = tr("UI_EVIDENCE_BUTTON")
+	evidence_button.text = tr(_evidence_label_key)
 	menu_button.text = tr("UI_MENU_BUTTON")
+
+
+func set_evidence_button_label_key(key: String) -> void:
+	_evidence_label_key = key
+	_apply_static_labels()
+
+
+## Gives keyboard focus back to the investigation after an overlay closes:
+## the first enabled action, else the top-bar button.
+func grab_default_focus() -> void:
+	for child in action_list.get_children():
+		if child is Button and not (child as Button).disabled:
+			(child as Button).grab_focus()
+			return
+	if not evidence_button.disabled:
+		evidence_button.grab_focus()
 
 
 func set_interactive(is_interactive: bool) -> void:

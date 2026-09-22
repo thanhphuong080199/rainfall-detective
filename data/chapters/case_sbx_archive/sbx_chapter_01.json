@@ -1,0 +1,204 @@
+{
+  "id": "sbx_chapter_01",
+  "display_name": "CHAPTER_SBX_01_NAME",
+  "entry_effects": [],
+  "completion_event": "sbx_chapter_01_complete",
+  "core_loop": {
+    "format": 1,
+    "canon": false,
+    "deduction_case": "proto_x_archive_ledger",
+    "briefing": {
+      "title": "CL_SBX_BRIEFING_TITLE",
+      "text": "CL_SBX_BRIEFING_TEXT"
+    },
+    "result": {
+      "title": "CL_SBX_RESULT_TITLE",
+      "text": "CL_SBX_RESULT_TEXT"
+    },
+    "evidence_links": {
+      "sbx_door_log": "e_door_log",
+      "sbx_tram_tap": "e_tram_tap",
+      "sbx_harbor_photo": "e_harbor_photo",
+      "sbx_route_note": "e_route_note",
+      "sbx_lost_property_sheet": "e_lost_property_sheet",
+      "sbx_forced_window": "e_forced_window",
+      "sbx_latch_guide": "e_latch_guide",
+      "sbx_window_latch": "e_window_latch",
+      "sbx_back_door_sighting": "e_back_door_sighting",
+      "sbx_shredding_log": "e_shredding_log"
+    },
+    "units": [
+      {
+        "id": "b1_badge",
+        "mechanic": "clue_connection",
+        "round": "round_1",
+        "title": "CL_SBX_UNIT_B1_TITLE",
+        "offer_condition": {
+          "all": [
+            {
+              "has_evidence": "sbx_door_log"
+            },
+            {
+              "has_evidence": "sbx_route_note"
+            },
+            {
+              "any": [
+                {
+                  "has_evidence": "sbx_tram_tap"
+                },
+                {
+                  "has_evidence": "sbx_harbor_photo"
+                }
+              ]
+            }
+          ]
+        },
+        "consequences": {
+          "resolved": {
+            "id": "sbx_b1_resolved",
+            "summary": "CL_SBX_FINDING_B1",
+            "effects": [
+              {
+                "type": "set_flag",
+                "flag": "sbx_confrontation_unlocked",
+                "value": true
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "a1_denial",
+        "mechanic": "statement_contradiction",
+        "rounds": [
+          "round_1"
+        ],
+        "title": "CL_SBX_UNIT_A1_TITLE",
+        "offer_condition": {
+          "all": [
+            {
+              "interaction_complete": "sbx_oren_pressed"
+            },
+            {
+              "has_evidence": "sbx_lost_property_sheet"
+            }
+          ]
+        },
+        "consequences": {
+          "resolved": {
+            "id": "sbx_a1_resolved",
+            "summary": "CL_SBX_FINDING_A1",
+            "effects": [
+              {
+                "type": "set_flag",
+                "flag": "sbx_window_inspection_unlocked",
+                "value": true
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "b2_staging",
+        "mechanic": "clue_connection",
+        "round": "round_2",
+        "title": "CL_SBX_UNIT_B2_TITLE",
+        "offer_condition": {
+          "all": [
+            {
+              "has_evidence": "sbx_forced_window"
+            },
+            {
+              "has_evidence": "sbx_latch_guide"
+            },
+            {
+              "has_evidence": "sbx_window_latch"
+            }
+          ]
+        },
+        "consequences": {
+          "resolved": {
+            "id": "sbx_b2_resolved",
+            "summary": "CL_SBX_FINDING_B2",
+            "effects": [
+              {
+                "type": "set_flag",
+                "flag": "sbx_timeline_unlocked",
+                "value": true
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "c1_timeline",
+        "mechanic": "timeline_reconstruction",
+        "title": "CL_SBX_UNIT_C1_TITLE",
+        "offer_condition": {
+          "flag": "sbx_timeline_unlocked"
+        },
+        "consequences": {
+          "timeline_accepted": {
+            "id": "sbx_c1_timeline_accepted",
+            "summary": "CL_SBX_FINDING_C1_TIMELINE",
+            "effects": [
+              {
+                "type": "set_flag",
+                "flag": "sbx_timeline_accepted",
+                "value": true
+              }
+            ]
+          },
+          "resolved": {
+            "id": "sbx_c1_claim_accepted",
+            "summary": "CL_SBX_FINDING_C1_CLAIM",
+            "effects": [
+              {
+                "type": "set_flag",
+                "flag": "sbx_final_claim_accepted",
+                "value": true
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "phases": [
+      {
+        "id": "briefing",
+        "kind": "briefing",
+        "objective": "CL_SBX_OBJECTIVE_BRIEFING"
+      },
+      {
+        "id": "investigation_1",
+        "unit": "b1_badge",
+        "completes_on": "resolved",
+        "objective": "CL_SBX_OBJECTIVE_INVESTIGATION_1"
+      },
+      {
+        "id": "confrontation",
+        "unit": "a1_denial",
+        "completes_on": "resolved",
+        "objective": "CL_SBX_OBJECTIVE_CONFRONTATION"
+      },
+      {
+        "id": "investigation_2",
+        "unit": "b2_staging",
+        "completes_on": "resolved",
+        "objective": "CL_SBX_OBJECTIVE_INVESTIGATION_2"
+      },
+      {
+        "id": "timeline",
+        "unit": "c1_timeline",
+        "completes_on": "timeline_accepted",
+        "objective": "CL_SBX_OBJECTIVE_TIMELINE"
+      },
+      {
+        "id": "final_claim",
+        "unit": "c1_timeline",
+        "completes_on": "resolved",
+        "objective": "CL_SBX_OBJECTIVE_FINAL_CLAIM"
+      }
+    ]
+  }
+}

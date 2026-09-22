@@ -1,0 +1,9 @@
+{
+  "id": "sbx_ilse",
+  "name": "DED_PROTO_X_SUS_ILSE_NAME",
+  "expressions": {
+    "normal": "#5E8C6A",
+    "worried": "#B58A3C",
+    "angry": "#A8453C"
+  }
+}

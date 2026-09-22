@@ -473,7 +473,16 @@ Ids, text and times are left out. Two cases with the same
 names the missing and unexpected entries. This compares proof-graph shape,
 not raw counts.
 
-## Save/load (deferred)
+## Save/load (deferred — superseded for production in Milestone 1.16)
+
+> **Milestone 1.16:** the production chapter run now persists its ONE shared
+> `DeductionSession` (`to_dict()`) inside `GameState.chapter_run`, together
+> with every unit's controller snapshot, in the same atomic `SaveManager`
+> write as the rest of the game — see `docs/core-loop-sandbox.md`,
+> "Save / load". The chosen home was a dedicated `chapter_run` field (save
+> format v2), not the `GameState.variables` entry sketched below. The debug
+> Deduction Lab and prototypes still persist nothing. The text below is the
+> original Milestone 1.9 rationale, kept for history.
 
 Deduction progress is **not** persisted through `SaveManager` in this
 milestone.

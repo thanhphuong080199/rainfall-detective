@@ -1,0 +1,7 @@
+{
+  "id": "sbx_tram_tap",
+  "name": "DED_PROTO_X_E_TRAM_TAP_NAME",
+  "icon_color": "#4F8FA6",
+  "short_description": "EVID_SBX_TRAM_TAP_SHORT",
+  "detailed_description": "DED_PROTO_X_E_TRAM_TAP_TEXT"
+}

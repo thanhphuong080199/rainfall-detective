@@ -1,5 +1,12 @@
 # Prototype B — Clue Connection (Milestone 1.12)
 
+> **Milestone 1.16:** in production (`docs/core-loop-sandbox.md`) each
+> core-loop unit runs `PrototypeBController` scoped to exactly ONE round, so
+> "Commit Theory" commits a single deduction into the chapter run's shared
+> session — the 1.15B contract's B, never a batch. This debug prototype keeps
+> the batch theory described below; with no context the controller behaves
+> exactly as documented here.
+
 The second playable deduction interaction, built on the same Milestone
 1.9/1.9.1 foundation (`docs/deduction-system.md`) and Milestone 1.10 Deduction
 Lab (`docs/deduction-lab.md`) Prototype A (`docs/prototype-a.md`) used, and

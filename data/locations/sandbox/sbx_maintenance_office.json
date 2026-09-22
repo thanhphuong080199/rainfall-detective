@@ -1,0 +1,44 @@
+{
+  "id": "sbx_maintenance_office",
+  "name": "LOC_SBX_MAINTENANCE_OFFICE_NAME",
+  "background_color": "#35443A",
+  "npcs": [],
+  "examine_points": [
+    {
+      "id": "repair_shelf",
+      "label": "LOC_SBX_EXAMINE_REPAIR_SHELF",
+      "variants": [
+        {
+          "condition": {
+            "has_evidence": "sbx_latch_guide"
+          },
+          "dialogue_id": "sbx_examine_repair_shelf_after"
+        },
+        {
+          "dialogue_id": "sbx_examine_repair_shelf"
+        }
+      ]
+    },
+    {
+      "id": "pickup_clipboard",
+      "label": "LOC_SBX_EXAMINE_PICKUP_CLIPBOARD",
+      "variants": [
+        {
+          "condition": {
+            "has_evidence": "sbx_shredding_log"
+          },
+          "dialogue_id": "sbx_examine_pickup_clipboard_after"
+        },
+        {
+          "dialogue_id": "sbx_examine_pickup_clipboard"
+        }
+      ]
+    }
+  ],
+  "destinations": [
+    {
+      "location_id": "sbx_archive_lobby",
+      "label": "LOC_SBX_DEST_LOBBY"
+    }
+  ]
+}

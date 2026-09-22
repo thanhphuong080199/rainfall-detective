@@ -1,5 +1,11 @@
 # Prototype C — Timeline Reconstruction (Milestone 1.13)
 
+> **Milestone 1.16:** `PrototypeCController` also backs the production
+> timeline and final claim of a core-loop chapter (`docs/core-loop-sandbox.md`)
+> — the timeline unit and the claim unit map to two chapter phases — with the
+> help-only `ResolutionPolicy` and a full `to_snapshot()`/`restore_snapshot()`.
+> The debug screen and its behavior described below are unchanged.
+
 The third playable deduction interaction, built on the same Milestone
 1.9/1.9.1 foundation (`docs/deduction-system.md`) and Milestone 1.10
 Deduction Lab (`docs/deduction-lab.md`) Prototype A (`docs/prototype-a.md`)

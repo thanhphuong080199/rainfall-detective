@@ -12,6 +12,11 @@ signal evidence_added(evidence_id: String)
 signal evidence_removed(evidence_id: String)
 signal location_changed(location_id: String)
 signal interaction_seen(key: String)
+## Milestone 1.16: the WHOLE state was just replaced (start_new_game() or
+## load_from_dict()), not changed by gameplay — emitted last, after every
+## field is assigned. The production chapter runtime rebuilds itself from
+## chapter_run on this, instead of treating the replacement as a player action.
+signal state_replaced()
 
 var current_location: String = ""
 var visited_locations: Array[String] = []
@@ -30,6 +35,16 @@ var variables: Dictionary = {}
 ## only sees it through condition shapes like {"examined": "..."} — see
 ## condition_evaluator.gd.
 var seen_interactions: Array[String] = []
+
+## Milestone 1.16 — the production chapter run's durable snapshot (phase,
+## shared deduction session, every resolution unit's mechanic state, applied
+## progression consequences, run help result). Opaque, JSON-safe data owned
+## and validated by ChapterRuntime (scripts/core_loop/chapter_runtime.gd);
+## GameState only stores it, clears it with everything else on a new game,
+## and hands it to SaveManager — exactly the "no opinion on format" stance it
+## already takes for variables. {} means no core-loop run is active (every
+## flat or non-core-loop case, and every pre-1.16 save).
+var chapter_run: Dictionary = {}
 
 
 func has_evidence(evidence_id: String) -> bool:
@@ -119,6 +134,12 @@ func get_visited_locations() -> Array[String]:
 	return visited_locations
 
 
+## Replaces the chapter-run snapshot wholesale (a deep copy — the caller's
+## dictionary stays its own). Only ChapterRuntime writes this.
+func set_chapter_run(snapshot: Dictionary) -> void:
+	chapter_run = snapshot.duplicate(true)
+
+
 func go_to_location(location_id: String) -> void:
 	current_location = location_id
 	if not visited_locations.has(location_id):
@@ -139,11 +160,13 @@ func start_new_game(case_id: String) -> void:
 	variables.clear()
 	visited_locations.clear()
 	seen_interactions.clear()
+	chapter_run = {}
 	set_var("case_id", case_id)
 
 	_assign_flags(case_data.get("initial_flags", {}), "case '%s' initial_flags" % case_id)
 
 	go_to_location(case_data.get("start_location", ""))
+	state_replaced.emit()
 
 
 ## Plain-data snapshot for SaveManager to serialize. Deliberately has no
@@ -156,9 +179,14 @@ func get_save_dict() -> Dictionary:
 		"flags": flags,
 		"variables": variables,
 		"seen_interactions": seen_interactions,
+		"chapter_run": chapter_run,
 	}
 
 
+## `data` is assumed already validated by SaveManager (it rejects a malformed
+## or unsupported file before calling this — never a partial load). A save
+## without "chapter_run" (every pre-1.16 save) restores with no active
+## core-loop run.
 func load_from_dict(data: Dictionary) -> void:
 	current_location = data.get("current_location", "")
 	visited_locations = []
@@ -170,7 +198,10 @@ func load_from_dict(data: Dictionary) -> void:
 	variables = (data.get("variables", {}) as Dictionary).duplicate()
 	seen_interactions = []
 	seen_interactions.assign(data.get("seen_interactions", []))
+	var raw_chapter_run: Variant = data.get("chapter_run", {})
+	chapter_run = (raw_chapter_run as Dictionary).duplicate(true) if typeof(raw_chapter_run) == TYPE_DICTIONARY else {}
 	location_changed.emit(current_location)
+	state_replaced.emit()
 
 
 ## Copies boolean flags out of a plain dictionary (a case's initial_flags, or

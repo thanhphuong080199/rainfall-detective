@@ -49,6 +49,14 @@ extends RefCounted
 ## unmodified) passed into start(). This class decides WHAT and WHEN to
 ## record for the Prototype C event vocabulary; the recorder itself carries
 ## no Prototype-C-specific code — see docs/prototype-c.md, "Recorder events".
+##
+## Milestone 1.16 (docs/core-loop-sandbox.md): start() accepts an optional
+## production `context` whose only meaningful key here is
+## "failures_escalate_run_result" (there is no session to share — see the
+## DECISION above). to_snapshot()/restore_snapshot() persist the whole
+## interaction state, both units included, for the production save.
+
+const SNAPSHOT_FORMAT := 1
 
 const UNIT_TIMELINE := 0
 const UNIT_CLAIM := 1
@@ -138,7 +146,8 @@ func _init(clock_fn: Callable = Callable()) -> void:
 ## their own authored `fixed_time` timeline constraint declares — read from the
 ## timeline itself, never duplicated into prototype_c's own data. `recorder`,
 ## if given, receives this run's telemetry; pass null to run unrecorded.
-func start(case_def: Dictionary, recorder: DeductionLabRecorder = null) -> bool:
+## `context`: see the class doc (Milestone 1.16).
+func start(case_def: Dictionary, recorder: DeductionLabRecorder = null, context: Dictionary = {}) -> bool:
 	if typeof(case_def) != TYPE_DICTIONARY:
 		return false
 	var proto: Variant = case_def.get("prototype_c")
@@ -190,7 +199,7 @@ func start(case_def: Dictionary, recorder: DeductionLabRecorder = null) -> bool:
 	_claim_resolved = false
 	_claim_resolved_by = ""
 	_completed = false
-	_policy = ResolutionPolicy.new()
+	_policy = ResolutionPolicy.new(PrototypeContext.failures_escalate(context))
 	_run_count += 1
 	_recorder = recorder
 	_start_ticks = int(_clock_fn.call())
@@ -202,10 +211,7 @@ func start(case_def: Dictionary, recorder: DeductionLabRecorder = null) -> bool:
 
 
 func _fixed_time_of(event_id: String) -> String:
-	for constraint in TimelineEvaluator.constraints(_case_def):
-		if str(constraint.get("type", "")) == "fixed_time" and str(constraint.get("event", "")) == event_id:
-			return str(constraint.get("time", ""))
-	return ""
+	return _fixed_time_in(_case_def, event_id)
 
 
 func get_case_def() -> Dictionary:
@@ -898,6 +904,168 @@ func abandon() -> void:
 	if _completed or _recorder == null or not has_progress():
 		return
 	_record("prototype_abandoned", _stats_with_resolution())
+
+
+# ---------------------------------------------------------------------------
+# Snapshot (Milestone 1.16) — the whole interaction state, both units, JSON
+# safe. See PrototypeAController.to_snapshot() for the shared contract.
+
+func to_snapshot() -> Dictionary:
+	return {
+		"format": SNAPSHOT_FORMAT,
+		"case_id": str(_case_def.get("id", "")),
+		"run_count": _run_count,
+		"placements": _placements.duplicate(),
+		"selected_event_id": _selected_event_id,
+		"opened_fact_ids": _opened_fact_ids.duplicate(),
+		"hint_level": _hint_level,
+		"submission_count": _submission_count,
+		"failed_submission_count": _failed_submission_count,
+		"moves_since_submission": _moves_since_submission,
+		"total_moves": _total_moves,
+		"failed_placement_keys": PrototypeContext.sorted_keys(_failed_placement_keys),
+		"last_result": JSON.parse_string(JSON.stringify(_last_result)),
+		"last_violated_facts": _last_violated_facts.duplicate(),
+		"accepted": _accepted,
+		"accepted_placements": _accepted_placements.duplicate(),
+		"timeline_resolved_by": _timeline_resolved_by,
+		"partner_explained_fact_ids": _partner_explained_fact_ids.duplicate(),
+		"assistance_constraint_id": _assistance_constraint_id,
+		"claim_answer": _claim_answer,
+		"claim_justification_id": _claim_justification_id,
+		"failed_claim_keys": PrototypeContext.sorted_keys(_failed_claim_keys),
+		"claim_attempts": _claim_attempts,
+		"failed_claim_count": _failed_claim_count,
+		"claim_resolved": _claim_resolved,
+		"claim_resolved_by": _claim_resolved_by,
+		"completed": _completed,
+		"policy": _policy.to_dict() if _policy != null else {},
+	}
+
+
+## Rebuilds a run from to_snapshot() output. Records nothing; rejects anything
+## malformed as a whole (a placement outside the authored slots, a moved fixed
+## event, an accepted timeline with an unplaced event...) without touching the
+## controller.
+func restore_snapshot(case_def: Dictionary, snapshot: Variant, recorder: DeductionLabRecorder = null, context: Dictionary = {}) -> bool:
+	if typeof(snapshot) != TYPE_DICTIONARY or PrototypeContext.count(snapshot.get("format")) != SNAPSHOT_FORMAT:
+		return false
+	var proto: Variant = case_def.get("prototype_c")
+	if typeof(proto) != TYPE_DICTIONARY or str(snapshot.get("case_id", "")) != str(case_def.get("id", "")):
+		return false
+	var fixed_ids: Array[String] = DeductionEvaluator.string_array(proto.get("fixed_events", []))
+	var movable_ids: Array[String] = DeductionEvaluator.string_array(proto.get("movable_events", []))
+	var slots: Array[String] = DeductionEvaluator.string_array(proto.get("time_slots", []))
+	var events_index: Dictionary = TimelineEvaluator.event_index(case_def)
+	if (fixed_ids.is_empty() and movable_ids.is_empty()) or slots.is_empty():
+		return false
+
+	var placements: Dictionary = {}
+	var fixed_times: Dictionary = {}
+	for event_id in fixed_ids:
+		fixed_times[event_id] = _fixed_time_in(case_def, event_id)
+	if not _restore_placements(snapshot.get("placements"), fixed_times, movable_ids, slots, false, placements):
+		return false
+	var accepted: Variant = snapshot.get("accepted", false)
+	var accepted_placements: Dictionary = {}
+	if typeof(accepted) != TYPE_BOOL:
+		return false
+	if accepted and not _restore_placements(snapshot.get("accepted_placements"), fixed_times, movable_ids, slots, true, accepted_placements):
+		return false
+
+	var counts: Dictionary = {}
+	for key in ["run_count", "hint_level", "submission_count", "failed_submission_count", "moves_since_submission", "total_moves", "claim_attempts", "failed_claim_count"]:
+		counts[key] = PrototypeContext.count(snapshot.get(key))
+		if counts[key] < 0:
+			return false
+	for key in ["opened_fact_ids", "failed_placement_keys", "last_violated_facts", "partner_explained_fact_ids", "failed_claim_keys"]:
+		if not PrototypeContext.is_string_list(snapshot.get(key, [])):
+			return false
+	for key in ["selected_event_id", "assistance_constraint_id", "claim_justification_id"]:
+		if typeof(snapshot.get(key, "")) != TYPE_STRING:
+			return false
+	var claim_answer: Variant = snapshot.get("claim_answer", "")
+	var timeline_by: Variant = snapshot.get("timeline_resolved_by", "")
+	var claim_by: Variant = snapshot.get("claim_resolved_by", "")
+	var resolved_by_values: Array = ["", ResolutionPolicy.RESOLVED_BY_PLAYER, ResolutionPolicy.RESOLVED_BY_PARTNER]
+	if not (claim_answer is String and ["", ANSWER_FITS, ANSWER_IMPOSSIBLE].has(claim_answer)):
+		return false
+	if not (timeline_by is String and resolved_by_values.has(timeline_by)) or not (claim_by is String and resolved_by_values.has(claim_by)):
+		return false
+	var claim_resolved: Variant = snapshot.get("claim_resolved", false)
+	var completed: Variant = snapshot.get("completed", false)
+	var last_result: Variant = snapshot.get("last_result", {})
+	if typeof(claim_resolved) != TYPE_BOOL or typeof(completed) != TYPE_BOOL or typeof(last_result) != TYPE_DICTIONARY:
+		return false
+	if (accepted != (timeline_by != "")) or (claim_resolved and not accepted) or (claim_resolved != (claim_by != "")):
+		return false
+	var policy := ResolutionPolicy.new(PrototypeContext.failures_escalate(context))
+	if not policy.load_dict(snapshot.get("policy")):
+		return false
+
+	_case_def = case_def
+	_proto = proto
+	_events_index = events_index
+	_fixed_events = fixed_ids
+	_movable_events = movable_ids
+	_all_event_ids = []
+	for event_id in _events_index:
+		_all_event_ids.append(str(event_id))
+	_time_slots = slots
+	_placements = placements
+	_selected_event_id = str(snapshot.get("selected_event_id", ""))
+	_opened_fact_ids = DeductionEvaluator.string_array(snapshot.get("opened_fact_ids", []))
+	_hint_level = counts["hint_level"]
+	_submission_count = counts["submission_count"]
+	_failed_submission_count = counts["failed_submission_count"]
+	_moves_since_submission = counts["moves_since_submission"]
+	_total_moves = counts["total_moves"]
+	_failed_placement_keys = PrototypeContext.key_set(snapshot.get("failed_placement_keys", []))
+	_last_result = (last_result as Dictionary).duplicate(true)
+	_last_violated_facts = DeductionEvaluator.string_array(snapshot.get("last_violated_facts", []))
+	_accepted = accepted
+	_accepted_placements = accepted_placements
+	_timeline_resolved_by = timeline_by
+	_partner_explained_fact_ids = DeductionEvaluator.string_array(snapshot.get("partner_explained_fact_ids", []))
+	_assistance_constraint_id = str(snapshot.get("assistance_constraint_id", ""))
+	_claim_answer = claim_answer
+	_claim_justification_id = str(snapshot.get("claim_justification_id", ""))
+	_failed_claim_keys = PrototypeContext.key_set(snapshot.get("failed_claim_keys", []))
+	_claim_attempts = counts["claim_attempts"]
+	_failed_claim_count = counts["failed_claim_count"]
+	_claim_resolved = claim_resolved
+	_claim_resolved_by = claim_by
+	_completed = completed
+	_policy = policy
+	_run_count = counts["run_count"]
+	_recorder = recorder
+	_start_ticks = int(_clock_fn.call())
+	return true
+
+
+## Validates one placement map from snapshot data into `out`: every fixed
+## event at its authored time, every movable event "" or an authored slot
+## (all placed when `require_complete`), and nothing else.
+static func _restore_placements(raw: Variant, fixed_times: Dictionary, movable_ids: Array[String], slots: Array[String], require_complete: bool, out: Dictionary) -> bool:
+	if typeof(raw) != TYPE_DICTIONARY or (raw as Dictionary).size() != fixed_times.size() + movable_ids.size():
+		return false
+	for event_id in fixed_times:
+		if str((raw as Dictionary).get(event_id, "")) != fixed_times[event_id]:
+			return false
+		out[event_id] = fixed_times[event_id]
+	for event_id in movable_ids:
+		var time: Variant = (raw as Dictionary).get(event_id)
+		if not (time is String) or (time != "" and not slots.has(time)) or (require_complete and time == ""):
+			return false
+		out[event_id] = time
+	return true
+
+
+static func _fixed_time_in(case_def: Dictionary, event_id: String) -> String:
+	for constraint in TimelineEvaluator.constraints(case_def):
+		if str(constraint.get("type", "")) == "fixed_time" and str(constraint.get("event", "")) == event_id:
+			return str(constraint.get("time", ""))
+	return ""
 
 
 # ---------------------------------------------------------------------------

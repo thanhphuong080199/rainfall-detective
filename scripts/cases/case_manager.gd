@@ -174,6 +174,13 @@ func _activate_chapter(chapter_id: String) -> void:
 
 
 func _chapter_complete_key(chapter_id: String) -> String:
+	return chapter_completion_marker(chapter_id)
+
+
+## The seen_interactions key that records `chapter_id` as completed — public
+## (Milestone 1.16) so SaveManager's pre-load validation of a chapter-run
+## snapshot can check a SAVE's state for it without reimplementing the format.
+func chapter_completion_marker(chapter_id: String) -> String:
 	return "chapter_complete:%s" % chapter_id
 
 

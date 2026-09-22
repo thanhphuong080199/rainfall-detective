@@ -1,0 +1,9 @@
+{
+  "id": "sbx_mara",
+  "name": "DED_PROTO_X_SUS_MARA_NAME",
+  "expressions": {
+    "normal": "#6A7FB0",
+    "worried": "#B58A3C",
+    "angry": "#A8453C"
+  }
+}

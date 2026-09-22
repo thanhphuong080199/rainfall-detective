@@ -67,4 +67,9 @@ jobs:
             --script res://scenes/test/prototype_c_presenter_test.gd \
             --script res://scenes/test/prototype_c_content_test.gd \
             --script res://scenes/test/prototype_c_scene_test.gd \
+            --script res://scenes/test/core_loop_mechanics_test.gd \
+            --script res://scenes/test/core_loop_validation_test.gd \
+            --script res://scenes/test/core_loop_runtime_test.gd \
+            --script res://scenes/test/core_loop_save_test.gd \
+            --script res://scenes/test/core_loop_scene_test.gd \
             --script res://scenes/test/smoke_test.gd

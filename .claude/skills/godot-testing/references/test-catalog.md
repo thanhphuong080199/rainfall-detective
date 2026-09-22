@@ -347,3 +347,37 @@ way that could break instantiation (a renamed unique name, a removed
 `ConfirmationDialog`, etc.). A new tab's *data* (what it displays, what
 action it performs) belongs in the underlying system's own focused test file
 instead — see `docs/case-debugger.md`, "Automated test coverage".
+
+
+## Core loop sandbox (Milestone 1.16) — `core_loop_*_test.gd`
+
+Source of truth: `docs/core-loop-sandbox.md`; test layout: `docs/testing.md`,
+"Core loop tests". Shared helpers + the sandbox's ids:
+`core_loop_test_support.gd` (`CoreLoopTestSupport` — `play_until(runtime,
+"briefing"|"b1"|"a1"|"b2"|"timeline"|"claim")`, `gather_*`, `solve_*`).
+
+- `core_loop_mechanics_test.gd` (pure) — controller production context
+  (shared session, round scope, acquired pool, help-only policy), snapshot
+  round trips/rejection, debug defaults unchanged. Add here: a new context key
+  or snapshot field on a prototype controller.
+- `core_loop_validation_test.gd` — one fixture per `CoreLoopValidator` rule,
+  plus errors reaching `ContentValidator`. Add here: any new chapter-contract
+  rule (mutate the real chapter, expect one error substring).
+- `core_loop_runtime_test.gd` — the full route through `ChapterRuntime` with
+  both sides of every lock, consequence idempotency/attribution, duplicates,
+  help/partner, restart isolation, recorder + summary. Add here: new runtime
+  behavior (commands, phases, consequences).
+- `core_loop_save_test.gd` — save at each checkpoint -> NEW runtime -> load,
+  nothing replayed; exact mid-mechanic resume; migration; corrupt and
+  half-applied snapshots rejected whole. Add here: anything newly persisted.
+- `core_loop_scene_test.gd` (FULL only) — real screens and visible buttons
+  from the title screen to the Result screen, Continue at several
+  checkpoints, VI/EN, footer layout, visible-text leak scan. Add here: a new
+  screen, control or routing rule.
+
+Traps already hit: never type a variable as `ChapterRuntime`/`CoreLoopPresenter`
+in a `-s` script (they reference autoloads — the compile-order trap poisons
+the class for the whole process; use `RefCounted` and `load()`); compare
+snapshots after a JSON round trip on BOTH sides (`1 != 1.0` in Dictionary
+equality); press buttons only through a visibility check (a hidden button's
+`pressed` signal still fires and masks routing bugs).

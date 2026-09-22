@@ -1,0 +1,404 @@
+[
+  {
+    "id": "sbx_mara_greeting",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "sbx_mara",
+        "expression": "worried",
+        "text": "DLG_SBX_MARA_GREETING_1",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sbx_mara_evening",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "sbx_mara",
+        "expression": "normal",
+        "text": "DLG_SBX_MARA_EVENING_1",
+        "next": "n2"
+      },
+      "n2": {
+        "speaker": "sbx_mara",
+        "expression": "normal",
+        "text": "DLG_SBX_MARA_EVENING_2",
+        "actions": [
+          {
+            "type": "add_evidence",
+            "evidence_id": "sbx_tram_tap"
+          }
+        ],
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sbx_mara_photo",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "sbx_mara",
+        "expression": "normal",
+        "text": "DLG_SBX_MARA_PHOTO_1",
+        "actions": [
+          {
+            "type": "add_evidence",
+            "evidence_id": "sbx_harbor_photo"
+          }
+        ],
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sbx_mara_present_generic",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "sbx_mara",
+        "expression": "worried",
+        "text": "DLG_SBX_MARA_PRESENT_GENERIC_1",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sbx_ilse_greeting",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "sbx_ilse",
+        "expression": "normal",
+        "text": "DLG_SBX_ILSE_GREETING_1",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sbx_ilse_left_early",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "sbx_ilse",
+        "expression": "worried",
+        "text": "DLG_SBX_ILSE_LEFT_EARLY_1",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sbx_ilse_present_generic",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "sbx_ilse",
+        "expression": "normal",
+        "text": "DLG_SBX_ILSE_PRESENT_GENERIC_1",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sbx_oren_greeting",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "sbx_oren",
+        "expression": "normal",
+        "text": "DLG_SBX_OREN_GREETING_1",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sbx_oren_badge",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_SBX_OREN_BADGE_1",
+        "next": "n2"
+      },
+      "n2": {
+        "speaker": "sbx_oren",
+        "expression": "angry",
+        "text": "DLG_SBX_OREN_BADGE_2",
+        "actions": [
+          {
+            "type": "mark_interaction_complete",
+            "id": "sbx_oren_pressed"
+          }
+        ],
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sbx_oren_present_generic",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "sbx_oren",
+        "expression": "normal",
+        "text": "DLG_SBX_OREN_PRESENT_GENERIC_1",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sbx_examine_front_desk_log",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_SBX_EXAMINE_FRONT_DESK_LOG_1",
+        "actions": [
+          {
+            "type": "add_evidence",
+            "evidence_id": "sbx_lost_property_sheet"
+          }
+        ],
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sbx_examine_front_desk_log_after",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_SBX_EXAMINE_FRONT_DESK_LOG_AFTER_1",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sbx_examine_transit_map",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_SBX_EXAMINE_TRANSIT_MAP_1",
+        "actions": [
+          {
+            "type": "add_evidence",
+            "evidence_id": "sbx_route_note"
+          }
+        ],
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sbx_examine_transit_map_after",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_SBX_EXAMINE_TRANSIT_MAP_AFTER_1",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sbx_examine_noticeboard",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_SBX_EXAMINE_NOTICEBOARD_1",
+        "actions": [
+          {
+            "type": "add_evidence",
+            "evidence_id": "sbx_back_door_sighting"
+          }
+        ],
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sbx_examine_noticeboard_after",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_SBX_EXAMINE_NOTICEBOARD_AFTER_1",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sbx_examine_door_terminal",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_SBX_EXAMINE_DOOR_TERMINAL_1",
+        "actions": [
+          {
+            "type": "add_evidence",
+            "evidence_id": "sbx_door_log"
+          }
+        ],
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sbx_examine_door_terminal_after",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_SBX_EXAMINE_DOOR_TERMINAL_AFTER_1",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sbx_examine_forced_window",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_SBX_EXAMINE_FORCED_WINDOW_1",
+        "actions": [
+          {
+            "type": "add_evidence",
+            "evidence_id": "sbx_forced_window"
+          }
+        ],
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sbx_examine_forced_window_after",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_SBX_EXAMINE_FORCED_WINDOW_AFTER_1",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sbx_examine_window_latch",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_SBX_EXAMINE_WINDOW_LATCH_1",
+        "actions": [
+          {
+            "type": "add_evidence",
+            "evidence_id": "sbx_window_latch"
+          }
+        ],
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sbx_examine_window_latch_after",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_SBX_EXAMINE_WINDOW_LATCH_AFTER_1",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sbx_examine_window_latch_locked",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_SBX_EXAMINE_WINDOW_LATCH_LOCKED_1",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sbx_examine_repair_shelf",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_SBX_EXAMINE_REPAIR_SHELF_1",
+        "actions": [
+          {
+            "type": "add_evidence",
+            "evidence_id": "sbx_latch_guide"
+          }
+        ],
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sbx_examine_repair_shelf_after",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_SBX_EXAMINE_REPAIR_SHELF_AFTER_1",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sbx_examine_pickup_clipboard",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_SBX_EXAMINE_PICKUP_CLIPBOARD_1",
+        "actions": [
+          {
+            "type": "add_evidence",
+            "evidence_id": "sbx_shredding_log"
+          }
+        ],
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sbx_examine_pickup_clipboard_after",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_SBX_EXAMINE_PICKUP_CLIPBOARD_AFTER_1",
+        "next": null
+      }
+    }
+  }
+]
