@@ -1,0 +1,9 @@
+{
+  "id": "tpl_felix",
+  "name": "DED_PROTO_Z_SUS_FELIX_NAME",
+  "expressions": {
+    "normal": "#6A7FB0",
+    "worried": "#B58A3C",
+    "angry": "#A8453C"
+  }
+}

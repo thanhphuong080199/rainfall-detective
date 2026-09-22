@@ -1,0 +1,7 @@
+{
+  "id": "tpl_seal_registry",
+  "name": "DED_PROTO_Z_E_SEAL_REGISTRY_NAME",
+  "icon_color": "#7A8FA6",
+  "short_description": "EVID_TPL_SEAL_REGISTRY_SHORT",
+  "detailed_description": "DED_PROTO_Z_E_SEAL_REGISTRY_TEXT"
+}

@@ -1,0 +1,7 @@
+{
+  "id": "tpl_locker_log",
+  "name": "DED_PROTO_Z_E_LOCKER_LOG_NAME",
+  "icon_color": "#7A8FA6",
+  "short_description": "EVID_TPL_LOCKER_LOG_SHORT",
+  "detailed_description": "DED_PROTO_Z_E_LOCKER_LOG_TEXT"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "sby_teodor",
+  "name": "DED_PROTO_Y_SUS_TEODOR_NAME",
+  "expressions": {
+    "normal": "#5E7F9C",
+    "worried": "#B58A3C",
+    "angry": "#A8453C"
+  }
+}

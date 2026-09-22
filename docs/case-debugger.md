@@ -198,6 +198,35 @@ state, and all case-specific flags/evidence in one step. The debugger
 re-renders immediately afterward (it's driven by the same signals a real
 reset already emits). Requires confirmation.
 
+## Core Loop tab (Milestone 1.17)
+
+The author report of a core-loop chapter (`CoreLoopAuthorReport`,
+`scripts/debug/core_loop_author_report.gd`) — the active chapter by default,
+or any core-loop chapter picked in the dropdown. Pure **inspection**: it
+reads `ContentDB`, `CaseManager` and `GameState.chapter_run` and never
+changes anything. Every line carries one tag:
+
+- `[ERROR]` / `[WARN]` — `CoreLoopValidator` findings for that chapter (the
+  same rules `ContentValidator` runs at boot);
+- `[info]` — static facts: canon status, deduction case, selector position,
+  the phase route, each unit's mechanic/rounds/offer condition, accepted
+  proof sets (documented? acquirable before the unit?), A refutations
+  (required / optional, never a producer), linked evidence and its known
+  producers, consequences and their effects, the completion event and the
+  consequence producing it;
+- `[NOW]` — the current run, only when the shown chapter is the active one:
+  current phase, run id/revision/help result (stored, never shown to
+  players), which unit is offered or LOCKED and what is missing, which
+  consequences were applied (by player or partner, in which phase).
+
+The legal-path simulation is **not** run here — it drives the real
+`GameState` and would replace the run being inspected. The headless report
+runs it: `godot --headless --path . -s res://scenes/test/core_loop_report.gd`
+(`docs/core-loop-authoring.md`, §9). Like the rest of the panel, the tab is
+inert in release builds. Covered by `core_loop_author_report_test.gd`
+(content, kinds, player-view isolation) and `core_loop_sandbox_scene_test.gd`
+(the tab rendering the active run).
+
 ## Debug action logging
 
 Every action that mutates state prints a `[CaseDebugger] ...` line to the

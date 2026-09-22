@@ -29,6 +29,20 @@ const C1_TIMELINE := {
 }
 const C1_CLAIM_SUPPORT := "c_shredding_window"
 
+## Milestone 1.17 — the second, structurally different sandbox (over
+## proto_y_lab_sample): staging deduction FIRST, a two-round confrontation with
+## an optional innocent lie, then the key-card deduction. Most of its driving
+## goes through CoreLoopRouteSimulator (content-derived); these name only what
+## a test pins down by hand.
+const CASE_2 := "case_sby_lab"
+const CHAPTER_2 := "sby_chapter_01"
+const B1_2 := "b1_staging"
+const A1_2 := "a1_priya"
+const B2_2 := "b2_keycard"
+const C1_2 := "c1_timeline"
+const B1_2_PATH := ["e_open_hatch", "e_hatch_diagram", "e_hatch_tabs"]
+const B2_2_PATH := ["e_cold_room_log", "e_class_photo", "e_shuttle_note"]
+
 var game_state: Node
 var investigation: Node
 var dialogue_manager: Node

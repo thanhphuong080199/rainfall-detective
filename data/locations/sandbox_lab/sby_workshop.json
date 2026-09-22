@@ -1,0 +1,87 @@
+{
+  "id": "sby_workshop",
+  "name": "LOC_SBY_WORKSHOP_NAME",
+  "background_color": "#3F3A2E",
+  "npcs": [
+    {
+      "id": "sby_bruno",
+      "topics": [
+        {
+          "id": "greeting",
+          "label": "LOC_SBY_TOPIC_BRUNO_GREETING",
+          "dialogue_id": "sby_bruno_greeting"
+        },
+        {
+          "id": "vent_repairs",
+          "label": "LOC_SBY_TOPIC_BRUNO_VENT_REPAIRS",
+          "dialogue_id": "sby_bruno_vent_repairs",
+          "condition": {
+            "has_evidence": "sby_open_hatch"
+          }
+        },
+        {
+          "id": "evening",
+          "label": "LOC_SBY_TOPIC_BRUNO_EVENING",
+          "dialogue_id": "sby_bruno_evening"
+        },
+        {
+          "id": "laundry",
+          "label": "LOC_SBY_TOPIC_BRUNO_LAUNDRY",
+          "dialogue_id": "sby_bruno_laundry",
+          "condition": {
+            "flag": "sby_staging_proven"
+          }
+        }
+      ],
+      "present_responses": [
+        {
+          "dialogue_id": "sby_bruno_present_generic"
+        }
+      ]
+    }
+  ],
+  "examine_points": [
+    {
+      "id": "clipboard",
+      "label": "LOC_SBY_EXAMINE_CLIPBOARD",
+      "variants": [
+        {
+          "condition": {
+            "has_evidence": "sby_waste_manifest"
+          },
+          "dialogue_id": "sby_examine_clipboard_after"
+        },
+        {
+          "condition": {
+            "interaction_complete": "sby_bins_mentioned"
+          },
+          "dialogue_id": "sby_examine_clipboard"
+        },
+        {
+          "dialogue_id": "sby_examine_clipboard_plain"
+        }
+      ]
+    },
+    {
+      "id": "bay_monitor",
+      "label": "LOC_SBY_EXAMINE_BAY_MONITOR",
+      "variants": [
+        {
+          "condition": {
+            "has_evidence": "sby_loading_bay_footage"
+          },
+          "dialogue_id": "sby_examine_bay_monitor_after"
+        },
+        {
+          "dialogue_id": "sby_examine_bay_monitor"
+        }
+      ]
+    }
+  ],
+  "destinations": [
+    {
+      "location_id": "sby_cold_store",
+      "label": "LOC_SBY_DEST_COLD_STORE"
+    }
+  ]
+}

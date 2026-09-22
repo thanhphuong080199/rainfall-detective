@@ -175,6 +175,53 @@ func get_new_game_case_id() -> String:
 	return DEFAULT_NEW_GAME_CASE
 
 
+## Milestone 1.17: what the debug-build title screen's Technical Sandbox
+## selector offers — every case whose JSON declares "sandbox_selection" and
+## is marked non-canon, ordered by its "order" (ties and malformed entries are
+## ContentValidator errors; here they only sort by id / are skipped). The
+## release New Game case (get_new_game_case_id()) is listed first when it is
+## not itself selectable, so the selector can always return to the default.
+## Each entry: {"case_id", "name", "description" (translation keys),
+## "default": bool}. Content-driven: no case id is named here.
+func get_sandbox_entries() -> Array[Dictionary]:
+	var selectable: Array[Dictionary] = []
+	for raw_id in ContentDB.get_all_case_ids():
+		var case_id: String = String(raw_id)
+		var data: Dictionary = ContentDB.get_case(case_id)
+		var selection: Variant = data.get("sandbox_selection")
+		var metadata: Variant = data.get("metadata", {})
+		if typeof(selection) != TYPE_DICTIONARY or typeof(metadata) != TYPE_DICTIONARY or (metadata as Dictionary).get("canon", true) != false:
+			continue
+		selectable.append({"case_id": case_id, "order": PrototypeContext.count((selection as Dictionary).get("order"))})
+	selectable.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return a["order"] < b["order"] or (a["order"] == b["order"] and a["case_id"] < b["case_id"]))
+	var default_id: String = get_new_game_case_id()
+	var ordered: Array[String] = []
+	if not selectable.any(func(entry: Dictionary) -> bool: return entry["case_id"] == default_id):
+		ordered.append(default_id)
+	for entry in selectable:
+		ordered.append(str(entry["case_id"]))
+	var entries: Array[Dictionary] = []
+	for case_id in ordered:
+		var data: Dictionary = ContentDB.get_case(case_id)
+		entries.append({
+			"case_id": case_id, "name": str(data.get("display_name", data.get("title", ""))),
+			"description": str(data.get("description", "")), "default": case_id == default_id,
+		})
+	return entries
+
+
+## The case a SAVE belongs to (its "variables.case_id"), or "" when there is
+## no loadable save — lets the title screen say which run Continue resumes
+## without loading anything.
+func get_saved_case_id() -> String:
+	var inspection: Dictionary = inspect_save()
+	if inspection.get("ok", false) != true:
+		return ""
+	var variables: Variant = (inspection.get("state", {}) as Dictionary).get("variables", {})
+	return str((variables as Dictionary).get("case_id", "")) if typeof(variables) == TYPE_DICTIONARY else ""
+
+
 func delete_save() -> void:
 	if FileAccess.file_exists(save_path):
 		DirAccess.remove_absolute(save_path)

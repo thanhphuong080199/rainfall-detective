@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project overview
 
-Rainfall Detective is a Godot **4.7** 2D narrative detective game. The current state is a **technical sandbox**: every character, location, dialogue line, and piece of evidence under `data/` is deliberately disposable placeholder content ("Character A", "Test Room", "Old Key", and — since Milestone 1.16 — the non-canon sandbox chapter `case_sbx_archive` built on the dummy mystery `proto_x_archive_ledger`) that exists only to prove the systems work — there is no story, no protagonist, and no real case yet. GDScript only; no plugins, no C#. New Game from the title screen starts the Milestone 1.16 core-loop sandbox chapter (see "Core loop sandbox" below).
+Rainfall Detective is a Godot **4.7** 2D narrative detective game. The current state is a **technical sandbox**: every character, location, dialogue line, and piece of evidence under `data/` is deliberately disposable placeholder content ("Character A", "Test Room", "Old Key", and — since Milestones 1.16/1.17 — the two non-canon sandbox chapters `case_sbx_archive` (on the dummy mystery `proto_x_archive_ledger`) and `case_sby_lab` (on `proto_y_lab_sample`)) that exists only to prove the systems work — there is no story, no protagonist, and no real case yet. GDScript only; no plugins, no C#. New Game from the title screen starts the Milestone 1.16 core-loop sandbox chapter; in debug builds a Technical Sandbox selector on the title screen can start the other one instead (see "Core loop sandbox" and "Core loop reusability" below).
 
 The governing philosophy: **this project builds systems, not story**. No script under `scripts/` should ever need to change just because content changes — real content should be addable purely as JSON under `data/`.
 
@@ -45,7 +45,12 @@ Verify changes headlessly — do this (at least the content-validation step) bef
   --script res://scenes/test/core_loop_mechanics_test.gd \
   --script res://scenes/test/core_loop_validation_test.gd \
   --script res://scenes/test/core_loop_runtime_test.gd \
-  --script res://scenes/test/core_loop_save_test.gd
+  --script res://scenes/test/core_loop_save_test.gd \
+  --script res://scenes/test/core_loop_b_parity_test.gd \
+  --script res://scenes/test/core_loop_simulation_test.gd \
+  --script res://scenes/test/core_loop_multi_chapter_test.gd \
+  --script res://scenes/test/core_loop_author_report_test.gd \
+  --script res://scenes/test/core_loop_template_test.gd
 
 # FULL — before finishing a milestone/refactor; also what CI runs on every push/PR:
 .claude/skills/godot-development/scripts/verify.sh \
@@ -83,16 +88,23 @@ Verify changes headlessly — do this (at least the content-validation step) bef
   --script res://scenes/test/core_loop_validation_test.gd \
   --script res://scenes/test/core_loop_runtime_test.gd \
   --script res://scenes/test/core_loop_save_test.gd \
+  --script res://scenes/test/core_loop_b_parity_test.gd \
+  --script res://scenes/test/core_loop_simulation_test.gd \
+  --script res://scenes/test/core_loop_multi_chapter_test.gd \
+  --script res://scenes/test/core_loop_author_report_test.gd \
+  --script res://scenes/test/core_loop_template_test.gd \
   --script res://scenes/test/core_loop_scene_test.gd \
+  --script res://scenes/test/core_loop_sandbox_scene_test.gd \
+  --script res://scenes/test/core_loop_report.gd \
   --script res://scenes/test/smoke_test.gd
 ```
 Raw equivalents exist (`godot --headless --path . -s res://scenes/test/<name>.gd`) but **Godot's exit codes lie** — a `SCRIPT ERROR`, `push_error()`, or parse failure still exits 0, and a `-s` script that errors before calling `quit()` can hang indefinitely. `verify.sh` handles both (output-based pass/fail, per-step timeouts); prefer it over raw invocations. There is no separate lint/build step — import + boot + these test scripts are the whole pipeline, and `.github/workflows/verify.yml` runs the FULL command above in CI, reusing `verify.sh` rather than duplicating any check.
 
-`validate_content.gd` is fast, content-only (checks broken references *and* dependency-reachability smells in `data/`, exits 1 on any error). `conditions_test.gd`/`effects_test.gd`/`events_test.gd`/`duplicate_execution_test.gd`/`save_load_regression_test.gd`/`negative_progression_test.gd`/`dependency_analysis_test.gd` are small, independent focused tests — see `docs/testing.md` for what each covers and how to add a new one. `smoke_test.gd` is the critical-path/integration fixture: drives every autoload through the full demo flow (examine/talk/present/move, conditions, events, event chains, the two-chapter Test Case, save/load) and asserts zero *unexpected* `ContentValidator` errors/warnings; it prints `ALL TESTS PASSED` and exits 0 on success. A new Condition/Effect check goes in `conditions_test.gd`/`effects_test.gd`, never into `smoke_test.gd`. The Milestone 1.9 deduction tests (`deduction_evaluator_test.gd`, `timeline_evaluator_test.gd`, `deduction_validation_test.gd`, `deduction_cases_test.gd`) are deterministic and belong to both FAST and FULL — see `docs/deduction-system.md`, "Testing". The Milestone 1.10 Deduction Lab's pure/autoload-free helpers (`deduction_lab_controller_test.gd`, `deduction_lab_presenter_test.gd`, `deduction_lab_recorder_test.gd`) are likewise deterministic and belong to both FAST and FULL; `deduction_lab_scene_test.gd` needs a real scene tree (DebugPanel/F1 integration) and is FULL-only, like `smoke_test.gd` — see `docs/deduction-lab.md`, "Test commands". The Milestone 1.11 Prototype A tests follow the identical split: `prototype_a_controller_test.gd`/`prototype_a_presenter_test.gd`/`prototype_a_content_test.gd` are pure/autoload-free (FAST and FULL); `prototype_a_scene_test.gd` needs a real scene tree and is FULL-only — see `docs/prototype-a.md`, "Testing". The Milestone 1.12 Prototype B tests follow the same split: `prototype_b_controller_test.gd`/`prototype_b_presenter_test.gd`/`prototype_b_content_test.gd` are pure/autoload-free (FAST and FULL); `prototype_b_scene_test.gd` needs a real scene tree and is FULL-only — see `docs/prototype-b.md`, "Testing". `prototype_a_scene_test.gd` also carries the Milestone 1.12 Continue-button-stays-in-viewport layout regression (`_test_continue_button_stays_reachable_with_long_feedback`), and `prototype_b_scene_test.gd` carries the same check applied to Prototype B's own screen — see `docs/prototype-a.md`, "Layout". The Milestone 1.13 Prototype C tests follow the same split again: `prototype_c_controller_test.gd`/`prototype_c_presenter_test.gd`/`prototype_c_content_test.gd` are pure/autoload-free (FAST and FULL — `prototype_c_content_test.gd` is the one file in this set that does real, bounded enumeration work through the real `TimelineEvaluator` and costs about 1.5 seconds by itself, deliberately kept out of `DeductionValidator`'s always-on checks for that reason, see `docs/prototype-c.md`); `prototype_c_scene_test.gd` needs a real scene tree and is FULL-only, and also carries its own copy of the Continue-button layout regression — see `docs/prototype-c.md`, "Testing". The Milestone 1.16 core-loop tests: `core_loop_mechanics_test.gd` (pure), `core_loop_validation_test.gd`, `core_loop_runtime_test.gd` and `core_loop_save_test.gd` (autoloads, no scene tree) are FAST and FULL; `core_loop_scene_test.gd` drives the real title/briefing/investigation/mechanic/result screens through their buttons and is FULL-only; `core_loop_test_support.gd` holds their shared driving helpers and is the only place outside `data/` that names the sandbox's ids — see `docs/testing.md`, "Core loop tests".
+`validate_content.gd` is fast, content-only (checks broken references *and* dependency-reachability smells in `data/`, exits 1 on any error). `conditions_test.gd`/`effects_test.gd`/`events_test.gd`/`duplicate_execution_test.gd`/`save_load_regression_test.gd`/`negative_progression_test.gd`/`dependency_analysis_test.gd` are small, independent focused tests — see `docs/testing.md` for what each covers and how to add a new one. `smoke_test.gd` is the critical-path/integration fixture: drives every autoload through the full demo flow (examine/talk/present/move, conditions, events, event chains, the two-chapter Test Case, save/load) and asserts zero *unexpected* `ContentValidator` errors/warnings; it prints `ALL TESTS PASSED` and exits 0 on success. A new Condition/Effect check goes in `conditions_test.gd`/`effects_test.gd`, never into `smoke_test.gd`. The Milestone 1.9 deduction tests (`deduction_evaluator_test.gd`, `timeline_evaluator_test.gd`, `deduction_validation_test.gd`, `deduction_cases_test.gd`) are deterministic and belong to both FAST and FULL — see `docs/deduction-system.md`, "Testing". The Milestone 1.10 Deduction Lab's pure/autoload-free helpers (`deduction_lab_controller_test.gd`, `deduction_lab_presenter_test.gd`, `deduction_lab_recorder_test.gd`) are likewise deterministic and belong to both FAST and FULL; `deduction_lab_scene_test.gd` needs a real scene tree (DebugPanel/F1 integration) and is FULL-only, like `smoke_test.gd` — see `docs/deduction-lab.md`, "Test commands". The Milestone 1.11 Prototype A tests follow the identical split: `prototype_a_controller_test.gd`/`prototype_a_presenter_test.gd`/`prototype_a_content_test.gd` are pure/autoload-free (FAST and FULL); `prototype_a_scene_test.gd` needs a real scene tree and is FULL-only — see `docs/prototype-a.md`, "Testing". The Milestone 1.12 Prototype B tests follow the same split: `prototype_b_controller_test.gd`/`prototype_b_presenter_test.gd`/`prototype_b_content_test.gd` are pure/autoload-free (FAST and FULL); `prototype_b_scene_test.gd` needs a real scene tree and is FULL-only — see `docs/prototype-b.md`, "Testing". `prototype_a_scene_test.gd` also carries the Milestone 1.12 Continue-button-stays-in-viewport layout regression (`_test_continue_button_stays_reachable_with_long_feedback`), and `prototype_b_scene_test.gd` carries the same check applied to Prototype B's own screen — see `docs/prototype-a.md`, "Layout". The Milestone 1.13 Prototype C tests follow the same split again: `prototype_c_controller_test.gd`/`prototype_c_presenter_test.gd`/`prototype_c_content_test.gd` are pure/autoload-free (FAST and FULL — `prototype_c_content_test.gd` is the one file in this set that does real, bounded enumeration work through the real `TimelineEvaluator` and costs about 1.5 seconds by itself, deliberately kept out of `DeductionValidator`'s always-on checks for that reason, see `docs/prototype-c.md`); `prototype_c_scene_test.gd` needs a real scene tree and is FULL-only, and also carries its own copy of the Continue-button layout regression — see `docs/prototype-c.md`, "Testing". The Milestone 1.16 core-loop tests: `core_loop_mechanics_test.gd` (pure), `core_loop_validation_test.gd`, `core_loop_runtime_test.gd` and `core_loop_save_test.gd` (autoloads, no scene tree) are FAST and FULL; `core_loop_scene_test.gd` drives the real title/briefing/investigation/mechanic/result screens through their buttons and is FULL-only; `core_loop_test_support.gd` holds their shared driving helpers and is the only place outside `data/` that names the sandbox's ids — see `docs/testing.md`, "Core loop tests". Milestone 1.17 adds `core_loop_b_parity_test.gd` (pure), `core_loop_simulation_test.gd`, `core_loop_multi_chapter_test.gd`, `core_loop_author_report_test.gd` and `core_loop_template_test.gd` (autoloads, no scene tree) to FAST and FULL, and `core_loop_sandbox_scene_test.gd` (real title screen + sandbox 2 through real buttons, VI and EN) plus the `core_loop_report.gd` authoring tool to FULL only; `core_loop_route_simulator.gd` (`CoreLoopRouteSimulator`, the legal-path simulator) is test/authoring tooling, not a test — see `docs/testing.md`, "Core loop tests (Milestone 1.17)".
 
 ## Architecture
 
-`docs/architecture.md`, `docs/content-guide.md`, `docs/event-system.md`, `docs/case-system.md`, `docs/localization.md`, `docs/deduction-system.md`, `docs/deduction-lab.md`, `docs/prototype-a.md`, `docs/prototype-b.md`, `docs/prototype-c.md`, `docs/resolution-policy.md`, `docs/prototype-evaluation.md`, `docs/core-loop-sandbox.md`, and `docs/testing.md` are the source of truth — read the relevant one before non-trivial work; what follows is only a map. Where they and generic conventions disagree, the docs win.
+`docs/architecture.md`, `docs/content-guide.md`, `docs/event-system.md`, `docs/case-system.md`, `docs/localization.md`, `docs/deduction-system.md`, `docs/deduction-lab.md`, `docs/prototype-a.md`, `docs/prototype-b.md`, `docs/prototype-c.md`, `docs/resolution-policy.md`, `docs/prototype-evaluation.md`, `docs/core-loop-sandbox.md`, `docs/core-loop-authoring.md`, and `docs/testing.md` are the source of truth — read the relevant one before non-trivial work; what follows is only a map. Where they and generic conventions disagree, the docs win.
 
 **The `.claude/skills/godot-development` project skill** (tracked in git, shared by everyone working on this repo) encodes this repo's Godot 4/GDScript conventions in full — typed GDScript, composition/signals/Resources, node lifecycle, scene ownership, when to add an autoload, avoiding NodePath coupling, resource loading, naming — plus the CLI verification workflow in detail. It auto-loads for any `.gd`/`.tscn`/`.tres`/`project.godot` work; read it and its `references/*.md` rather than re-deriving those rules.
 
@@ -341,6 +353,32 @@ chapter run included — before applying any of it, and writes atomically.
 offers, acquisition routes, cycles, completion producer, canon markers,
 no debug paths); a case marked `"new_game_entry": true` is what New Game
 starts.
+
+### Core loop reusability (Milestone 1.17)
+
+A second, structurally different non-canon sandbox (`case_sby_lab` /
+`sby_chapter_01` over `proto_y_lab_sample`: staging deduction first, a
+two-round confrontation with an optional innocent lie, the alternate proof set
+as the cheapest route, an NPC that appears later, a consequence that may
+already be satisfied) runs through the unchanged runtime — added as content
+only. Read `docs/core-loop-sandbox.md`, "Multiple chapters", first, and
+`docs/core-loop-authoring.md` before authoring a chapter
+(`docs/templates/core_loop_chapter/` is a complete template, never loaded
+by ContentDB, proven playable by `core_loop_template_test.gd`). Generic
+additions only: a case's `"sandbox_selection": {"order": N}` lists it in a
+DEBUG-build title-screen selector (`SaveManager.get_sandbox_entries()`; release
+builds always start `new_game_entry`); `ChapterRuntime` rejects a save whose
+chapter run belongs to a chapter its case does not own; `CoreLoopValidator`
+gained multi-chapter rules (late acquisition producers, unreachable /
+debug-only / cross-chapter offer dependencies, cross-chapter completion and
+consequence ids, duplicate B targets, `documented_paths`) plus a warning
+channel. Test/author tooling: `CoreLoopRouteSimulator` (legal-path simulation
+through production APIs only — not an AI player or a playtest) and
+`CoreLoopAuthorReport` (`scripts/debug/`, the Case Debugger's Core Loop tab
+and `scenes/test/core_loop_report.gd`). Production B (single deduction) vs
+debug Prototype B (batch) is an intentional difference pinned by
+`core_loop_b_parity_test.gd`. No save-format change (still v2), no new
+autoload, and no production script names a sandbox id.
 
 ### UI wiring
 

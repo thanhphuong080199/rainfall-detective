@@ -1,0 +1,7 @@
+{
+  "id": "sby_open_hatch",
+  "name": "DED_PROTO_Y_E_OPEN_HATCH_NAME",
+  "icon_color": "#8C6A5A",
+  "short_description": "EVID_SBY_OPEN_HATCH_SHORT",
+  "detailed_description": "DED_PROTO_Y_E_OPEN_HATCH_TEXT"
+}

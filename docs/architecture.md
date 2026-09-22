@@ -360,6 +360,15 @@ rest of `GameState` in one atomic write. Full design:
 `docs/core-loop-sandbox.md`; contract:
 `docs/Milestone 1.15B - Technical Core Loop Contract.md`.
 
+
+Milestone 1.17 proved the runtime reusable with a second, structurally
+different non-canon chapter added as content only (`docs/core-loop-sandbox.md`,
+"Multiple chapters"; `docs/core-loop-authoring.md`). A case may declare
+`"sandbox_selection"` to appear in the debug-build title-screen selector;
+release builds always start `new_game_entry`. The legal-path simulator
+(`scenes/test/core_loop_route_simulator.gd`) and the author report
+(`scripts/debug/core_loop_author_report.gd`, the Case Debugger's Core Loop
+tab) are test/author tooling only — no production script references either.
 ## Localization
 
 Every player-facing string — content (`data/*.json`) and static UI chrome —
@@ -394,7 +403,7 @@ elsewhere in this document is summarized here:
 ## UI scene tree
 
 ```
-TitleScreen.tscn  (Godot "Main Scene" — New Game / Continue / Quit / language)
+TitleScreen.tscn  (Godot "Main Scene" — New Game / Continue / Quit / language; debug builds: sandbox selector)
         │  New Game or Continue → change_scene_to_file
         ▼
 Main.tscn  (pure orchestrator — scripts/ui/main.gd; owns the ChapterRuntime)

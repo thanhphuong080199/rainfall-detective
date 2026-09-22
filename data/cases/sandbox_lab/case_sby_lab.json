@@ -1,0 +1,27 @@
+{
+  "id": "case_sby_lab",
+  "display_name": "CASE_SBY_LAB_NAME",
+  "description": "CASE_SBY_LAB_DESC",
+  "version": 1,
+  "metadata": {
+    "canon": false,
+    "sandbox": true,
+    "milestone": "1.17",
+    "note": "NON-CANON technical sandbox #2 for the Milestone 1.17 core-loop reusability proof (docs/core-loop-sandbox.md). Placeholder text around the reused dummy mystery proto_y_lab_sample; not part of the story or world, do not reuse its names, places or events."
+  },
+  "sandbox_selection": {
+    "order": 2
+  },
+  "start_location": "sby_cold_store",
+  "starting_chapter": "sby_chapter_01",
+  "chapters": [
+    "sby_chapter_01"
+  ],
+  "initial_flags": {
+    "sby_staging_proven": false,
+    "sby_access_log_released": false,
+    "sby_timeline_unlocked": false,
+    "sby_timeline_accepted": false,
+    "sby_final_claim_accepted": false
+  }
+}

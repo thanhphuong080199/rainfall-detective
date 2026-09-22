@@ -1,0 +1,81 @@
+{
+  "id": "tpl_container_yard",
+  "name": "LOC_TPL_CONTAINER_YARD_NAME",
+  "background_color": "#35443A",
+  "npcs": [
+    {
+      "id": "tpl_gus",
+      "topics": [
+        {
+          "id": "fence",
+          "label": "LOC_TPL_TOPIC_GUS_FENCE",
+          "dialogue_id": "tpl_gus_fence"
+        }
+      ],
+      "present_responses": [
+        {
+          "dialogue_id": "tpl_present_generic"
+        }
+      ]
+    }
+  ],
+  "examine_points": [
+    {
+      "id": "cut_fence",
+      "label": "LOC_TPL_EXAMINE_CUT_FENCE",
+      "variants": [
+        {
+          "condition": {
+            "has_evidence": "tpl_cut_fence"
+          },
+          "dialogue_id": "tpl_examine_after"
+        },
+        {
+          "dialogue_id": "tpl_examine_cut_fence"
+        }
+      ]
+    },
+    {
+      "id": "wire_ends",
+      "label": "LOC_TPL_EXAMINE_WIRE_ENDS",
+      "variants": [
+        {
+          "condition": {
+            "has_evidence": "tpl_wire_ends"
+          },
+          "dialogue_id": "tpl_examine_after"
+        },
+        {
+          "condition": {
+            "examined": "cut_fence"
+          },
+          "dialogue_id": "tpl_examine_wire_ends"
+        },
+        {
+          "dialogue_id": "tpl_examine_wire_ends_locked"
+        }
+      ]
+    },
+    {
+      "id": "yard_camera",
+      "label": "LOC_TPL_EXAMINE_YARD_CAMERA",
+      "variants": [
+        {
+          "condition": {
+            "has_evidence": "tpl_yard_sighting"
+          },
+          "dialogue_id": "tpl_examine_after"
+        },
+        {
+          "dialogue_id": "tpl_examine_yard_camera"
+        }
+      ]
+    }
+  ],
+  "destinations": [
+    {
+      "location_id": "tpl_dock_office",
+      "label": "LOC_TPL_DEST_OFFICE"
+    }
+  ]
+}

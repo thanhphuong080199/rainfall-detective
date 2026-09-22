@@ -1,0 +1,15 @@
+[
+  {
+    "id": "sby_chapter_01_complete",
+    "conditions": {
+      "flag": "sby_final_claim_accepted"
+    },
+    "trigger_policy": "once",
+    "effects": [
+      {
+        "type": "mark_interaction_complete",
+        "id": "sby_chapter_01_closed"
+      }
+    ]
+  }
+]

@@ -35,6 +35,9 @@ There is no story, no protagonist, and no Case 01 yet — and deliberately so.
   checked until committed, acknowledged assistance and partner resolution.
   There is no game over, and each run records whether it was solved
   Independently, Guided or Assisted.
+- `docs/core-loop-authoring.md` — Milestone 1.17: how to author a new
+  core-loop chapter as content only (template in
+  `docs/templates/core_loop_chapter/`).
 - `docs/core-loop-sandbox.md` — Milestone 1.16: the first production route.
   **New Game** plays a non-canon sandbox chapter end to end — briefing,
   investigation, clue connection (B), confrontation (A), a second B,
@@ -64,7 +67,8 @@ Desktop only (mouse + keyboard). No controller or touch support yet.
 | Where | Input | Does |
 |---|---|---|
 | Anywhere | **Mouse click** | Activates whatever is under the cursor. Every action in the game is reachable by mouse alone. |
-| Title screen | **New Game** / **Continue** / **Quit** / **VI / EN** | New Game starts the core-loop sandbox chapter (confirmed first if it would replace a save). Continue is greyed out unless a readable save exists. |
+| Title screen | **New Game** / **Continue** / **Quit** / **VI / EN** | New Game starts the core-loop sandbox chapter (confirmed first if it would replace a save). Continue is greyed out unless a readable save exists, and always resumes the saved chapter. |
+| Title screen (debug builds) | **Technical sandbox** buttons | Picks which non-canon sandbox chapter New Game starts (Milestone 1.17: *The Archive Badge* or *The Cold-Room Sample*); shows which run the save holds. Not present in release builds. |
 | Briefing | **Begin investigating** / **Main menu** / **VI / EN** | Leaves the briefing for the investigation. |
 | Investigation (sandbox chapter) | **Case File** button (top right) | Evidence you've found (read, pin), what you've established, the current objective, and the mechanic you can work on. |
 | Investigation (sandbox chapter) | **Work on it: …** (bottom-left panel) | Opens the deduction/confrontation/timeline the chapter currently offers; while it's locked the panel says to keep investigating. |
@@ -154,6 +158,10 @@ godot --headless --path . -s res://scenes/test/smoke_test.gd
 
 # The Milestone 1.16 core loop through its real screens, title to result.
 godot --headless --path . -s res://scenes/test/core_loop_scene_test.gd
+
+# Milestone 1.17: the author report of every core-loop chapter, including a
+# legal-path simulation of each route variant (exits 1 on a problem).
+godot --headless --path . -s res://scenes/test/core_loop_report.gd
 ```
 
 The canonical FAST and FULL commands (and which scripts each includes) are in

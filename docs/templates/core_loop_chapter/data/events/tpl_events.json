@@ -1,0 +1,15 @@
+[
+  {
+    "id": "tpl_chapter_01_complete",
+    "conditions": {
+      "flag": "tpl_final_claim_accepted"
+    },
+    "trigger_policy": "once",
+    "effects": [
+      {
+        "type": "mark_interaction_complete",
+        "id": "tpl_chapter_01_closed"
+      }
+    ]
+  }
+]

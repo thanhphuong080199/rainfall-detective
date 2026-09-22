@@ -131,7 +131,7 @@ namespacing):
 | `CHAPTER_<id>_NAME` | A chapter's `display_name`. |
 | `DED_<CASE>_…` | A deduction case's text fields (Milestone 1.9), e.g. `DED_PROTO_X_E_DOOR_LOG_TEXT`, `DED_PROTO_X_HINT_MISUSED_2` — see `docs/deduction-system.md`. |
 | `UI_CORE_LOOP_` | Production core-loop chrome (Milestone 1.16) — HUD, Case File, mechanic screen, briefing, result, confirmations (`docs/core-loop-sandbox.md`). Never a run-result label. |
-| `CL_<CHAPTER>_…` | A chapter's `core_loop` text — briefing/result title and text, unit titles, consequence summaries, phase objectives (e.g. `CL_SBX_FINDING_B1`). |
+| `CL_<CHAPTER>_…` | A chapter's `core_loop` text — briefing/result title and text, unit titles, consequence summaries, phase objectives (e.g. `CL_SBX_FINDING_B1`, Milestone 1.17's `CL_SBY_…`). The chapter template's own rows (`…_TPL_…`) live in `docs/templates/core_loop_chapter/strings.csv`, not here — they are only added to `strings.csv` when a template copy becomes real content. |
 
 The file uses CRLF line endings throughout (so `git diff --check` flags every
 added row as "trailing whitespace" — the CR — exactly as it did for every

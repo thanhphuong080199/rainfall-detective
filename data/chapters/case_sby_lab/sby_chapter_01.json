@@ -1,0 +1,231 @@
+{
+  "id": "sby_chapter_01",
+  "display_name": "CHAPTER_SBY_01_NAME",
+  "entry_effects": [],
+  "completion_event": "sby_chapter_01_complete",
+  "core_loop": {
+    "format": 1,
+    "canon": false,
+    "deduction_case": "proto_y_lab_sample",
+    "briefing": {
+      "title": "CL_SBY_BRIEFING_TITLE",
+      "text": "CL_SBY_BRIEFING_TEXT"
+    },
+    "result": {
+      "title": "CL_SBY_RESULT_TITLE",
+      "text": "CL_SBY_RESULT_TEXT"
+    },
+    "evidence_links": {
+      "sby_open_hatch": "e_open_hatch",
+      "sby_hatch_tabs": "e_hatch_tabs",
+      "sby_hatch_diagram": "e_hatch_diagram",
+      "sby_coat_rack_sheet": "e_coat_rack_sheet",
+      "sby_waste_manifest": "e_waste_manifest",
+      "sby_loading_bay_footage": "e_loading_bay_footage",
+      "sby_shuttle_note": "e_shuttle_note",
+      "sby_cold_room_log": "e_cold_room_log",
+      "sby_class_photo": "e_class_photo",
+      "sby_gym_scan": "e_gym_scan"
+    },
+    "units": [
+      {
+        "id": "b1_staging",
+        "mechanic": "clue_connection",
+        "round": "round_2",
+        "title": "CL_SBY_UNIT_B1_TITLE",
+        "offer_condition": {
+          "all": [
+            {
+              "has_evidence": "sby_open_hatch"
+            },
+            {
+              "has_evidence": "sby_hatch_diagram"
+            },
+            {
+              "has_evidence": "sby_hatch_tabs"
+            }
+          ]
+        },
+        "documented_paths": [
+          [
+            "sby_open_hatch",
+            "sby_hatch_diagram",
+            "sby_hatch_tabs"
+          ]
+        ],
+        "consequences": {
+          "resolved": {
+            "id": "sby_b1_resolved",
+            "summary": "CL_SBY_FINDING_B1",
+            "effects": [
+              {
+                "type": "set_flag",
+                "flag": "sby_staging_proven",
+                "value": true
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "a1_priya",
+        "mechanic": "statement_contradiction",
+        "rounds": [
+          "round_1",
+          "round_2"
+        ],
+        "title": "CL_SBY_UNIT_A1_TITLE",
+        "offer_condition": {
+          "all": [
+            {
+              "interaction_complete": "sby_priya_pressed"
+            },
+            {
+              "has_evidence": "sby_coat_rack_sheet"
+            },
+            {
+              "has_evidence": "sby_open_hatch"
+            }
+          ]
+        },
+        "consequences": {
+          "resolved": {
+            "id": "sby_a1_resolved",
+            "summary": "CL_SBY_FINDING_A1",
+            "effects": [
+              {
+                "type": "set_flag",
+                "flag": "sby_access_log_released",
+                "value": true
+              },
+              {
+                "type": "add_evidence",
+                "evidence_id": "sby_shuttle_note"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "b2_keycard",
+        "mechanic": "clue_connection",
+        "round": "round_1",
+        "title": "CL_SBY_UNIT_B2_TITLE",
+        "offer_condition": {
+          "all": [
+            {
+              "has_evidence": "sby_cold_room_log"
+            },
+            {
+              "has_evidence": "sby_shuttle_note"
+            },
+            {
+              "any": [
+                {
+                  "has_evidence": "sby_class_photo"
+                },
+                {
+                  "has_evidence": "sby_gym_scan"
+                }
+              ]
+            }
+          ]
+        },
+        "documented_paths": [
+          [
+            "sby_cold_room_log",
+            "sby_class_photo",
+            "sby_shuttle_note"
+          ],
+          [
+            "sby_cold_room_log",
+            "sby_gym_scan",
+            "sby_shuttle_note"
+          ]
+        ],
+        "consequences": {
+          "resolved": {
+            "id": "sby_b2_resolved",
+            "summary": "CL_SBY_FINDING_B2",
+            "effects": [
+              {
+                "type": "set_flag",
+                "flag": "sby_timeline_unlocked",
+                "value": true
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "c1_timeline",
+        "mechanic": "timeline_reconstruction",
+        "title": "CL_SBY_UNIT_C1_TITLE",
+        "offer_condition": {
+          "flag": "sby_timeline_unlocked"
+        },
+        "consequences": {
+          "timeline_accepted": {
+            "id": "sby_c1_timeline_accepted",
+            "summary": "CL_SBY_FINDING_C1_TIMELINE",
+            "effects": [
+              {
+                "type": "set_flag",
+                "flag": "sby_timeline_accepted",
+                "value": true
+              }
+            ]
+          },
+          "resolved": {
+            "id": "sby_c1_claim_accepted",
+            "summary": "CL_SBY_FINDING_C1_CLAIM",
+            "effects": [
+              {
+                "type": "set_flag",
+                "flag": "sby_final_claim_accepted",
+                "value": true
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "phases": [
+      {
+        "id": "briefing",
+        "kind": "briefing",
+        "objective": "CL_SBY_OBJECTIVE_BRIEFING"
+      },
+      {
+        "id": "investigation_1",
+        "unit": "b1_staging",
+        "completes_on": "resolved",
+        "objective": "CL_SBY_OBJECTIVE_INVESTIGATION_1"
+      },
+      {
+        "id": "confrontation",
+        "unit": "a1_priya",
+        "completes_on": "resolved",
+        "objective": "CL_SBY_OBJECTIVE_CONFRONTATION"
+      },
+      {
+        "id": "investigation_2",
+        "unit": "b2_keycard",
+        "completes_on": "resolved",
+        "objective": "CL_SBY_OBJECTIVE_INVESTIGATION_2"
+      },
+      {
+        "id": "timeline",
+        "unit": "c1_timeline",
+        "completes_on": "timeline_accepted",
+        "objective": "CL_SBY_OBJECTIVE_TIMELINE"
+      },
+      {
+        "id": "final_claim",
+        "unit": "c1_timeline",
+        "completes_on": "resolved",
+        "objective": "CL_SBY_OBJECTIVE_FINAL_CLAIM"
+      }
+    ]
+  }
+}

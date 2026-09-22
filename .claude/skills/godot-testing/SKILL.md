@@ -146,7 +146,14 @@ minimum, because it's shared infrastructure. Match effort to blast radius.
        --script res://scenes/test/core_loop_validation_test.gd \
        --script res://scenes/test/core_loop_runtime_test.gd \
        --script res://scenes/test/core_loop_save_test.gd \
+       --script res://scenes/test/core_loop_b_parity_test.gd \
+       --script res://scenes/test/core_loop_simulation_test.gd \
+       --script res://scenes/test/core_loop_multi_chapter_test.gd \
+       --script res://scenes/test/core_loop_author_report_test.gd \
+       --script res://scenes/test/core_loop_template_test.gd \
        --script res://scenes/test/core_loop_scene_test.gd \
+       --script res://scenes/test/core_loop_sandbox_scene_test.gd \
+       --script res://scenes/test/core_loop_report.gd \
        --script res://scenes/test/smoke_test.gd
      ```
    `validate_content.gd` is content-only and fast; every other script is
@@ -180,6 +187,7 @@ minimum, because it's shared infrastructure. Match effort to blast radius.
 | Deduction foundation (Milestone 1.9) | `scripts/deduction/*.gd` (`DeductionEvaluator`, `TimelineEvaluator`, `DeductionValidator`, `DeductionSession`) + `data/deductions/` | `deduction_evaluator_test.gd`, `timeline_evaluator_test.gd`, `deduction_validation_test.gd`, `deduction_cases_test.gd` — see `docs/deduction-system.md` |
 | Deduction Lab (Milestone 1.10, debug-only) | `scripts/deduction/deduction_lab_*.gd` + `scripts/debug/deduction_lab.gd` | `deduction_lab_controller_test.gd`, `deduction_lab_presenter_test.gd`, `deduction_lab_recorder_test.gd`, `deduction_lab_scene_test.gd` — see `docs/deduction-lab.md` |
 | Core loop sandbox (Milestone 1.16) | `scripts/core_loop/*.gd` (`ChapterRuntime`, `CoreLoopUnit`, `CoreLoopValidator`, `CoreLoopPresenter`, `ChapterRunRecorder`, screens) + `data/chapters/*/` `core_loop` sections + `SaveManager` v2 | `core_loop_mechanics_test.gd`, `core_loop_validation_test.gd`, `core_loop_runtime_test.gd`, `core_loop_save_test.gd`, `core_loop_scene_test.gd` — see `docs/core-loop-sandbox.md` |
+| Core loop reusability (Milestone 1.17) | two sandbox chapters, `sandbox_selection` + title-screen selector, `ChapterRuntime` save case-ownership check, `CoreLoopValidator` multi-chapter rules, `CoreLoopRouteSimulator` (test tooling), `CoreLoopAuthorReport` (Case Debugger Core Loop tab) | `core_loop_b_parity_test.gd`, `core_loop_simulation_test.gd`, `core_loop_multi_chapter_test.gd`, `core_loop_author_report_test.gd`, `core_loop_template_test.gd`, `core_loop_sandbox_scene_test.gd`, `core_loop_report.gd` — see `docs/core-loop-authoring.md` |
 
 Full detail per system — exactly what each `_test_*` function proves, and
 what a change to that system should add — is in `references/test-catalog.md`.

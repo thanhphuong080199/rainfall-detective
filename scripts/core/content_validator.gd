@@ -475,6 +475,49 @@ static func _validate_cases(errors: Array[String], warnings: Array[String]) -> v
 	if entries.size() > 1:
 		entries.sort()
 		errors.append('More than one case declares "new_game_entry": true (%s) — New Game can only start one' % ", ".join(entries))
+	_validate_sandbox_selection(cases, entries, errors)
+
+
+## Milestone 1.17: "sandbox_selection": {"order": N} lists a case in the
+## debug-build title screen's Technical Sandbox selector (see
+## SaveManager.get_sandbox_entries() and docs/core-loop-sandbox.md,
+## "Sandbox selection"). Deliberately separate from "new_game_entry" (which
+## stays the one release default): a selectable case must be non-canon, say
+## what it is (a description), and start a non-canon core-loop chapter; orders
+## are unique; and once anything is selectable there must be exactly one
+## release default, so New Game stays well-defined without the selector.
+static func _validate_sandbox_selection(cases: Dictionary, new_game_entries: Array[String], errors: Array[String]) -> void:
+	var orders: Dictionary = {}  # order -> case id
+	var case_ids: Array = cases.keys()
+	case_ids.sort()
+	var selectable := 0
+	for case_id in case_ids:
+		var data: Dictionary = cases[case_id]
+		if not data.has("sandbox_selection"):
+			continue
+		selectable += 1
+		var ctx: String = 'Case "%s" sandbox_selection' % case_id
+		var selection: Variant = data.get("sandbox_selection")
+		var order: int = PrototypeContext.count((selection as Dictionary).get("order")) if typeof(selection) == TYPE_DICTIONARY else -1
+		if order < 1:
+			errors.append('%s must be an object with a whole-number "order" of 1 or more' % ctx)
+		elif orders.has(order):
+			errors.append('%s order %d is already used by case "%s" — the selector needs one position per sandbox' % [ctx, order, orders[order]])
+		else:
+			orders[order] = case_id
+		var metadata: Variant = data.get("metadata", {})
+		if typeof(metadata) != TYPE_DICTIONARY or (metadata as Dictionary).get("canon", true) != false:
+			errors.append('%s is only for non-canon sandbox content — declare metadata.canon: false (canon content is never picked from a debug selector)' % ctx)
+		if not data.has("description"):
+			errors.append('%s needs a "description" — the selector shows it so a tester knows what they are starting' % ctx)
+		var chapter: Dictionary = ContentDB.get_chapter(str(data.get("starting_chapter", "")))
+		var loop: Variant = chapter.get("core_loop")
+		if chapter.is_empty() or typeof(loop) != TYPE_DICTIONARY:
+			errors.append('%s points at starting_chapter "%s", which is not a core-loop chapter — selecting it could not start a sandbox run' % [ctx, data.get("starting_chapter", "")])
+		elif (loop as Dictionary).get("canon", true) != false:
+			errors.append('%s starts chapter "%s", whose core_loop is not marked "canon": false' % [ctx, data.get("starting_chapter", "")])
+	if selectable > 0 and new_game_entries.is_empty():
+		errors.append('%d case(s) declare "sandbox_selection" but no case declares "new_game_entry": true — release builds (no selector) would have no defined New Game' % selectable)
 
 
 ## Milestone 1.16: the optional markers a case may carry — "new_game_entry"
@@ -703,7 +746,7 @@ static func _validate_core_loops(errors: Array[String], warnings: Array[String])
 			_validate_effects((entry["consequence"] as Dictionary).get("effects", []), 'Chapter "%s" core_loop unit "%s" consequence "%s"' % [chapter_id, entry["unit"], entry["outcome"]], errors, warnings)
 		for entry in CoreLoopValidator.collect_text_keys(String(chapter_id), chapter):
 			_validate_translatable(entry[0], entry[1], errors)
-		CoreLoopValidator.validate_chapter(String(chapter_id), chapter, base_producers, errors)
+		CoreLoopValidator.validate_chapter(String(chapter_id), chapter, base_producers, errors, warnings)
 
 
 # ---------------------------------------------------------------------------
@@ -810,24 +853,36 @@ static func _collect_effect_targets(effects, flags_out: Dictionary, evidence_out
 ## event conditions. Delegates the actual leaf/composite walk to
 ## _collect_condition_requirements() below.
 static func _collect_condition_requirements_everywhere(flags_out: Dictionary, evidence_out: Dictionary, interactions_out: Dictionary) -> void:
+	for_each_content_condition(func(condition: Variant) -> void:
+		_collect_condition_requirements(condition, flags_out, evidence_out, interactions_out))
+
+
+## Calls `visit(condition)` once for every condition in loaded content — the
+## one walk over where conditions live (location npc presence/topics/examine
+## variants/destinations, dialogue choices, events, and — Milestone 1.16 —
+## core-loop offer conditions, which gate required progression exactly like a
+## topic's condition gates a topic). Milestone 1.17 split it out of
+## _collect_condition_requirements_everywhere() so CoreLoopValidator's "is
+## this unlock ever read?" check reuses it instead of re-walking content.
+static func for_each_content_condition(visit: Callable) -> void:
 	for location_id in ContentDB.get_all_locations():
 		var data: Dictionary = ContentDB.get_all_locations()[location_id]
 		for npc in data.get("npcs", []):
 			if typeof(npc) != TYPE_DICTIONARY:
 				continue
-			_collect_condition_requirements(npc.get("condition"), flags_out, evidence_out, interactions_out)
+			visit.call(npc.get("condition"))
 			for topic in npc.get("topics", []):
 				if typeof(topic) == TYPE_DICTIONARY:
-					_collect_condition_requirements(topic.get("condition"), flags_out, evidence_out, interactions_out)
+					visit.call(topic.get("condition"))
 		for point in data.get("examine_points", []):
 			if typeof(point) != TYPE_DICTIONARY:
 				continue
 			for variant in point.get("variants", []):
 				if typeof(variant) == TYPE_DICTIONARY:
-					_collect_condition_requirements(variant.get("condition"), flags_out, evidence_out, interactions_out)
+					visit.call(variant.get("condition"))
 		for destination in data.get("destinations", []):
 			if typeof(destination) == TYPE_DICTIONARY:
-				_collect_condition_requirements(destination.get("condition"), flags_out, evidence_out, interactions_out)
+				visit.call(destination.get("condition"))
 
 	for dialogue_id in ContentDB.get_all_dialogues():
 		var tree: Dictionary = ContentDB.get_all_dialogues()[dialogue_id]
@@ -837,18 +892,16 @@ static func _collect_condition_requirements_everywhere(flags_out: Dictionary, ev
 				continue
 			for choice in node.get("choices", []):
 				if typeof(choice) == TYPE_DICTIONARY:
-					_collect_condition_requirements(choice.get("condition"), flags_out, evidence_out, interactions_out)
+					visit.call(choice.get("condition"))
 
 	for event_id in ContentDB.get_all_events():
-		_collect_condition_requirements(ContentDB.get_all_events()[event_id].get("conditions"), flags_out, evidence_out, interactions_out)
+		visit.call(ContentDB.get_all_events()[event_id].get("conditions"))
 
-	# Milestone 1.16: a core-loop unit's offer_condition gates required
-	# progression exactly like a topic's condition gates a topic.
 	for chapter_id in ContentDB.get_all_chapters():
 		var loop: Variant = ContentDB.get_all_chapters()[chapter_id].get("core_loop")
 		if typeof(loop) == TYPE_DICTIONARY:
 			for unit in DeductionEvaluator.dict_array((loop as Dictionary).get("units", [])):
-				_collect_condition_requirements(unit.get("offer_condition"), flags_out, evidence_out, interactions_out)
+				visit.call(unit.get("offer_condition"))
 
 
 ## Pure function (no ContentDB access) so it's directly unit-testable — see

@@ -1,0 +1,431 @@
+[
+  {
+    "id": "sby_priya_greeting",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "sby_priya",
+        "expression": "normal",
+        "text": "DLG_SBY_PRIYA_GREETING_1",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sby_priya_vent",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "sby_priya",
+        "expression": "worried",
+        "text": "DLG_SBY_PRIYA_VENT_1",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sby_priya_confront",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_SBY_PRIYA_CONFRONT_1",
+        "next": "n2"
+      },
+      "n2": {
+        "speaker": "sby_priya",
+        "expression": "angry",
+        "text": "DLG_SBY_PRIYA_CONFRONT_2",
+        "actions": [
+          {
+            "type": "mark_interaction_complete",
+            "id": "sby_priya_pressed"
+          }
+        ],
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sby_priya_present_generic",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "sby_priya",
+        "expression": "normal",
+        "text": "DLG_SBY_PRIYA_PRESENT_GENERIC_1",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sby_bruno_greeting",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "sby_bruno",
+        "expression": "normal",
+        "text": "DLG_SBY_BRUNO_GREETING_1",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sby_bruno_vent_repairs",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "sby_bruno",
+        "expression": "normal",
+        "text": "DLG_SBY_BRUNO_VENT_REPAIRS_1",
+        "actions": [
+          {
+            "type": "add_evidence",
+            "evidence_id": "sby_hatch_diagram"
+          }
+        ],
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sby_bruno_evening",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "sby_bruno",
+        "expression": "worried",
+        "text": "DLG_SBY_BRUNO_EVENING_1",
+        "choices": [
+          {
+            "text": "DLG_SBY_BRUNO_EVENING_CHOICE1",
+            "next": "n2"
+          },
+          {
+            "text": "DLG_SBY_BRUNO_EVENING_CHOICE2",
+            "next": null
+          }
+        ]
+      },
+      "n2": {
+        "speaker": "sby_bruno",
+        "expression": "normal",
+        "text": "DLG_SBY_BRUNO_EVENING_2",
+        "actions": [
+          {
+            "type": "mark_interaction_complete",
+            "id": "sby_bins_mentioned"
+          }
+        ],
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sby_bruno_laundry",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "sby_bruno",
+        "expression": "normal",
+        "text": "DLG_SBY_BRUNO_LAUNDRY_1",
+        "actions": [
+          {
+            "type": "add_evidence",
+            "evidence_id": "sby_coat_rack_sheet"
+          }
+        ],
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sby_bruno_present_generic",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "sby_bruno",
+        "expression": "normal",
+        "text": "DLG_SBY_BRUNO_PRESENT_GENERIC_1",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sby_teodor_greeting",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "sby_teodor",
+        "expression": "worried",
+        "text": "DLG_SBY_TEODOR_GREETING_1",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sby_teodor_evening",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "sby_teodor",
+        "expression": "normal",
+        "text": "DLG_SBY_TEODOR_EVENING_1",
+        "actions": [
+          {
+            "type": "add_evidence",
+            "evidence_id": "sby_class_photo"
+          }
+        ],
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sby_teodor_checkin",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "sby_teodor",
+        "expression": "normal",
+        "text": "DLG_SBY_TEODOR_CHECKIN_1",
+        "actions": [
+          {
+            "type": "add_evidence",
+            "evidence_id": "sby_gym_scan"
+          }
+        ],
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sby_teodor_present_generic",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "sby_teodor",
+        "expression": "normal",
+        "text": "DLG_SBY_TEODOR_PRESENT_GENERIC_1",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sby_examine_vent_hatch",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_SBY_EXAMINE_VENT_HATCH_1",
+        "actions": [
+          {
+            "type": "add_evidence",
+            "evidence_id": "sby_open_hatch"
+          }
+        ],
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sby_examine_vent_hatch_after",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_SBY_EXAMINE_VENT_HATCH_AFTER_1",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sby_examine_hatch_tabs",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_SBY_EXAMINE_HATCH_TABS_1",
+        "actions": [
+          {
+            "type": "add_evidence",
+            "evidence_id": "sby_hatch_tabs"
+          }
+        ],
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sby_examine_hatch_tabs_after",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_SBY_EXAMINE_HATCH_TABS_AFTER_1",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sby_examine_hatch_tabs_locked",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_SBY_EXAMINE_HATCH_TABS_LOCKED_1",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sby_examine_lock_reader",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_SBY_EXAMINE_LOCK_READER_1",
+        "actions": [
+          {
+            "type": "add_evidence",
+            "evidence_id": "sby_cold_room_log"
+          }
+        ],
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sby_examine_lock_reader_after",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_SBY_EXAMINE_LOCK_READER_AFTER_1",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sby_examine_lock_reader_locked",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_SBY_EXAMINE_LOCK_READER_LOCKED_1",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sby_examine_clipboard",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_SBY_EXAMINE_CLIPBOARD_1",
+        "actions": [
+          {
+            "type": "add_evidence",
+            "evidence_id": "sby_waste_manifest"
+          }
+        ],
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sby_examine_clipboard_after",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_SBY_EXAMINE_CLIPBOARD_AFTER_1",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sby_examine_clipboard_plain",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_SBY_EXAMINE_CLIPBOARD_PLAIN_1",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sby_examine_bay_monitor",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_SBY_EXAMINE_BAY_MONITOR_1",
+        "actions": [
+          {
+            "type": "add_evidence",
+            "evidence_id": "sby_loading_bay_footage"
+          }
+        ],
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sby_examine_bay_monitor_after",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_SBY_EXAMINE_BAY_MONITOR_AFTER_1",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sby_examine_shuttle_board",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_SBY_EXAMINE_SHUTTLE_BOARD_1",
+        "actions": [
+          {
+            "type": "add_evidence",
+            "evidence_id": "sby_shuttle_note"
+          }
+        ],
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "sby_examine_shuttle_board_after",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_SBY_EXAMINE_SHUTTLE_BOARD_AFTER_1",
+        "next": null
+      }
+    }
+  }
+]

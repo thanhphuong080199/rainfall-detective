@@ -53,6 +53,18 @@
             }
           ]
         },
+        "documented_paths": [
+          [
+            "sbx_door_log",
+            "sbx_tram_tap",
+            "sbx_route_note"
+          ],
+          [
+            "sbx_door_log",
+            "sbx_harbor_photo",
+            "sbx_route_note"
+          ]
+        ],
         "consequences": {
           "resolved": {
             "id": "sbx_b1_resolved",
@@ -116,6 +128,13 @@
             }
           ]
         },
+        "documented_paths": [
+          [
+            "sbx_forced_window",
+            "sbx_latch_guide",
+            "sbx_window_latch"
+          ]
+        ],
         "consequences": {
           "resolved": {
             "id": "sbx_b2_resolved",

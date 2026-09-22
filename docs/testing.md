@@ -50,6 +50,14 @@ scenes/test/
 ├── core_loop_runtime_test.gd         Milestone 1.16: ChapterRuntime — the whole route, locks, consequences, duplicates, help/partner, restart, recorder
 ├── core_loop_save_test.gd            Milestone 1.16: chapter-run save/load at every checkpoint, v1 migration, corrupt/half-applied saves
 ├── core_loop_scene_test.gd           Milestone 1.16: title -> briefing -> investigation -> A/B/C -> result through the real screens/buttons (FULL only)
+├── core_loop_route_simulator.gd      Milestone 1.17: CoreLoopRouteSimulator, the legal-path simulator — not a runnable test
+├── core_loop_b_parity_test.gd        Milestone 1.17: production B vs debug Prototype B over every clue set of X/Y/Z (pure)
+├── core_loop_simulation_test.gd      Milestone 1.17: a legal route through every selectable sandbox — primary/alternate/optional/idempotent + a broken fixture
+├── core_loop_multi_chapter_test.gd   Milestone 1.17: two sandboxes, one runtime — id scan, isolation, cross-chapter saves, sandbox-2 resume at 8 checkpoints
+├── core_loop_author_report_test.gd   Milestone 1.17: CoreLoopAuthorReport content/kinds + no author info in player views or production code
+├── core_loop_template_test.gd        Milestone 1.17: docs/templates/core_loop_chapter injected and proven a valid, playable third chapter
+├── core_loop_sandbox_scene_test.gd   Milestone 1.17: the debug sandbox selector + sandbox 2 replayed through the real UI in VI and EN (FULL only)
+├── core_loop_report.gd               Milestone 1.17: the headless author report tool (FULL runs it; exits 1 on an error or no legal route)
 └── smoke_test.gd                  the critical-path / integration fixture (see below)
 ```
 
@@ -151,7 +159,12 @@ boot if `.godot/` is already built):
   --script res://scenes/test/core_loop_mechanics_test.gd \
   --script res://scenes/test/core_loop_validation_test.gd \
   --script res://scenes/test/core_loop_runtime_test.gd \
-  --script res://scenes/test/core_loop_save_test.gd
+  --script res://scenes/test/core_loop_save_test.gd \
+  --script res://scenes/test/core_loop_b_parity_test.gd \
+  --script res://scenes/test/core_loop_simulation_test.gd \
+  --script res://scenes/test/core_loop_multi_chapter_test.gd \
+  --script res://scenes/test/core_loop_author_report_test.gd \
+  --script res://scenes/test/core_loop_template_test.gd
 ```
 
 **FULL** — before finishing a milestone/refactor, and what CI runs on every
@@ -195,7 +208,14 @@ checks `verify.sh` always does unless skipped:
   --script res://scenes/test/core_loop_validation_test.gd \
   --script res://scenes/test/core_loop_runtime_test.gd \
   --script res://scenes/test/core_loop_save_test.gd \
+  --script res://scenes/test/core_loop_b_parity_test.gd \
+  --script res://scenes/test/core_loop_simulation_test.gd \
+  --script res://scenes/test/core_loop_multi_chapter_test.gd \
+  --script res://scenes/test/core_loop_author_report_test.gd \
+  --script res://scenes/test/core_loop_template_test.gd \
   --script res://scenes/test/core_loop_scene_test.gd \
+  --script res://scenes/test/core_loop_sandbox_scene_test.gd \
+  --script res://scenes/test/core_loop_report.gd \
   --script res://scenes/test/smoke_test.gd
 ```
 
@@ -676,6 +696,54 @@ screen or control -> `core_loop_scene_test.gd`. The debug prototype suites are
 unchanged apart from one structural check in `resolution_policy_test.gd`
 (`ResolutionPolicy.new(` instead of `ResolutionPolicy.new()` — the controllers
 now pass the policy mode).
+
+### Core loop tests (Milestone 1.17)
+
+`docs/core-loop-sandbox.md` ("Multiple chapters") and
+`docs/core-loop-authoring.md` are the sources of truth. Five scripts join FAST
+and FULL, one scene test and one tool join FULL:
+
+- **b parity** (pure) — production B (single deduction, shared session) and
+  debug Prototype B (batch) give the same evaluator category and outcome for
+  every complete clue set of every round of X/Y/Z; uncounted inputs match;
+  production resolves only its own unit; the debug batch is unchanged.
+- **simulation** — `CoreLoopRouteSimulator` plays every selectable sandbox:
+  primary route, each documented alternate B path and an alternate timeline
+  on fresh runs, the optional innocent lie, a consequence whose evidence is
+  already held (applied once, nothing duplicated), a broken chapter reporting
+  no legal route at the right phase (and the validator agreeing), and a
+  source/call audit proving only production entry points were used. Not an AI
+  player, not a playtest.
+- **multi chapter** — no production script's code names any of the 216 ids
+  the two sandboxes define; sandbox 2's offer state follows its content;
+  switching sandboxes both ways starts a fresh run with nothing leaking;
+  units use the active run's session; close/reopen keeps only the current
+  run; completion never crosses chapters; sandbox 2 resumes exactly at eight
+  checkpoints and can still be finished; sandbox 1 saves stay valid; five
+  kinds of mismatched save are rejected whole; the save format is unchanged.
+- **author report** — every section of `CoreLoopAuthorReport` for both
+  chapters; `[NOW]` lines only for the active chapter; errors, warnings and
+  info apart; simulation results rendered; none of it in any player view;
+  no production script referencing the report, the simulator or debug scenes.
+- **template** — injects `docs/templates/core_loop_chapter` into ContentDB
+  and TranslationServer, proves it validates clean and plays to completion
+  (three routes) through the unchanged runtime, then removes it.
+- **sandbox scene** (FULL only) — the title screen's debug selector (absent in
+  a release build, collapsed with one entry), sandbox 2 started through New
+  Game, then the simulator's recorded routes replayed through visible,
+  enabled controls only — primary in VI (with a quit + Continue inside the
+  two-round confrontation), alternate in EN — plus Restart, Menu, Continue on
+  a completed run, the Case Debugger's Core Loop tab, the Deduction Lab never
+  used, and replacing the save with the other sandbox after confirmation.
+- **`core_loop_report.gd`** (FULL only) — the authoring tool itself, so it
+  cannot rot; exits 1 on a validation error or a route with no legal path.
+
+`validate_content.gd` now also reports the multi-chapter rules
+(`core_loop_validation_test.gd` has one fixture per rule, 38 → 66 checks).
+Where new coverage goes: a new chapter needs nothing new — it is picked up by
+the simulation, report and id-scan tests from content; a new contract rule →
+`core_loop_validation_test.gd`; runtime behavior across chapters →
+`core_loop_multi_chapter_test.gd`.
 
 ## Test isolation
 

@@ -1,0 +1,218 @@
+[
+  {
+    "id": "tpl_nadia_ferry",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "tpl_nadia",
+        "expression": "normal",
+        "text": "DLG_TPL_NADIA_FERRY_1",
+        "actions": [
+          {
+            "type": "add_evidence",
+            "evidence_id": "tpl_ferry_gate"
+          }
+        ],
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "tpl_nadia_photo",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "tpl_nadia",
+        "expression": "normal",
+        "text": "DLG_TPL_NADIA_PHOTO_1",
+        "actions": [
+          {
+            "type": "add_evidence",
+            "evidence_id": "tpl_ferry_photo"
+          }
+        ],
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "tpl_felix_confront",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "tpl_felix",
+        "expression": "angry",
+        "text": "DLG_TPL_FELIX_CONFRONT_1",
+        "actions": [
+          {
+            "type": "mark_interaction_complete",
+            "id": "tpl_felix_pressed"
+          }
+        ],
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "tpl_gus_fence",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "tpl_gus",
+        "expression": "normal",
+        "text": "DLG_TPL_GUS_FENCE_1",
+        "actions": [
+          {
+            "type": "add_evidence",
+            "evidence_id": "tpl_fence_sheet"
+          }
+        ],
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "tpl_present_generic",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_TPL_PRESENT_GENERIC_1",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "tpl_examine_seal_terminal",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_TPL_EXAMINE_SEAL_TERMINAL_1",
+        "actions": [
+          {
+            "type": "add_evidence",
+            "evidence_id": "tpl_seal_registry"
+          }
+        ],
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "tpl_examine_port_map",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_TPL_EXAMINE_PORT_MAP_1",
+        "actions": [
+          {
+            "type": "add_evidence",
+            "evidence_id": "tpl_port_map_note"
+          }
+        ],
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "tpl_examine_locker_log",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_TPL_EXAMINE_LOCKER_LOG_1",
+        "actions": [
+          {
+            "type": "add_evidence",
+            "evidence_id": "tpl_locker_log"
+          }
+        ],
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "tpl_examine_cut_fence",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_TPL_EXAMINE_CUT_FENCE_1",
+        "actions": [
+          {
+            "type": "add_evidence",
+            "evidence_id": "tpl_cut_fence"
+          }
+        ],
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "tpl_examine_wire_ends",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_TPL_EXAMINE_WIRE_ENDS_1",
+        "actions": [
+          {
+            "type": "add_evidence",
+            "evidence_id": "tpl_wire_ends"
+          }
+        ],
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "tpl_examine_wire_ends_locked",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_TPL_EXAMINE_WIRE_ENDS_LOCKED_1",
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "tpl_examine_yard_camera",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_TPL_EXAMINE_YARD_CAMERA_1",
+        "actions": [
+          {
+            "type": "add_evidence",
+            "evidence_id": "tpl_yard_sighting"
+          }
+        ],
+        "next": null
+      }
+    }
+  },
+  {
+    "id": "tpl_examine_after",
+    "start": "n1",
+    "nodes": {
+      "n1": {
+        "speaker": "",
+        "expression": "",
+        "text": "DLG_TPL_EXAMINE_AFTER_1",
+        "next": null
+      }
+    }
+  }
+]
