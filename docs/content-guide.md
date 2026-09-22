@@ -516,6 +516,21 @@ consequence → phase mapping, what is saved, and the validation rules are in
 6. Run content validation — `CoreLoopValidator` reports any unreachable,
    unsolvable or out-of-order route as an error.
 
+Milestone 1.17 (`docs/core-loop-authoring.md` is the full recipe, and
+`docs/templates/core_loop_chapter/` a complete template) adds two optional
+fields:
+
+| Field | On | Meaning |
+|---|---|---|
+| `"sandbox_selection": {"order": N}` | a **case** | list it in the debug-build title-screen sandbox selector at position N (unique whole number ≥ 1). The case must be `metadata.canon: false`, have a `description`, and start a `canon: false` core-loop chapter; exactly one case must stay `new_game_entry` (the release default). |
+| `"documented_paths": [[inventory ids…], …]` | a `clue_connection` **unit** | the clue sets you intend to resolve it, first = the simulator's primary route. Each must be an authored accepted proof set of the unit's round and acquirable before the unit — or validation fails. |
+
+Evidence a consequence grants (`add_evidence` in `effects`) counts as
+acquirable for LATER phases only; consequence ids must be unique across all
+core-loop chapters; two B units of one chapter may not ask the same
+deduction; and a chapter may not depend on, or complete through, another
+chapter's consequences.
+
 ## Conditions reference
 
 Used identically for choice `condition`, topic `condition`, destination

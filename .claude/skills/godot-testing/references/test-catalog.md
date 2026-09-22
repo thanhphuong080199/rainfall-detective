@@ -375,9 +375,46 @@ Source of truth: `docs/core-loop-sandbox.md`; test layout: `docs/testing.md`,
   checkpoints, VI/EN, footer layout, visible-text leak scan. Add here: a new
   screen, control or routing rule.
 
+Milestone 1.17 — two chapters (`docs/core-loop-sandbox.md`, "Multiple
+chapters"; `docs/core-loop-authoring.md`). `core_loop_test_support.gd` also
+names sandbox 2 (`CASE_2`, `B1_2`…); `core_loop_route_simulator.gd`
+(`CoreLoopRouteSimulator` — `run(case, runtime, options)`,
+`advance(runtime, {"stop_at_phase"…})`, `prepare_unit(runtime, unit)`) derives
+routes from content and drives ONLY production entry points.
+
+- `core_loop_b_parity_test.gd` (pure) — production B vs debug B over every
+  complete clue set of X/Y/Z. Add here: anything that changes B grading or
+  the production/debug split.
+- `core_loop_simulation_test.gd` — legal routes for every selectable sandbox
+  (primary, documented alternates, alternate timeline, optional lie,
+  already-satisfied consequence, broken fixture, call/source audit). A new
+  chapter is covered automatically once it is selectable.
+- `core_loop_multi_chapter_test.gd` — production-code id scan (content
+  driven), cross-sandbox isolation, completion never crossing chapters,
+  sandbox 2 resume at eight checkpoints, mismatched saves rejected, no format
+  change. Add here: runtime or save behavior that involves more than one
+  chapter.
+- `core_loop_author_report_test.gd` — `CoreLoopAuthorReport` content, kinds
+  (`error`/`warning`/`info`/`state`), player-view and production-code
+  isolation. Add here: a new report section.
+- `core_loop_template_test.gd` — the template injected and proven valid and
+  playable. Update it only when the template's contract changes.
+- `core_loop_sandbox_scene_test.gd` (FULL only) — the debug sandbox
+  selector and sandbox 2 replayed from the simulator's route through visible
+  controls, VI and EN, Continue/Restart/Menu/replacement. Add here: title
+  screen or cross-sandbox UI routing.
+- `core_loop_validation_test.gd` also holds one fixture per 1.17 rule
+  (selection metadata, documented paths, late producers, unreachable /
+  cross-chapter offers, cross-chapter completion/ids, duplicate B targets,
+  the two warnings).
+
 Traps already hit: never type a variable as `ChapterRuntime`/`CoreLoopPresenter`
 in a `-s` script (they reference autoloads — the compile-order trap poisons
 the class for the whole process; use `RefCounted` and `load()`); compare
 snapshots after a JSON round trip on BOTH sides (`1 != 1.0` in Dictionary
 equality); press buttons only through a visibility check (a hidden button's
-`pressed` signal still fires and masks routing bugs).
+`pressed` signal still fires and masks routing bugs); a global class can't be
+a `const` (`const S := preload(".../core_loop_test_support.gd")` instead);
+measure a layout only after two `process_frame`s (a screen reopened on
+Continue has no laid-out rects yet); structural source scans go through
+`TestHelpers.code_only()` so doc comments don't count as references.

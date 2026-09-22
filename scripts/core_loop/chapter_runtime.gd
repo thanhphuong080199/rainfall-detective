@@ -152,7 +152,7 @@ func _start_new_run() -> void:
 
 
 func _resume_run() -> void:
-	var parsed: Dictionary = _parse_snapshot(_chapter_id, GameState.chapter_run, GameState.evidence_inventory, GameState.seen_interactions, _recorder)
+	var parsed: Dictionary = _parse_snapshot(CaseManager.get_current_case_id(), _chapter_id, GameState.chapter_run, GameState.evidence_inventory, GameState.seen_interactions, _recorder)
 	if parsed.get("ok", false) != true:
 		_fail(REASON_INVALID_SNAPSHOT, "chapter run snapshot rejected: %s" % parsed.get("reason", ""))
 		return
@@ -580,9 +580,10 @@ static func validate_snapshot(state: Dictionary) -> Dictionary:
 		return {"ok": true, "reason": ""}
 	var variables: Variant = state.get("variables", {})
 	var chapter_id: String = str((variables as Dictionary).get("current_chapter", "")) if typeof(variables) == TYPE_DICTIONARY else ""
+	var case_id: String = str((variables as Dictionary).get("case_id", "")) if typeof(variables) == TYPE_DICTIONARY else ""
 	var evidence: Array[String] = DeductionEvaluator.string_array(state.get("evidence", []))
 	var seen: Array[String] = DeductionEvaluator.string_array(state.get("seen_interactions", []))
-	var parsed: Dictionary = _parse_snapshot(chapter_id, snapshot, evidence, seen, null)
+	var parsed: Dictionary = _parse_snapshot(case_id, chapter_id, snapshot, evidence, seen, null)
 	return {"ok": parsed.get("ok", false) == true, "reason": str(parsed.get("reason", ""))}
 
 
@@ -669,12 +670,18 @@ func _evidence_pool_for(unit_id: String, inventory: Array) -> Array[String]:
 ## own restore), a resolved unit without its applied consequence (and the
 ## reverse), a phase that doesn't match what was applied, a unit that exists
 ## before its phase, a completed run whose chapter isn't marked complete, a
-## run help result lower than the help the units actually used.
-static func _parse_snapshot(chapter_id: String, snapshot: Dictionary, inventory: Array, seen: Array, recorder: ChapterRunRecorder) -> Dictionary:
+## run help result lower than the help the units actually used. Milestone
+## 1.17: also a chapter the save's own case does not list — with more than one
+## core-loop chapter, a save mixing one case with another chapter's run would
+## otherwise resume one sandbox and restart into the other.
+static func _parse_snapshot(case_id: String, chapter_id: String, snapshot: Dictionary, inventory: Array, seen: Array, recorder: ChapterRunRecorder) -> Dictionary:
 	if PrototypeContext.count(snapshot.get("format")) != SNAPSHOT_FORMAT:
 		return _parse_error("unsupported snapshot format")
 	if str(snapshot.get("chapter_id", "")) != chapter_id or chapter_id == "":
 		return _parse_error("snapshot belongs to another chapter")
+	var case_chapters: Variant = ContentDB.get_case(case_id).get("chapters", [])
+	if typeof(case_chapters) != TYPE_ARRAY or not (case_chapters as Array).has(chapter_id):
+		return _parse_error("chapter '%s' is not a chapter of the saved case '%s'" % [chapter_id, case_id])
 	var config: Dictionary = _build_config(chapter_id)
 	if config.get("ok", false) != true:
 		return _parse_error("chapter content unusable: %s" % config.get("reason", ""))

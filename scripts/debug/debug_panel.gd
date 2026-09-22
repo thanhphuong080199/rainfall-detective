@@ -89,6 +89,12 @@ var _last_producer_id: String = ""
 
 @onready var log_list: VBoxContainer = %LogList
 
+## Milestone 1.17: the core-loop author report (CoreLoopAuthorReport) of the
+## picked chapter — the active one until another is picked. Inspection only.
+@onready var core_loop_chapter_option: OptionButton = %CoreLoopChapterOption
+@onready var core_loop_list: VBoxContainer = %CoreLoopList
+var _core_loop_pick: String = ""
+
 ## Milestone 1.10: launched from here, never wired through Main.gd — same
 ## isolation stance as this panel itself. A permanent child (never freed or
 ## re-instantiated by open()/close() below), so hiding/showing this panel via
@@ -133,6 +139,7 @@ func _ready() -> void:
 	inspector_show_button.pressed.connect(_on_inspector_show_pressed)
 	producer_lookup_button.pressed.connect(_on_producer_lookup_pressed)
 	open_deduction_lab_button.pressed.connect(deduction_lab.open)
+	core_loop_chapter_option.item_selected.connect(_on_core_loop_chapter_selected)
 
 	state_filter_edit.text_changed.connect(func(_t): _refresh_if_visible())
 	evidence_filter_edit.text_changed.connect(func(_t): _refresh_if_visible())
@@ -210,6 +217,7 @@ func refresh() -> void:
 	_render_npc_tab()
 	_render_event_tab()
 	_render_case_chapter_tab()
+	_render_core_loop_tab()
 	_render_log_tab()
 	if _last_inspected_kind != -1:
 		_perform_inspect(_last_inspected_kind, _last_inspected_id, _last_inspected_second_id)
@@ -462,6 +470,41 @@ func _render_case_chapter_tab() -> void:
 
 	var completed_chapters: Array[String] = CaseManager.get_completed_chapters(case_id)
 	_add_line(case_chapter_list, "  COMPLETED CHAPTERS: %s" % (", ".join(completed_chapters) if not completed_chapters.is_empty() else "(none)"))
+
+
+## Milestone 1.17 — the author report of one core-loop chapter, grouped by
+## section, one tagged line per finding ([ERROR]/[WARN]/[info]/[NOW]). Reads
+## ContentDB/CaseManager/GameState.chapter_run only — inspection, never a
+## mutation; the legal-path simulation is headless-only (it would replace the
+## run being inspected). See docs/case-debugger.md, "Core Loop tab".
+func _render_core_loop_tab() -> void:
+	UiUtil.clear_children(core_loop_list)
+	var ids: Array[String] = CoreLoopAuthorReport.chapter_ids()
+	if ids.is_empty():
+		_add_line(core_loop_list, "(no chapter declares a core_loop section)")
+		return
+	var active: String = CaseManager.get_current_chapter_id()
+	var chapter_id: String = _core_loop_pick if ids.has(_core_loop_pick) else (active if ids.has(active) else ids[0])
+	core_loop_chapter_option.clear()
+	for i in ids.size():
+		core_loop_chapter_option.add_item("%s%s" % [ids[i], "  (active)" if ids[i] == active else ""], i)
+	core_loop_chapter_option.select(ids.find(chapter_id))
+	var report: Dictionary = CoreLoopAuthorReport.build(chapter_id, GameState.chapter_run)
+	_add_header(core_loop_list, "%s — %d error(s), %d warning(s)" % [chapter_id, report.get("errors", 0), report.get("warnings", 0)])
+	var section: String = ""
+	for line in report.get("lines", []):
+		if line.get("section", "") != section:
+			section = line.get("section", "")
+			_add_header(core_loop_list, section.to_upper())
+		_add_line(core_loop_list, "  [%s] %s" % [CoreLoopAuthorReport.KIND_TAGS.get(line.get("kind", ""), "?"), line.get("text", "")])
+
+
+func _on_core_loop_chapter_selected(index: int) -> void:
+	var ids: Array[String] = CoreLoopAuthorReport.chapter_ids()
+	if index >= 0 and index < ids.size():
+		_core_loop_pick = ids[index]
+		_log("Core Loop report: showing %s" % _core_loop_pick)
+		_refresh_if_visible()
 
 
 func _render_log_tab() -> void:

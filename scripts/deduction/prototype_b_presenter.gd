@@ -36,6 +36,15 @@ const FEEDBACK_DUPLICATE_KEY := "UI_PROTOTYPE_B_FEEDBACK_DUPLICATE"
 const FEEDBACK_ALREADY_ACCEPTED_KEY := "UI_PROTOTYPE_B_FEEDBACK_ALREADY_ACCEPTED"
 const FEEDBACK_LOCKED_KEY := "UI_RESOLUTION_SUBMISSION_LOCKED"
 const FEEDBACK_INTERNAL_ERROR_KEY := "UI_RESOLUTION_INTERNAL_ERROR"
+## Milestone 1.17: a production B unit asks ONE question (a single-deduction
+## commit — docs/core-loop-sandbox.md, "Production B is not debug Prototype
+## B"); the batch wording above ("both connections", "every draft") would be
+## wrong there. Chosen by the controller's own draft count, so the debug
+## batch keeps its text unchanged.
+const FEEDBACK_SUCCESS_HEADLINE_SINGLE_KEY := "UI_PROTOTYPE_B_FEEDBACK_SUCCESS_HEADLINE_SINGLE"
+const FEEDBACK_REJECTED_SINGLE_KEY := "UI_PROTOTYPE_B_FEEDBACK_THEORY_REJECTED_SINGLE"
+const FEEDBACK_INVALID_SINGLE_KEY := "UI_PROTOTYPE_B_FEEDBACK_INVALID_SINGLE"
+const FEEDBACK_DUPLICATE_SINGLE_KEY := "UI_PROTOTYPE_B_FEEDBACK_DUPLICATE_SINGLE"
 const PARTNER_HEADLINE_KEY := "UI_RESOLUTION_PARTNER_HEADLINE"
 const PARTNER_NOTE_KEY := "UI_PROTOTYPE_B_PARTNER_NOTE"
 const ASSISTANCE_HEADLINE_KEY := "UI_RESOLUTION_ASSISTANCE_HEADLINE"
@@ -191,12 +200,13 @@ static func build_feedback(case_def: Dictionary, controller: PrototypeBControlle
 		"resolution_notice": ResolutionPresenter.build_commit_notice(result.get("resolution", {})),
 	}
 	var category: String = str(result.get("category", ""))
+	var single: bool = controller.get_draft_count() == 1
 
 	if category == PrototypeBController.RESULT_THEORY_ACCEPTED:
 		var is_partner: bool = result.get("partner", false) == true
 		feedback["success"] = true
 		feedback["partner"] = is_partner
-		feedback["headline"] = _t(PARTNER_HEADLINE_KEY if is_partner else FEEDBACK_SUCCESS_HEADLINE_KEY)
+		feedback["headline"] = _t(PARTNER_HEADLINE_KEY if is_partner else (FEEDBACK_SUCCESS_HEADLINE_SINGLE_KEY if single else FEEDBACK_SUCCESS_HEADLINE_KEY))
 		var deduction_lines: Array[String] = []
 		var explanation_lines: Array[String] = []
 		for i in controller.get_draft_count():
@@ -216,17 +226,17 @@ static func build_feedback(case_def: Dictionary, controller: PrototypeBControlle
 		return feedback
 
 	if category == PrototypeBController.RESULT_THEORY_REJECTED:
-		var lines: Array[String] = [_t(FEEDBACK_REJECTED_KEY)]
+		var lines: Array[String] = [_t(FEEDBACK_REJECTED_SINGLE_KEY if single else FEEDBACK_REJECTED_KEY)]
 		if result.get("feedback_level", "") == PrototypeBController.FEEDBACK_GUIDED and result.has("affected_draft_index"):
 			var affected: Dictionary = controller.get_draft_round(int(result.get("affected_draft_index", 0)))
 			lines.append(_t(FEEDBACK_GUIDED_KEY) % _t(affected.get("question", "")))
 		feedback["explanation"] = "\n".join(lines)
 		return feedback
 
-	var body_key: String = FEEDBACK_INVALID_KEY
+	var body_key: String = FEEDBACK_INVALID_SINGLE_KEY if single else FEEDBACK_INVALID_KEY
 	match str(result.get("reason", "")):
 		PrototypeBController.REASON_DUPLICATE_THEORY:
-			body_key = FEEDBACK_DUPLICATE_KEY
+			body_key = FEEDBACK_DUPLICATE_SINGLE_KEY if single else FEEDBACK_DUPLICATE_KEY
 		PrototypeBController.REASON_ALREADY_ACCEPTED:
 			body_key = FEEDBACK_ALREADY_ACCEPTED_KEY
 		PrototypeBController.REASON_SUBMISSION_LOCKED, PrototypeBController.REASON_PARTNER_UNAVAILABLE:

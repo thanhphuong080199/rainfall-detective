@@ -1,0 +1,104 @@
+{
+  "id": "sby_cold_store",
+  "name": "LOC_SBY_COLD_STORE_NAME",
+  "background_color": "#2E4450",
+  "npcs": [
+    {
+      "id": "sby_priya",
+      "topics": [
+        {
+          "id": "greeting",
+          "label": "LOC_SBY_TOPIC_PRIYA_GREETING",
+          "dialogue_id": "sby_priya_greeting"
+        },
+        {
+          "id": "vent",
+          "label": "LOC_SBY_TOPIC_PRIYA_VENT",
+          "dialogue_id": "sby_priya_vent"
+        },
+        {
+          "id": "confront",
+          "label": "LOC_SBY_TOPIC_PRIYA_CONFRONT",
+          "dialogue_id": "sby_priya_confront",
+          "condition": {
+            "flag": "sby_staging_proven"
+          }
+        }
+      ],
+      "present_responses": [
+        {
+          "dialogue_id": "sby_priya_present_generic"
+        }
+      ]
+    }
+  ],
+  "examine_points": [
+    {
+      "id": "vent_hatch",
+      "label": "LOC_SBY_EXAMINE_VENT_HATCH",
+      "variants": [
+        {
+          "condition": {
+            "has_evidence": "sby_open_hatch"
+          },
+          "dialogue_id": "sby_examine_vent_hatch_after"
+        },
+        {
+          "dialogue_id": "sby_examine_vent_hatch"
+        }
+      ]
+    },
+    {
+      "id": "hatch_tabs",
+      "label": "LOC_SBY_EXAMINE_HATCH_TABS",
+      "variants": [
+        {
+          "condition": {
+            "has_evidence": "sby_hatch_tabs"
+          },
+          "dialogue_id": "sby_examine_hatch_tabs_after"
+        },
+        {
+          "condition": {
+            "examined": "vent_hatch"
+          },
+          "dialogue_id": "sby_examine_hatch_tabs"
+        },
+        {
+          "dialogue_id": "sby_examine_hatch_tabs_locked"
+        }
+      ]
+    },
+    {
+      "id": "lock_reader",
+      "label": "LOC_SBY_EXAMINE_LOCK_READER",
+      "variants": [
+        {
+          "condition": {
+            "has_evidence": "sby_cold_room_log"
+          },
+          "dialogue_id": "sby_examine_lock_reader_after"
+        },
+        {
+          "condition": {
+            "flag": "sby_access_log_released"
+          },
+          "dialogue_id": "sby_examine_lock_reader"
+        },
+        {
+          "dialogue_id": "sby_examine_lock_reader_locked"
+        }
+      ]
+    }
+  ],
+  "destinations": [
+    {
+      "location_id": "sby_workshop",
+      "label": "LOC_SBY_DEST_WORKSHOP"
+    },
+    {
+      "location_id": "sby_front_office",
+      "label": "LOC_SBY_DEST_FRONT_OFFICE"
+    }
+  ]
+}

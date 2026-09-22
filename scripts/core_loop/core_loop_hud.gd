@@ -41,7 +41,10 @@ func setup(runtime: ChapterRuntime) -> void:
 
 
 ## Mirrors InvestigationView.set_interactive(): no mechanic can be opened
-## while a dialogue is on screen.
+## while a dialogue is on screen — and (Milestone 1.17 visual QA) the HUD is
+## hidden meanwhile: the dialogue box's translucent panel covers the same
+## screen area, so both texts were drawn on top of each other. The pending
+## notice (e.g. the evidence just filed) shows again when the dialogue ends.
 func set_interactive(is_interactive: bool) -> void:
 	_is_interactive = is_interactive
 	refresh()
@@ -66,7 +69,7 @@ func refresh() -> void:
 	if _runtime == null:
 		return
 	var view: Dictionary = CoreLoopPresenter.build_hud(_runtime)
-	visible = view.get("visible", false) and not _runtime.is_briefing() and not _runtime.is_completed()
+	visible = view.get("visible", false) and not _runtime.is_briefing() and not _runtime.is_completed() and _is_interactive
 	if not visible:
 		return
 	var error: String = view.get("error", "")

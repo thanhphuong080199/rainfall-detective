@@ -1,0 +1,9 @@
+{
+  "id": "tpl_gus",
+  "name": "DED_PROTO_Z_SUS_GUS_NAME",
+  "expressions": {
+    "normal": "#6A7FB0",
+    "worried": "#B58A3C",
+    "angry": "#A8453C"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "id": "case_tpl_parcel",
+  "display_name": "CASE_TPL_PARCEL_NAME",
+  "description": "CASE_TPL_PARCEL_DESC",
+  "version": 1,
+  "metadata": {
+    "canon": false,
+    "sandbox": true,
+    "note": "TEMPLATE — a complete non-canon core-loop chapter over the dummy mystery proto_z_customs_parcel. Copy, rename every tpl_ id, rewrite the text. See docs/core-loop-authoring.md."
+  },
+  "sandbox_selection": {
+    "order": 3
+  },
+  "start_location": "tpl_dock_office",
+  "starting_chapter": "tpl_chapter_01",
+  "chapters": [
+    "tpl_chapter_01"
+  ],
+  "initial_flags": {
+    "tpl_confrontation_unlocked": false,
+    "tpl_yard_unlocked": false,
+    "tpl_timeline_unlocked": false,
+    "tpl_final_claim_accepted": false
+  }
+}

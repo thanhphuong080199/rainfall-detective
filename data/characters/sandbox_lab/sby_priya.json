@@ -1,0 +1,9 @@
+{
+  "id": "sby_priya",
+  "name": "DED_PROTO_Y_SUS_PRIYA_NAME",
+  "expressions": {
+    "normal": "#7A5FA6",
+    "worried": "#B58A3C",
+    "angry": "#A8453C"
+  }
+}

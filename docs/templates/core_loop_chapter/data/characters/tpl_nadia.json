@@ -1,0 +1,9 @@
+{
+  "id": "tpl_nadia",
+  "name": "DED_PROTO_Z_SUS_NADIA_NAME",
+  "expressions": {
+    "normal": "#6A7FB0",
+    "worried": "#B58A3C",
+    "angry": "#A8453C"
+  }
+}

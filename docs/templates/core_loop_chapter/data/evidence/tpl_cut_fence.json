@@ -1,0 +1,7 @@
+{
+  "id": "tpl_cut_fence",
+  "name": "DED_PROTO_Z_E_CUT_FENCE_NAME",
+  "icon_color": "#7A8FA6",
+  "short_description": "EVID_TPL_CUT_FENCE_SHORT",
+  "detailed_description": "DED_PROTO_Z_E_CUT_FENCE_TEXT"
+}

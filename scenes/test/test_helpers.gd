@@ -45,3 +45,26 @@ static func finish(failures: Array[String], pass_count: int) -> int:
 	for failure in failures:
 		print("FAIL: ", failure)
 	return 1
+
+
+## Milestone 1.17: GDScript `source` with every "#" comment removed (a "#"
+## inside a string literal is kept), for structural tests that assert what
+## production CODE references — doc comments legitimately mention debug tools
+## and example ids.
+static func code_only(source: String) -> String:
+	var lines: PackedStringArray = []
+	for line in source.split("\n"):
+		var quote := ""
+		var cut: int = line.length()
+		for i in line.length():
+			var ch: String = line[i]
+			if quote != "":
+				if ch == quote and (i == 0 or line[i - 1] != "\\"):
+					quote = ""
+			elif ch == "\"" or ch == "'":
+				quote = ch
+			elif ch == "#":
+				cut = i
+				break
+		lines.append(line.substr(0, cut))
+	return "\n".join(lines)

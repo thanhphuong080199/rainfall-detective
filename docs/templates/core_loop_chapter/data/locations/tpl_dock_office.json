@@ -1,0 +1,104 @@
+{
+  "id": "tpl_dock_office",
+  "name": "LOC_TPL_DOCK_OFFICE_NAME",
+  "background_color": "#2F3B45",
+  "npcs": [
+    {
+      "id": "tpl_nadia",
+      "topics": [
+        {
+          "id": "ferry",
+          "label": "LOC_TPL_TOPIC_NADIA_FERRY",
+          "dialogue_id": "tpl_nadia_ferry"
+        },
+        {
+          "id": "photo",
+          "label": "LOC_TPL_TOPIC_NADIA_PHOTO",
+          "dialogue_id": "tpl_nadia_photo",
+          "condition": {
+            "has_evidence": "tpl_ferry_gate"
+          }
+        }
+      ],
+      "present_responses": [
+        {
+          "dialogue_id": "tpl_present_generic"
+        }
+      ]
+    },
+    {
+      "id": "tpl_felix",
+      "topics": [
+        {
+          "id": "confront",
+          "label": "LOC_TPL_TOPIC_FELIX_CONFRONT",
+          "dialogue_id": "tpl_felix_confront",
+          "condition": {
+            "flag": "tpl_confrontation_unlocked"
+          }
+        }
+      ],
+      "present_responses": [
+        {
+          "dialogue_id": "tpl_present_generic"
+        }
+      ]
+    }
+  ],
+  "examine_points": [
+    {
+      "id": "seal_terminal",
+      "label": "LOC_TPL_EXAMINE_SEAL_TERMINAL",
+      "variants": [
+        {
+          "condition": {
+            "has_evidence": "tpl_seal_registry"
+          },
+          "dialogue_id": "tpl_examine_after"
+        },
+        {
+          "dialogue_id": "tpl_examine_seal_terminal"
+        }
+      ]
+    },
+    {
+      "id": "port_map",
+      "label": "LOC_TPL_EXAMINE_PORT_MAP",
+      "variants": [
+        {
+          "condition": {
+            "has_evidence": "tpl_port_map_note"
+          },
+          "dialogue_id": "tpl_examine_after"
+        },
+        {
+          "dialogue_id": "tpl_examine_port_map"
+        }
+      ]
+    },
+    {
+      "id": "locker_log",
+      "label": "LOC_TPL_EXAMINE_LOCKER_LOG",
+      "variants": [
+        {
+          "condition": {
+            "has_evidence": "tpl_locker_log"
+          },
+          "dialogue_id": "tpl_examine_after"
+        },
+        {
+          "dialogue_id": "tpl_examine_locker_log"
+        }
+      ]
+    }
+  ],
+  "destinations": [
+    {
+      "location_id": "tpl_container_yard",
+      "label": "LOC_TPL_DEST_YARD",
+      "condition": {
+        "flag": "tpl_yard_unlocked"
+      }
+    }
+  ]
+}

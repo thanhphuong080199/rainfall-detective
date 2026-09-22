@@ -1,0 +1,7 @@
+{
+  "id": "tpl_yard_sighting",
+  "name": "DED_PROTO_Z_E_YARD_SIGHTING_NAME",
+  "icon_color": "#7A8FA6",
+  "short_description": "EVID_TPL_YARD_SIGHTING_SHORT",
+  "detailed_description": "DED_PROTO_Z_E_YARD_SIGHTING_TEXT"
+}

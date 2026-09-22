@@ -1,0 +1,9 @@
+{
+  "id": "sby_bruno",
+  "name": "DED_PROTO_Y_SUS_BRUNO_NAME",
+  "expressions": {
+    "normal": "#6A8C5E",
+    "worried": "#B58A3C",
+    "angry": "#A8453C"
+  }
+}

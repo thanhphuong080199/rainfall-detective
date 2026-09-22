@@ -1,0 +1,61 @@
+{
+  "id": "sby_front_office",
+  "name": "LOC_SBY_FRONT_OFFICE_NAME",
+  "background_color": "#35394A",
+  "npcs": [
+    {
+      "id": "sby_teodor",
+      "condition": {
+        "flag": "sby_access_log_released"
+      },
+      "topics": [
+        {
+          "id": "greeting",
+          "label": "LOC_SBY_TOPIC_TEODOR_GREETING",
+          "dialogue_id": "sby_teodor_greeting"
+        },
+        {
+          "id": "evening",
+          "label": "LOC_SBY_TOPIC_TEODOR_EVENING",
+          "dialogue_id": "sby_teodor_evening"
+        },
+        {
+          "id": "checkin",
+          "label": "LOC_SBY_TOPIC_TEODOR_CHECKIN",
+          "dialogue_id": "sby_teodor_checkin",
+          "condition": {
+            "has_evidence": "sby_class_photo"
+          }
+        }
+      ],
+      "present_responses": [
+        {
+          "dialogue_id": "sby_teodor_present_generic"
+        }
+      ]
+    }
+  ],
+  "examine_points": [
+    {
+      "id": "shuttle_board",
+      "label": "LOC_SBY_EXAMINE_SHUTTLE_BOARD",
+      "variants": [
+        {
+          "condition": {
+            "has_evidence": "sby_shuttle_note"
+          },
+          "dialogue_id": "sby_examine_shuttle_board_after"
+        },
+        {
+          "dialogue_id": "sby_examine_shuttle_board"
+        }
+      ]
+    }
+  ],
+  "destinations": [
+    {
+      "location_id": "sby_cold_store",
+      "label": "LOC_SBY_DEST_COLD_STORE"
+    }
+  ]
+}
